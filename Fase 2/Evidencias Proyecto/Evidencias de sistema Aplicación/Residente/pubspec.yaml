@@ -1,0 +1,41 @@
+name: fire_data
+description: "App Bomberos - Sistema de Emergencias Optimizado"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Supabase para backend (comentado temporalmente mientras no se usa)
+  # supabase_flutter: ^2.10.2
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icono.png"
+  adaptive_icon_foreground: "assets/icono.png"
+  adaptive_icon_background: "#ffffff"
+  remove_alpha_ios: true
+
+flutter:
+  uses-material-design: true
+  
+  # Optimización: No incluir assets innecesarios
+  # assets:
+  #   - assets/
+
+# Configuración de optimización de Flutter
+# Para generar APK optimizada usar:
+# flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols
+
