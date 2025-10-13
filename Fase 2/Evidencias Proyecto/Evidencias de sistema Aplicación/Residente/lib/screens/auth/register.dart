@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/registration_data.dart';
-import '../../services/mock_auth_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
 import '../registration_steps/step1_create_account.dart';
 import '../registration_steps/step2_holder_data.dart';
 import '../registration_steps/step3_residence_info.dart';
@@ -46,25 +47,105 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
   }
 
   Future<void> _completeRegistration() async {
-    // Registrar usuario con el servicio mock
-    final mockAuth = MockAuthService();
-    await mockAuth.signUp(
-      email: _registrationData.email ?? '',
-      password: _registrationData.password ?? '',
-      name: 'Residente',
-    );
-    
-    // Aquí iría la lógica para guardar en Supabase
-    // Navegar al home después del registro exitoso
-    if (!mounted) return;
-    
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) =>
-            ResidentHomeScreen(registrationData: _registrationData),
-      ),
-      (route) => false,
-    );
+    try {
+      // Mostrar loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Creando cuenta...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // 1. Registrar usuario en Supabase Auth
+      print('🔐 Iniciando registro de usuario...');
+      print('📧 Email: ${_registrationData.email}');
+      
+      final authService = AuthService();
+      final authResult = await authService.signUp(
+        email: _registrationData.email ?? '',
+        password: _registrationData.password ?? '',
+        metadata: {'name': _registrationData.fullName ?? 'Residente'},
+      );
+
+      print('✅ Resultado de autenticación: ${authResult.isSuccess}');
+      if (authResult.isSuccess) {
+        print('👤 Usuario creado: ${authResult.user?.id}');
+      } else {
+        print('❌ Error de autenticación: ${authResult.error}');
+      }
+
+      if (!authResult.isSuccess) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al crear cuenta: ${authResult.error}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 2. Crear grupo familiar en la base de datos
+      print('📝 Creando grupo familiar en base de datos...');
+      print('👤 User ID: ${authResult.user!.id}');
+      print('📍 Dirección: ${_registrationData.address}');
+      
+      final databaseService = DatabaseService();
+      final grupoResult = await databaseService.crearGrupoFamiliar(
+        userId: authResult.user!.id, // Aunque no se use en la BD, lo mantenemos para compatibilidad
+        data: _registrationData,
+      );
+
+      print('✅ Resultado de creación de grupo: ${grupoResult.isSuccess}');
+      if (!grupoResult.isSuccess) {
+        print('❌ Error al crear grupo: ${grupoResult.error}');
+      }
+
+      if (!grupoResult.isSuccess) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al crear perfil: ${grupoResult.error}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
+      print('🎉 Registro completado exitosamente');
+
+      // 3. Navegar al home después del registro exitoso
+      if (!mounted) return;
+      
+      print('🏠 Navegando al home...');
+      
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) =>
+              ResidentHomeScreen(registrationData: _registrationData),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      print('💥 Error inesperado durante el registro: $e');
+      print('📍 Stack trace: ${StackTrace.current}');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error inesperado: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   @override

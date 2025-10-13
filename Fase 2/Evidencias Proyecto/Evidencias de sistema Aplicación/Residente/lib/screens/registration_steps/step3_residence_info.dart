@@ -26,6 +26,8 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
   final TextEditingController _longitudeController = TextEditingController();
   final TextEditingController _mainPhoneController = TextEditingController();
   final TextEditingController _altPhoneController = TextEditingController();
+  final TextEditingController _specialInstructionsController =
+      TextEditingController();
 
   bool _showManualCoordinates = false;
   bool _hasConfirmedLocation = false;
@@ -40,6 +42,8 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
         widget.registrationData.longitude?.toString() ?? '';
     _mainPhoneController.text = widget.registrationData.mainPhone ?? '';
     _altPhoneController.text = widget.registrationData.alternatePhone ?? '';
+    _specialInstructionsController.text =
+        widget.registrationData.specialInstructions ?? '';
 
     if (_addressController.text.isNotEmpty) {
       _hasConfirmedLocation = true;
@@ -53,6 +57,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
     _longitudeController.dispose();
     _mainPhoneController.dispose();
     _altPhoneController.dispose();
+    _specialInstructionsController.dispose();
     super.dispose();
   }
 
@@ -78,6 +83,8 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
       );
       widget.registrationData.mainPhone = _mainPhoneController.text.trim();
       widget.registrationData.alternatePhone = _altPhoneController.text.trim();
+      widget.registrationData.specialInstructions =
+          _specialInstructionsController.text.trim();
       widget.onNext();
     }
   }
@@ -477,6 +484,23 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                         helperText:
                             'Teléfono de contacto secundario (familiar, vecino, etc.)',
                         prefixIcon: const Icon(Icons.phone_android),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    TextFormField(
+                      controller: _specialInstructionsController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Instrucciones especiales (opcional)',
+                        hintText:
+                            'Información adicional relevante para bomberos (accesos especiales, llaves, etc.)',
+                        prefixIcon: const Icon(Icons.info_outline),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

@@ -110,6 +110,11 @@ class _Step2HolderDataState extends State<Step2HolderData>
           currentYear - widget.registrationData.birthYear!;
 
       widget.registrationData.medicalConditions = _selectedConditions;
+      
+      print('✅ Datos del paso 2 guardados:');
+      print('   - rut: ${widget.registrationData.rut}');
+      print('   - phone: ${widget.registrationData.phoneNumber}');
+      
       widget.onNext();
     }
   }

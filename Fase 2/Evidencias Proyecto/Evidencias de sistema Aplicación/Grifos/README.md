@@ -1,6 +1,6 @@
-# bomberos
+# Grifos
 
-A new Flutter project.
+Sistema de gestión de grifos y emergencias - Aplicación Flutter.
 
 ## Getting Started
 

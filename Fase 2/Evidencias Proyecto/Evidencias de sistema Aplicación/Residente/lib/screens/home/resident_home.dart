@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/registration_data.dart';
 import '../../models/family_member.dart';
 import '../../models/pet.dart';
-import '../../services/mock_auth_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/responsive.dart';
 import 'tabs/family_tab.dart';
@@ -115,8 +116,8 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
     );
 
     if (shouldLogout == true && mounted) {
-      final mockAuth = MockAuthService();
-      await mockAuth.signOut();
+      final authService = AuthService();
+      await authService.signOut();
 
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);

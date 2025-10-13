@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/mock_auth_service.dart';
+import '../../services/supabase_auth_service.dart';
 import '../../utils/responsive.dart';
 import '../home/home.dart';
 import 'register.dart';
@@ -55,9 +55,9 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       try {
-        // Usar servicio de autenticación temporal
-        final mockAuth = MockAuthService();
-        final result = await mockAuth.signInWithPassword(
+        // Usar servicio de autenticación con Supabase
+        final authService = SupabaseAuthService();
+        final result = await authService.signInWithPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -66,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (result.isSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('¡Bienvenido ${result.user!.name}!'),
+                content: Text('¡Bienvenido ${result.user!.fullName}!'),
                 backgroundColor: Colors.green,
               ),
             );
@@ -365,42 +365,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: isTablet ? 30 : 20),
 
-                      // Botón de modo prueba
-                      Container(
-                        margin: EdgeInsets.only(bottom: isTablet ? 30 : 20),
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            _emailController.text = MockAuthService.testEmail;
-                            _passwordController.text =
-                                MockAuthService.testPassword;
-                          },
-                          icon: Icon(Icons.science, size: isTablet ? 22 : 18),
-                          label: Text(
-                            'Usar Credenciales de Prueba',
-                            style: TextStyle(
-                              fontSize: ResponsiveHelper.getResponsiveFontSize(
-                                context,
-                                mobile: 14,
-                                tablet: 16,
-                                desktop: 18,
-                              ),
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange.shade600,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isTablet ? 24 : 20,
-                              vertical: isTablet ? 16 : 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                isTablet ? 30 : 25,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

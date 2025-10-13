@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/registration_data.dart';
-import '../../../services/mock_auth_service.dart';
+import '../../../services/auth_service.dart';
 import '../../../utils/app_styles.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../edit/edit_profile_screen.dart';
@@ -20,8 +20,9 @@ class SettingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mockAuth = MockAuthService();
-    final user = mockAuth.currentUser;
+    final authService = AuthService();
+    final supabaseUser = authService.currentUser;
+    final user = supabaseUser != null ? AppUser.fromSupabaseUser(supabaseUser) : null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -65,7 +66,7 @@ class SettingsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonalInfoCard(User? user) {
+  Widget _buildPersonalInfoCard(AppUser? user) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: AppDecorations.card,

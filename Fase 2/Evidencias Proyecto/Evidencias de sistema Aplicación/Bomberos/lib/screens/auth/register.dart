@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/mock_auth_service.dart';
+import '../../services/supabase_auth_service.dart';
 import '../home/home.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -164,12 +164,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       try {
-        // Usar servicio de autenticación temporal
-        final mockAuth = MockAuthService();
-        final result = await mockAuth.signUp(
+        // Usar servicio de autenticación con Supabase
+        final authService = SupabaseAuthService();
+        final result = await authService.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          name: _fullNameController.text.trim(),
+          fullName: _fullNameController.text.trim(),
+          rut: _rutController.text.trim(),
+          company: _companyController.text.trim(),
         );
 
         if (mounted) {
@@ -177,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  '¡Registro exitoso! Bienvenido ${result.user!.name}',
+                  '¡Registro exitoso! Bienvenido ${result.user!.fullName}',
                 ),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 3),
