@@ -26,11 +26,11 @@ class AppConstants {
   ];
 
   // Credenciales de prueba
-  static const String testEmail = 'admin@bomberos.cl';
+  static const String testEmail = 'admin@grifos.cl';
   static const String testPassword = 'admin123';
 
   // Mensajes
-  static const String msgLoginSuccess = '¡Bienvenido admin@bomberos.cl!';
+  static const String msgLoginSuccess = '¡Bienvenido admin@grifos.cl!';
   static const String msgLoginError =
       'Credenciales incorrectas. Usa el botón "Usar Credenciales de Prueba"';
   static const String msgRegistroSuccess =

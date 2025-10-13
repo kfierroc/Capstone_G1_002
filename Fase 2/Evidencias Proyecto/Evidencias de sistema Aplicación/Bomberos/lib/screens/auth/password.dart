@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../config/supabase_config.dart';
+import '../../services/supabase_auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -38,25 +38,40 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       });
 
       try {
-        await SupabaseConfig.client.auth.resetPasswordForEmail(
+        final authService = SupabaseAuthService();
+        final result = await authService.resetPassword(
           _emailController.text.trim(),
         );
 
-        setState(() {
-          _emailSent = true;
-          _isLoading = false;
-        });
+        if (result.isSuccess) {
+          setState(() {
+            _emailSent = true;
+            _isLoading = false;
+          });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Email de recuperación enviado. Revisa tu bandeja de entrada.',
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Email de recuperación enviado. Revisa tu bandeja de entrada.',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
               ),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 4),
-            ),
-          );
+            );
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result.error ?? 'Error al enviar email'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } catch (e) {
         if (mounted) {

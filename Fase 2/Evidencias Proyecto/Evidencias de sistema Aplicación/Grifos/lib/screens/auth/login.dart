@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/supabase_auth_service.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 import '../../utils/validators.dart';
@@ -9,6 +10,7 @@ import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import 'register.dart';
 import 'password.dart';
+import '../home/home.dart';
 
 class LoginScreen extends StatefulWidget {
   final Function(String) onLogin;
@@ -36,38 +38,65 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      await Future.delayed(AppConstants.loadingDuration);
+      try {
+        // Usar servicio de autenticación con Supabase
+        final authService = SupabaseAuthService();
+        final result = await authService.signInWithPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
 
-      if (_emailController.text.trim() == AppConstants.testEmail &&
-          _passwordController.text == AppConstants.testPassword) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(AppConstants.msgLoginSuccess),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          widget.onLogin(AppConstants.testEmail);
+          if (result.isSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('¡Bienvenido ${result.user!.fullName}!'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            // Navegar al home después del login exitoso
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HomeScreen(
+                  onLogout: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LoginScreen(
+                          onLogin: (email) {},
+                        ),
+                      ),
+                    );
+                  },
+                  userEmail: result.user!.email,
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result.error ?? 'Error de autenticación'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
         }
-      } else {
+      } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(AppConstants.msgLoginError),
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
               backgroundColor: AppColors.error,
             ),
           );
         }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
-
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _useTestCredentials() {
-    _emailController.text = AppConstants.testEmail;
-    _passwordController.text = AppConstants.testPassword;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -125,14 +154,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-            CustomButton(
-              text: 'Usar Credenciales de Prueba',
-              icon: Icons.science,
-              backgroundColor: Colors.orange.shade600,
-              onPressed: _useTestCredentials,
-              fullWidth: false,
             ),
             const SizedBox(height: 20),
             Row(
