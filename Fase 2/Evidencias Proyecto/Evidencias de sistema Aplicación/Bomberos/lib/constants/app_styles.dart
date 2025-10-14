@@ -79,7 +79,7 @@ class AppDecorations {
       border: Border.all(color: AppColors.border),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black.withValues(alpha: 0.05),
           blurRadius: AppSizes.elevation,
           offset: const Offset(0, 4),
         ),
@@ -96,7 +96,7 @@ class AppDecorations {
       borderRadius: BorderRadius.circular(borderRadius ?? AppSizes.radius),
       boxShadow: [
         BoxShadow(
-          color: AppColors.primary.withOpacity(0.3),
+          color: AppColors.primary.withValues(alpha: 0.3),
           blurRadius: AppSizes.elevationLg,
           offset: const Offset(0, 4),
         ),

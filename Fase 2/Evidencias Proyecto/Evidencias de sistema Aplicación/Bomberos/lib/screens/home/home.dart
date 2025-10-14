@@ -113,12 +113,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (shouldLogout == true) {
       // TEMPORAL: Para desarrollo sin autenticación
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cerrando sesión...'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cerrando sesión...'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
 
       // Simular logout en el servicio mock
       final mockAuth = MockAuthService();

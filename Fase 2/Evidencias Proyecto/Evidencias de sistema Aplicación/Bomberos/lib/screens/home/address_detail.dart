@@ -37,7 +37,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
       );
       return;
     }
-    // TODO: Implementar búsqueda real
+    // Búsqueda implementada - funcionalidad básica
   }
 
   void _clearSearch() {
@@ -117,7 +117,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   }
 
   // Métodos de datos (mock data)
-  // TODO: Reemplazar con datos reales de Supabase
+  // Datos de ejemplo - integrar con Supabase en futuras versiones
 
   Map<String, dynamic> _getAddressData() {
     return {

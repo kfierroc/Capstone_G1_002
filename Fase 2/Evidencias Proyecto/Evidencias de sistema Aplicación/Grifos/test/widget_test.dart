@@ -5,10 +5,9 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:Grifos/main.dart';
+import 'package:grifos_optimized/main.dart';
 
 void main() {
   testWidgets('App inicializa correctamente', (WidgetTester tester) async {
@@ -16,6 +15,7 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     // Verifica que la pantalla de login se muestre inicialmente
-    expect(find.text('Iniciar Sesión'), findsOneWidget);
+    // Busca el título de la pantalla de login
+    expect(find.text('Iniciar Sesión - Grifos'), findsOneWidget);
   });
 }
