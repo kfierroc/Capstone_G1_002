@@ -188,9 +188,17 @@ class Validators {
     }
     final year = int.tryParse(value);
     final currentYear = DateTime.now().year;
+    
     if (year == null || year < 1900 || year > currentYear) {
       return 'Año inválido';
     }
+    
+    // Validar edad mínima de 18 años
+    final age = currentYear - year;
+    if (age < 18) {
+      return 'Debes ser mayor de 18 años para registrarte';
+    }
+    
     return null;
   }
 
