@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/supabase_auth_service.dart';
 import '../../constants/app_colors.dart';
-import '../../constants/app_constants.dart';
 import '../../utils/validators.dart';
 import '../../widgets/auth_header.dart';
 import '../../widgets/gradient_scaffold.dart';

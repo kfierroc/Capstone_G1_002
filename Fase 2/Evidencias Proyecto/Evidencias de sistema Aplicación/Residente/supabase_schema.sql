@@ -30,13 +30,16 @@ CREATE TABLE IF NOT EXISTS grupofamiliar (
   
   -- Datos del titular
   rut_titular VARCHAR NOT NULL UNIQUE,
+  email VARCHAR NOT NULL UNIQUE,
+  password VARCHAR NOT NULL,
   fecha_creacion DATE NOT NULL DEFAULT CURRENT_DATE,
   
   -- Metadatos
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
-  CONSTRAINT valid_rut_titular CHECK (LENGTH(rut_titular) >= 8)
+  CONSTRAINT valid_rut_titular CHECK (LENGTH(rut_titular) >= 8),
+  CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
 -- Índices para mejorar rendimiento

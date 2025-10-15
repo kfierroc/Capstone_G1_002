@@ -25,7 +25,7 @@ class CriticalStatWidget extends StatelessWidget {
         Container(
           padding: EdgeInsets.all(isTablet ? AppSizes.spaceXl : AppSizes.spaceLg),
           decoration: BoxDecoration(
-            color: AppColors.textWhite.withOpacity(0.2),
+            color: AppColors.textWhite.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(
               isTablet ? AppSizes.radius : AppSizes.radiusMd,
             ),

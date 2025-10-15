@@ -1,4 +1,4 @@
-/// Archivo de barril para exportar todos los widgets personalizados
+// Archivo de barril para exportar todos los widgets personalizados
 export 'emergency_alert_banner.dart';
 export 'search_card.dart';
 export 'critical_stat_widget.dart';

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../utils/responsive.dart';
 import '../../utils/validators.dart';
-import '../home/resident_home.dart';
 import 'register.dart';
 import 'password.dart';
 
