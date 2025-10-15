@@ -102,8 +102,9 @@ CREATE TABLE IF NOT EXISTS integrante (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
-  CONSTRAINT valid_age CHECK (edad >= 0 AND edad <= 150),
+  CONSTRAINT valid_age CHECK (edad >= 18 AND edad <= 150),
   CONSTRAINT valid_birth_year CHECK (anio_nac >= 1900 AND anio_nac <= EXTRACT(YEAR FROM CURRENT_DATE)),
+  CONSTRAINT valid_adult_age CHECK (EXTRACT(YEAR FROM CURRENT_DATE) - anio_nac >= 18),
   CONSTRAINT valid_dates CHECK (fecha_fin_i IS NULL OR fecha_fin_i >= fecha_ini_i)
 );
 
