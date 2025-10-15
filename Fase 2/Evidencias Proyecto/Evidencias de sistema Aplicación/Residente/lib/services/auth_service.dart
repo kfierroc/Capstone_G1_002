@@ -56,9 +56,20 @@ class AuthService {
       }
 
       if (!_isValidEmail(email)) {
-        print('❌ Email inválido: $email');
+        print('❌ Email inválido según validación local: $email');
         return AuthResult.error('Email inválido');
       }
+      
+      print('✅ Email válido según validación local: $email');
+
+      // Verificar si el email ya está registrado (con lógica mejorada)
+      print('🔍 Verificando si el email ya está registrado...');
+      final emailExists = await isEmailRegistered(email);
+      if (emailExists) {
+        print('❌ El email ya está registrado: $email');
+        return AuthResult.error('Este email ya está registrado. Si es tu cuenta, intenta iniciar sesión. Si quieres crear una nueva cuenta, usa un email diferente.');
+      }
+      print('✅ Email disponible para registro: $email');
 
       print('✅ Validaciones pasadas, registrando en Supabase...');
       print('📧 Email: $email');
@@ -89,9 +100,27 @@ class AuthService {
         message: 'Cuenta creada exitosamente',
       );
     } on AuthException catch (e) {
-      print('❌ AuthException capturada:');
+      print('❌ AuthException capturada en signUp:');
       print('   - Message: ${e.message}');
       print('   - Status Code: ${e.statusCode}');
+      print('   - Email que causó el error: $email');
+      
+      final message = e.message.toLowerCase();
+      
+      // Si el error es que el usuario ya existe, dar un mensaje más específico
+      if (message.contains('user already registered') || 
+          message.contains('email already registered') ||
+          message.contains('already been registered')) {
+        print('🔄 Usuario ya registrado según Supabase');
+        return AuthResult.error('Este email ya está registrado. Si es tu cuenta, intenta iniciar sesión. Si quieres crear una nueva cuenta, usa un email diferente.');
+      }
+      
+      // Si Supabase dice que el email es inválido, puede ser que ya exista
+      if (message.contains('email address') && message.contains('invalid')) {
+        print('🔄 Email marcado como inválido por Supabase (posiblemente ya existe)');
+        return AuthResult.error('Este email ya está registrado o no es válido. Si es tu cuenta, intenta iniciar sesión. Si quieres crear una nueva cuenta, usa un email diferente.');
+      }
+      
       final errorMsg = _getAuthErrorMessage(e);
       print('   - Error traducido: $errorMsg');
       return AuthResult.error(errorMsg);
@@ -114,10 +143,31 @@ class AuthService {
     required String password,
   }) async {
     try {
+      print('🔐 AuthService.signIn - Iniciando...');
+      print('📧 Email: $email');
+      print('🔐 Password length: ${password.length}');
+      
       // Validaciones básicas
       if (email.isEmpty || password.isEmpty) {
+        print('❌ Email o contraseña vacíos');
         return AuthResult.error('Email y contraseña son requeridos');
       }
+
+      if (!_isValidEmail(email)) {
+        print('❌ Email inválido: $email');
+        return AuthResult.error('Email inválido');
+      }
+
+      print('✅ Validaciones pasadas, iniciando sesión en Supabase...');
+
+      // Verificar si el email está confirmado antes de intentar login
+      print('🔍 Verificando si el email está confirmado...');
+      final isConfirmed = await isEmailConfirmed(email);
+      if (!isConfirmed) {
+        print('❌ El email no está confirmado: $email');
+        return AuthResult.error('Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación');
+      }
+      print('✅ Email confirmado: $email');
 
       // Iniciar sesión
       final response = await _auth.signInWithPassword(
@@ -125,17 +175,33 @@ class AuthService {
         password: password,
       );
 
+      print('📦 Response recibido de Supabase');
+      print('👤 User: ${response.user?.id}');
+      print('📧 Email: ${response.user?.email}');
+      print('🔓 Session: ${response.session != null ? "Sí" : "No"}');
+
       if (response.user == null) {
+        print('❌ Usuario es null después del login');
         return AuthResult.error('Error al iniciar sesión');
       }
 
+      print('✅ Sesión iniciada exitosamente: ${response.user!.id}');
+      
       return AuthResult.success(
         user: AppUser.fromSupabaseUser(response.user!),
         message: 'Sesión iniciada exitosamente',
       );
     } on AuthException catch (e) {
-      return AuthResult.error(_getAuthErrorMessage(e));
+      print('❌ AuthException capturada en signIn:');
+      print('   - Message: ${e.message}');
+      print('   - Status Code: ${e.statusCode}');
+      print('   - Email que causó el error: $email');
+      final errorMsg = _getAuthErrorMessage(e);
+      print('   - Error traducido: $errorMsg');
+      return AuthResult.error(errorMsg);
     } catch (e) {
+      print('❌ Excepción inesperada en signIn: $e');
+      print('   - Type: ${e.runtimeType}');
       return AuthResult.error('Error inesperado: ${e.toString()}');
     }
   }
@@ -255,37 +321,165 @@ class AuthService {
     return emailRegex.hasMatch(email);
   }
 
+  /// Verificar si un email ya está registrado (método simplificado)
+  Future<bool> isEmailRegistered(String email) async {
+    try {
+      print('🔍 Verificando si email está registrado: $email');
+      
+      // Usar una contraseña muy específica para evitar conflictos
+      final dummyPassword = 'dummy_check_${DateTime.now().millisecondsSinceEpoch}';
+      
+      await _auth.signInWithPassword(
+        email: email,
+        password: dummyPassword,
+      );
+      
+      // Si llegamos aquí sin excepción, algo está mal
+      print('⚠️ No se lanzó excepción, esto es inesperado');
+      return false;
+      
+    } on AuthException catch (e) {
+      final message = e.message.toLowerCase();
+      print('📧 Error al verificar email: ${e.message}');
+      print('📧 Status Code: ${e.statusCode}');
+      
+      // Solo confiar en errores muy específicos
+      if (message.contains('email not confirmed')) {
+        print('✅ Email existe (no confirmado)');
+        return true;
+      }
+      
+      // Para "invalid login credentials", ser más conservador
+      if (message.contains('invalid login credentials')) {
+        print('❓ Email posiblemente existe, pero siendo conservador...');
+        return false; // Cambiar a false para evitar falsos positivos
+      }
+      
+      // Si obtenemos "user not found" o similar, el email no existe
+      if (message.contains('user not found') || 
+          message.contains('email not found') ||
+          message.contains('invalid email')) {
+        print('❌ Email no existe');
+        return false;
+      }
+      
+      // Para cualquier otro error, asumir que no existe
+      print('❓ Error desconocido, asumiendo que email no existe');
+      return false;
+      
+    } catch (e) {
+      print('❌ Excepción inesperada al verificar email: $e');
+      return false;
+    }
+  }
+
+  /// Verificar si un email está confirmado
+  Future<bool> isEmailConfirmed(String email) async {
+    try {
+      print('🔍 Verificando si email está confirmado: $email');
+      
+      // Intentar iniciar sesión con una contraseña falsa
+      // Si obtenemos "email not confirmed", significa que existe pero no está confirmado
+      await _auth.signInWithPassword(
+        email: email,
+        password: 'dummy_password_123456789',
+      );
+      
+      // Si llegamos aquí sin excepción, algo está mal
+      print('⚠️ No se lanzó excepción al verificar confirmación');
+      return false;
+      
+    } on AuthException catch (e) {
+      final message = e.message.toLowerCase();
+      print('📧 Error al verificar confirmación: ${e.message}');
+      
+      if (message.contains('email not confirmed')) {
+        print('❌ Email existe pero no está confirmado');
+        return false;
+      } else if (message.contains('invalid login credentials')) {
+        print('✅ Email existe y está confirmado');
+        return true;
+      } else if (message.contains('user not found') || 
+                 message.contains('email not found')) {
+        print('❌ Email no existe');
+        return false;
+      }
+      
+      // En caso de duda, asumir que no está confirmado
+      print('❓ Error desconocido, asumiendo que no está confirmado');
+      return false;
+      
+    } catch (e) {
+      print('❌ Excepción inesperada al verificar confirmación: $e');
+      return false;
+    }
+  }
+
   /// Obtener mensaje de error amigable
   String _getAuthErrorMessage(AuthException error) {
     print('🔍 Analizando error de autenticación:');
     print('   - Status Code: ${error.statusCode}');
     print('   - Message: ${error.message}');
     
+    final message = error.message.toLowerCase();
+    
+    // Verificar si el email ya está registrado
+    if (message.contains('user already registered') || 
+        message.contains('email already registered') ||
+        message.contains('already been registered')) {
+      return 'Este email ya está registrado. ¿Quieres iniciar sesión?';
+    }
+    
+    // Verificar si el email no está confirmado
+    if (message.contains('email not confirmed') || 
+        message.contains('email_not_confirmed')) {
+      return 'Debes confirmar tu email. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación';
+    }
+    
+    // Verificar credenciales inválidas (para login)
+    if (message.contains('invalid login credentials') || 
+        message.contains('invalid credentials')) {
+      return 'Email o contraseña incorrectos. Verifica tus credenciales';
+    }
+    
+    // Verificar si el usuario no existe
+    if (message.contains('user not found') || 
+        message.contains('email not found')) {
+      return 'No existe una cuenta con este email. ¿Quieres registrarte?';
+    }
+    
+    // Verificar si el email es inválido
+    if (message.contains('invalid email') || 
+        message.contains('email address') && message.contains('invalid')) {
+      return 'El formato del email no es válido. Verifica que esté escrito correctamente';
+    }
+    
+    // Verificar problemas de contraseña
+    if (message.contains('password') && message.contains('weak')) {
+      return 'La contraseña es muy débil. Debe tener al menos 6 caracteres';
+    }
+    
+    // Verificar límites de tasa
+    if (message.contains('too many requests') || 
+        message.contains('rate limit')) {
+      return 'Demasiados intentos. Espera unos minutos antes de intentar nuevamente';
+    }
+    
     switch (error.statusCode) {
       case '400':
-        if (error.message.toLowerCase().contains('email')) {
-          return 'Email inválido o ya registrado';
+        if (message.contains('email')) {
+          return 'Problema con el email: ${error.message}';
         }
-        return 'Credenciales inválidas: ${error.message}';
+        return 'Datos inválidos: ${error.message}';
       case '401':
         return 'Email o contraseña incorrectos';
       case '422':
-        return 'Email ya registrado';
+        return 'Email ya registrado o datos inválidos';
       case '429':
         return 'Demasiados intentos. Intenta más tarde';
       default:
-        if (error.message.toLowerCase().contains('email')) {
-          return 'Problema con el email: ${error.message}';
-        } else if (error.message.toLowerCase().contains('password')) {
-          return 'La contraseña no cumple con los requisitos: ${error.message}';
-        } else if (error.message.toLowerCase().contains('user already registered')) {
-          return 'Este email ya está registrado';
-        } else if (error.message.toLowerCase().contains('email not confirmed')) {
-          return 'Debes confirmar tu email. Revisa tu bandeja de entrada';
-        } else {
-          // Devolver el mensaje completo para mejor diagnóstico
-          return 'Error: ${error.message}';
-        }
+        // Devolver el mensaje completo para mejor diagnóstico
+        return 'Error: ${error.message}';
     }
   }
 }

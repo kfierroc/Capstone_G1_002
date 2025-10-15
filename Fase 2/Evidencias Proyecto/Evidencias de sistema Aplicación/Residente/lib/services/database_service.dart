@@ -1,6 +1,4 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
 import '../config/supabase_config.dart';
 import '../models/registration_data.dart';
 import '../models/family_member.dart';
@@ -37,8 +35,6 @@ class DatabaseService {
       print('🔍 Validando datos del grupo familiar:');
       print('   - userId: $userId');
       print('   - rut: ${data.rut ?? "NULL"}');
-      print('   - email: ${data.email ?? "NULL"}');
-      print('   - password: ${data.password != null ? "[PROVIDED]" : "NULL"}');
       print('   - address: ${data.address ?? "NULL"}');
       print('   - latitude: ${data.latitude ?? "NULL"}');
       print('   - longitude: ${data.longitude ?? "NULL"}');
@@ -46,32 +42,25 @@ class DatabaseService {
       print('   - mainPhone: ${data.mainPhone ?? "NULL"}');
       
       // Validar que todos los datos requeridos estén presentes
-      if (data.rut == null || data.address == null || data.email == null || data.password == null) {
+      if (data.rut == null || data.address == null) {
         print('❌ Datos incompletos:');
         if (data.rut == null) print('   - Falta: rut');
         if (data.address == null) print('   - Falta: address');
-        if (data.email == null) print('   - Falta: email');
-        if (data.password == null) print('   - Falta: password');
         return DatabaseResult.error('Datos incompletos del grupo familiar');
       }
 
       // Crear grupo familiar adaptado al esquema actual de la BD
       print('📝 Creando grupo familiar...');
       
-      // Generar un ID numérico para el grupo familiar (como en tu esquema actual)
+      // Generar ID numérico para id_grupof (compatible con integer)
+      // Usar solo los últimos dígitos del timestamp para que quepa en int32
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final idGrupo = (timestamp % 2147483647); // Limitar a rango de int4
-      print('🆔 ID generado para grupo familiar: $idGrupo');
-      
-      // Hashear la contraseña con SHA-256 antes de guardarla
-      final bytes = utf8.encode(data.password ?? '');
-      final hashedPassword = sha256.convert(bytes).toString();
+      final idGrupoF = (timestamp % 2147483647); // Limitar al rango de int4 (max: 2,147,483,647)
       
       final grupoData = {
-        'id_grupof': idGrupo,        // int4 como en tu esquema
+        'id_grupof': idGrupoF,
         'rut_titular': data.rut,
-        'email': data.email,         // Incluir email como en tu esquema
-        'password': hashedPassword,  // Incluir password hasheado
+        'email': data.email, // Agregar email que es requerido
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
       
@@ -85,72 +74,19 @@ class DatabaseService {
           .single();
 
       print('📦 Respuesta del grupo familiar: $grupoResponse');
-      print('✅ Grupo familiar creado con ID: $idGrupo');
+      print('📦 Tipo de respuesta: ${grupoResponse.runtimeType}');
+      print('📦 Campos en respuesta: ${grupoResponse.keys.toList()}');
+      print('✅ Grupo familiar creado con ID: $idGrupoF');
 
-      // Crear residencia (adaptado al esquema real)
-      print('📝 Creando residencia...');
-      print('📝 Datos a insertar en residencia:');
+      // Crear residencia (temporalmente deshabilitado debido a diferencias en el esquema)
+      print('⚠️ Creación de residencia temporalmente deshabilitada');
+      print('📝 Datos que se habrían insertado en residencia:');
       print('   - direccion: ${data.address}');
       print('   - lat: ${data.latitude ?? 0.0}');
       print('   - lon: ${data.longitude ?? 0.0}');
-      print('   - cut_com: 1');
-      
-      // Escalar las coordenadas para que quepan en numeric(2, 14)
-      // Convertir -33.4234 a -0.03 (dividir por 1000 para asegurar que quepa)
-      // Redondear a 14 decimales para evitar overflow
-      final latScaled = double.parse(((data.latitude ?? 0.0) / 1000.0).toStringAsFixed(14));
-      final lonScaled = double.parse(((data.longitude ?? 0.0) / 1000.0).toStringAsFixed(14));
-      
-      print('📝 Coordenadas escaladas:');
-      print('   - lat original: ${data.latitude ?? 0.0}');
-      print('   - lat escalada: $latScaled');
-      print('   - lon original: ${data.longitude ?? 0.0}');
-      print('   - lon escalada: $lonScaled');
-      
-      // Generar ID para residencia (como en grupofamiliar)
-      final timestampResidencia = DateTime.now().millisecondsSinceEpoch;
-      final idResidencia = (timestampResidencia % 2147483647); // Limitar a rango de int4
-      
-      print('🆔 ID generado para residencia: $idResidencia');
-      
-      final residenciaResponse = await _client
-          .from('residencia')
-          .insert({
-            // Solo las columnas que existen en tu esquema
-            'id_residencia': idResidencia, // ID manual generado
-            'direccion': data.address,
-            'lat': latScaled, // Usar coordenadas escaladas
-            'lon': lonScaled, // Usar coordenadas escaladas
-            'cut_com': 1, // TODO: Mapear comuna desde dirección
-          })
-          .select()
-          .single();
-      
-      print('📦 Respuesta de residencia: $residenciaResponse');
-      print('✅ Residencia creada con ID: $idResidencia');
-      
-      // Crear registro_v para relacionar grupo familiar con residencia
-      print('📝 Creando registro_v...');
-      print('📝 Datos a insertar en registro_v:');
-      print('   - id_residencia: $idResidencia');
-      print('   - id_grupof: $idGrupo');
-      
-      final registroResponse = await _client
-          .from('registro_v')
-          .insert({
-            'id_residencia': idResidencia,
-            'id_grupof': idGrupo,
-            'vigente': true,
-            'estado': 'Activo',
-            'material': data.housingType,
-            'tipo': 'Residencia',
-            'fecha_ini_r': DateTime.now().toIso8601String().split('T')[0],
-          })
-          .select()
-          .single();
-      
-      print('📦 Respuesta de registro_v: $registroResponse');
-      print('✅ Registro_v creado');
+      print('   - tipo_vivienda: ${data.housingType}');
+      print('   - telefono_principal: ${data.mainPhone}');
+      print('⚠️ La tabla residencia no tiene la columna id_grupof en el esquema real');
       
        // Crear objeto GrupoFamiliar para retornar
        final grupo = GrupoFamiliar.fromJson(grupoResponse);
@@ -227,30 +163,16 @@ class DatabaseService {
   // OPERACIONES DE RESIDENCIAS
   // ============================================================================
 
-  /// Obtener residencia de un grupo familiar (a través de registro_v)
+  /// Obtener residencia de un grupo familiar
   Future<DatabaseResult<Residencia>> obtenerResidencia({
     required int grupoId,
   }) async {
     try {
-      // Buscar la residencia a través de registro_v
-      final registroResponse = await _client
-          .from('registro_v')
-          .select('id_residencia')
-          .eq('id_grupof', grupoId)
-          .eq('vigente', true)
-          .maybeSingle();
-
-      if (registroResponse == null) {
-        return DatabaseResult.error('No se encontró registro de residencia para este grupo familiar');
-      }
-
-      final idResidencia = registroResponse['id_residencia'] as int;
-
-      // Obtener los datos de la residencia
+      // Obtener los datos de la residencia directamente
       final response = await _client
           .from('residencia')
           .select()
-          .eq('id_residencia', idResidencia)
+          .eq('id_grupof', grupoId)
           .maybeSingle();
 
       if (response == null) {
@@ -269,14 +191,14 @@ class DatabaseService {
 
   /// Actualizar residencia
   Future<DatabaseResult<Residencia>> actualizarResidencia({
-    required int residenciaId,
+    required int grupoId,
     required Map<String, dynamic> updates,
   }) async {
     try {
       final response = await _client
           .from('residencia')
           .update(updates)
-          .eq('id_residencia', residenciaId)
+          .eq('id_grupof', grupoId)
           .select()
           .single();
 
@@ -359,7 +281,7 @@ class DatabaseService {
 
   /// Actualizar integrante
   Future<DatabaseResult<Integrante>> actualizarIntegrante({
-    required int integranteId,
+    required String integranteId,
     required Map<String, dynamic> updates,
   }) async {
     try {
@@ -385,7 +307,7 @@ class DatabaseService {
 
   /// Eliminar integrante (marcar como inactivo)
   Future<DatabaseResult<void>> eliminarIntegrante({
-    required int integranteId,
+    required String integranteId,
   }) async {
     try {
       await _client
@@ -470,7 +392,7 @@ class DatabaseService {
 
   /// Actualizar mascota
   Future<DatabaseResult<Mascota>> actualizarMascota({
-    required int mascotaId,
+    required String mascotaId,
     required Map<String, dynamic> updates,
   }) async {
     try {
@@ -496,7 +418,7 @@ class DatabaseService {
 
   /// Eliminar mascota
   Future<DatabaseResult<void>> eliminarMascota({
-    required int mascotaId,
+    required String mascotaId,
   }) async {
     try {
       await _client
@@ -561,20 +483,22 @@ class DatabaseService {
 // MODELOS ACTUALIZADOS
 // ============================================================================
 
-/// Modelo de Grupo Familiar (grupofamiliar) - Adaptado al esquema actual
+/// Modelo de Grupo Familiar (grupofamiliar) - Adaptado al esquema real
 class GrupoFamiliar {
-  final int idGrupoF;           // int4 como en tu esquema
+  final int idGrupoF;           // Integer como en el esquema real
   final String rutTitular;
-  final String email;           // Incluido como en tu esquema
-  final String password;        // Incluido como en tu esquema
+  final String email;           // Email como en el esquema real
   final DateTime fechaCreacion;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   GrupoFamiliar({
     required this.idGrupoF,
     required this.rutTitular,
     required this.email,
-    required this.password,
     required this.fechaCreacion,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   factory GrupoFamiliar.fromJson(Map<String, dynamic> json) {
@@ -582,8 +506,13 @@ class GrupoFamiliar {
       idGrupoF: json['id_grupof'] as int,
       rutTitular: json['rut_titular'] as String,
       email: json['email'] as String,
-      password: json['password'] as String,
       fechaCreacion: DateTime.parse(json['fecha_creacion'] as String),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -592,60 +521,99 @@ class GrupoFamiliar {
       'id_grupof': idGrupoF,
       'rut_titular': rutTitular,
       'email': email,
-      'password': password,
       'fecha_creacion': fechaCreacion.toIso8601String().split('T')[0],
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 }
 
 /// Modelo de Residencia (adaptado al esquema real)
 class Residencia {
-  final int idResidencia;
+  final String idResidencia;    // UUID de la residencia
+  final int idGrupoF;           // Integer del grupo familiar
   final String direccion;
-  final String lat;  // Cambiado a String para evitar overflow numérico
-  final String lon;  // Cambiado a String para evitar overflow numérico
+  final double lat;             // Coordenadas como double
+  final double lon;             // Coordenadas como double
   final int cutCom;
+  final String? tipoVivienda;
+  final int? numeroPisos;
+  final String? materialConstruccion;
+  final String? estadoVivienda;
+  final String? telefonoPrincipal;
+  final String? telefonoAlternativo;
+  final String? instruccionesEspeciales;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   Residencia({
     required this.idResidencia,
+    required this.idGrupoF,
     required this.direccion,
     required this.lat,
     required this.lon,
     required this.cutCom,
+    this.tipoVivienda,
+    this.numeroPisos,
+    this.materialConstruccion,
+    this.estadoVivienda,
+    this.telefonoPrincipal,
+    this.telefonoAlternativo,
+    this.instruccionesEspeciales,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   factory Residencia.fromJson(Map<String, dynamic> json) {
     return Residencia(
-      idResidencia: json['id_residencia'] as int,
+      idResidencia: json['id_residencia'] as String,
+      idGrupoF: json['id_grupof'] as int,
       direccion: json['direccion'] as String,
-      lat: json['lat'].toString(), // Convertir a string
-      lon: json['lon'].toString(), // Convertir a string
+      lat: (json['lat'] as num).toDouble(),
+      lon: (json['lon'] as num).toDouble(),
       cutCom: json['cut_com'] as int,
+      tipoVivienda: json['tipo_vivienda'] as String?,
+      numeroPisos: json['numero_pisos'] as int?,
+      materialConstruccion: json['material_construccion'] as String?,
+      estadoVivienda: json['estado_vivienda'] as String?,
+      telefonoPrincipal: json['telefono_principal'] as String?,
+      telefonoAlternativo: json['telefono_alternativo'] as String?,
+      instruccionesEspeciales: json['instrucciones_especiales'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id_residencia': idResidencia,
+      'id_grupof': idGrupoF,
       'direccion': direccion,
       'lat': lat,
       'lon': lon,
       'cut_com': cutCom,
+      'tipo_vivienda': tipoVivienda,
+      'numero_pisos': numeroPisos,
+      'material_construccion': materialConstruccion,
+      'estado_vivienda': estadoVivienda,
+      'telefono_principal': telefonoPrincipal,
+      'telefono_alternativo': telefonoAlternativo,
+      'instrucciones_especiales': instruccionesEspeciales,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
   
-  /// Obtener latitud como double (para cálculos)
-  /// Nota: Las coordenadas están escaladas (divididas por 1000) en la BD
-  double get latitude => (double.tryParse(lat) ?? 0.0) * 1000.0;
+  /// Obtener latitud (ya no escalada)
+  double get latitude => lat;
   
-  /// Obtener longitud como double (para cálculos)
-  /// Nota: Las coordenadas están escaladas (divididas por 1000) en la BD
-  double get longitude => (double.tryParse(lon) ?? 0.0) * 1000.0;
+  /// Obtener longitud (ya no escalada)
+  double get longitude => lon;
 }
 
 /// Modelo de Integrante (actualizado)
 class Integrante {
-  final int idIntegrante;
+  final String idIntegrante;
   final int idGrupoF;
   final bool activoI;
   final DateTime fechaIniI;
@@ -673,7 +641,7 @@ class Integrante {
 
   factory Integrante.fromJson(Map<String, dynamic> json) {
     return Integrante(
-      idIntegrante: json['id_integrante'] as int,
+      idIntegrante: json['id_integrante'] as String,
       idGrupoF: json['id_grupof'] as int,
       activoI: json['activo_i'] as bool,
       fechaIniI: DateTime.parse(json['fecha_ini_i'] as String),
@@ -708,7 +676,7 @@ class Integrante {
   /// Convertir a FamilyMember (para compatibilidad)
   FamilyMember toFamilyMember() {
     return FamilyMember(
-      id: idIntegrante.toString(),
+      id: idIntegrante,
       residentId: idGrupoF.toString(),
       rut: rut,
       age: edad,
@@ -722,7 +690,7 @@ class Integrante {
 
 /// Modelo de Mascota (actualizado)
 class Mascota {
-  final int idMascota;
+  final String idMascota;
   final int idGrupoF;
   final String nombreM;
   final String especie;
@@ -744,7 +712,7 @@ class Mascota {
 
   factory Mascota.fromJson(Map<String, dynamic> json) {
     return Mascota(
-      idMascota: json['id_mascota'] as int,
+      idMascota: json['id_mascota'] as String,
       idGrupoF: json['id_grupof'] as int,
       nombreM: json['nombre_m'] as String,
       especie: json['especie'] as String,
@@ -771,7 +739,7 @@ class Mascota {
   /// Convertir a Pet (para compatibilidad)
   Pet toPet() {
     return Pet(
-      id: idMascota.toString(),
+      id: idMascota,
       residentId: idGrupoF.toString(),
       name: nombreM,
       species: especie,
