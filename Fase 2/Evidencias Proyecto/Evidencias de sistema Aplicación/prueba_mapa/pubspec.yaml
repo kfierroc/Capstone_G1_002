@@ -1,0 +1,37 @@
+name: prueba_mapa
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # 🗺️ Google Maps
+  google_maps_flutter: ^2.5.0
+  google_places_flutter: ^2.0.7
+
+    # 🗺️ Mapa de OpenStreetMap
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Para peticiones HTTP
+  http: ^1.1.0
+
+  # Para convertir direcciones a coordenadas (y viceversa)
+  geocoding: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
