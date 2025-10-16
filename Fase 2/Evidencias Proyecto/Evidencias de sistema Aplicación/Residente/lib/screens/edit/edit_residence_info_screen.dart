@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../models/registration_data.dart';
 import '../../utils/validators.dart';
 import '../../utils/app_styles.dart';

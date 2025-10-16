@@ -9,10 +9,10 @@ class MapPlaceholder extends StatelessWidget {
   final bool showControls;
 
   const MapPlaceholder({
-    Key? key,
+    super.key,
     required this.itemCount,
     this.showControls = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

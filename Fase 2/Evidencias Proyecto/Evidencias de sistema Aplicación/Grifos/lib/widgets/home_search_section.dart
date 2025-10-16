@@ -10,11 +10,11 @@ class HomeSearchSection extends StatelessWidget {
   final Function(String?) onFiltroChanged;
 
   const HomeSearchSection({
-    Key? key,
+    super.key,
     required this.filtroEstado,
     required this.onBusquedaChanged,
     required this.onFiltroChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

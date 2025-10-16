@@ -1,9 +1,7 @@
-// This is a basic Flutter widget test.
+// Test básico para la aplicación de residentes
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Verifica que la aplicación se inicia correctamente y muestra
+// la pantalla de login o home según el estado de autenticación.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,20 +9,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fire_data/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('App inicia correctamente', (WidgetTester tester) async {
+    // Construir la aplicación y activar un frame
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verificar que la aplicación se construye sin errores
+    expect(find.byType(MaterialApp), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // La app debería mostrar AuthChecker que maneja el estado de autenticación
+    expect(find.byType(StreamBuilder), findsOneWidget);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('Título de la aplicación es correcto', (
+    WidgetTester tester,
+  ) async {
+    // Construir la aplicación
+    await tester.pumpWidget(const MyApp());
+
+    // Verificar que el título de la aplicación es correcto
+    final MaterialApp app = tester.widget(find.byType(MaterialApp));
+    expect(app.title, equals('Residentes'));
   });
 }

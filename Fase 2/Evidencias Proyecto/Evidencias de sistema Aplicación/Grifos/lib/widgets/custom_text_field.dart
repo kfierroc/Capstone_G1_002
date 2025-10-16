@@ -17,7 +17,7 @@ class CustomTextField extends StatelessWidget {
   final bool enabled;
 
   const CustomTextField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.labelText,
     this.hintText,
@@ -30,7 +30,7 @@ class CustomTextField extends StatelessWidget {
     this.textCapitalization = TextCapitalization.none,
     this.maxLines = 1,
     this.enabled = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -61,12 +61,12 @@ class PasswordTextField extends StatefulWidget {
   final String? Function(String?)? validator;
 
   const PasswordTextField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.labelText,
     this.hintText,
     this.validator,
-  }) : super(key: key);
+  });
 
   @override
   State<PasswordTextField> createState() => _PasswordTextFieldState();

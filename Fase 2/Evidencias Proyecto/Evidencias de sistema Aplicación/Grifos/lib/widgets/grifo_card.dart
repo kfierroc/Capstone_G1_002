@@ -11,10 +11,10 @@ class GrifoCard extends StatelessWidget {
   final Function(String, String) onCambiarEstado;
 
   const GrifoCard({
-    Key? key,
+    super.key,
     required this.grifo,
     required this.onCambiarEstado,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

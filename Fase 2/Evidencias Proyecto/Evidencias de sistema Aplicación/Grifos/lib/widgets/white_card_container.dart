@@ -8,10 +8,10 @@ class WhiteCardContainer extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
 
   const WhiteCardContainer({
-    Key? key,
+    super.key,
     required this.child,
     this.padding,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

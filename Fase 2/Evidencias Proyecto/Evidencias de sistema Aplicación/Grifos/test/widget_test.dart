@@ -7,7 +7,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:grifos_optimized/main.dart';
+import 'package:grifos/main.dart';
 
 void main() {
   testWidgets('App inicializa correctamente', (WidgetTester tester) async {

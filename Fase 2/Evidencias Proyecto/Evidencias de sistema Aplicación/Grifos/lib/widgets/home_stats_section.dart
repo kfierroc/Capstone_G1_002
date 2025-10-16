@@ -9,9 +9,9 @@ class HomeStatsSection extends StatelessWidget {
   final Map<String, int> stats;
 
   const HomeStatsSection({
-    Key? key,
+    super.key,
     required this.stats,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

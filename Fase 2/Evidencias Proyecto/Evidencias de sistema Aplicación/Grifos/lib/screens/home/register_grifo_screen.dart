@@ -11,8 +11,7 @@ import '../../widgets/map_placeholder.dart';
 class RegistrarGrifoScreen extends StatefulWidget {
   final String nombreUsuario;
 
-  const RegistrarGrifoScreen({Key? key, required this.nombreUsuario})
-      : super(key: key);
+  const RegistrarGrifoScreen({super.key, required this.nombreUsuario});
 
   @override
   State<RegistrarGrifoScreen> createState() => _RegistrarGrifoScreenState();

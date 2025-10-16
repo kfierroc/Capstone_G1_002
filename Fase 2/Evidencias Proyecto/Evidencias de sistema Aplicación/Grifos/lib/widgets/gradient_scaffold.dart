@@ -8,11 +8,11 @@ class GradientScaffold extends StatelessWidget {
   final double? maxWidth;
 
   const GradientScaffold({
-    Key? key,
+    super.key,
     required this.gradientColors,
     required this.child,
     this.maxWidth,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

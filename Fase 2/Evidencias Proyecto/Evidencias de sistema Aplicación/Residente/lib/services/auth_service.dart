@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 
@@ -42,39 +43,39 @@ class AuthService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      print('🔍 AuthService.signUp - Iniciando...');
+      debugPrint('🔍 AuthService.signUp - Iniciando...');
       
       // Validaciones básicas
       if (email.isEmpty || password.isEmpty) {
-        print('❌ Email o contraseña vacíos');
+        debugPrint('❌ Email o contraseña vacíos');
         return AuthResult.error('Email y contraseña son requeridos');
       }
 
       if (password.length < 6) {
-        print('❌ Contraseña muy corta: ${password.length} caracteres');
+        debugPrint('❌ Contraseña muy corta: ${password.length} caracteres');
         return AuthResult.error('La contraseña debe tener al menos 6 caracteres');
       }
 
       if (!_isValidEmail(email)) {
-        print('❌ Email inválido según validación local: $email');
+        debugPrint('❌ Email inválido según validación local: $email');
         return AuthResult.error('Email inválido');
       }
       
-      print('✅ Email válido según validación local: $email');
+      debugPrint('✅ Email válido según validación local: $email');
 
       // Verificar si el email ya está registrado (con lógica mejorada)
-      print('🔍 Verificando si el email ya está registrado...');
+      debugPrint('🔍 Verificando si el email ya está registrado...');
       final emailExists = await isEmailRegistered(email);
       if (emailExists) {
-        print('❌ El email ya está registrado: $email');
+        debugPrint('❌ El email ya está registrado: $email');
         return AuthResult.error('Este email ya está registrado. Si es tu cuenta, intenta iniciar sesión. Si quieres crear una nueva cuenta, usa un email diferente.');
       }
-      print('✅ Email disponible para registro: $email');
+      debugPrint('✅ Email disponible para registro: $email');
 
-      print('✅ Validaciones pasadas, registrando en Supabase...');
-      print('📧 Email: $email');
-      print('🔐 Password length: ${password.length}');
-      print('📝 Metadata: $metadata');
+      debugPrint('✅ Validaciones pasadas, registrando en Supabase...');
+      debugPrint('📧 Email: $email');
+      debugPrint('🔐 Password length: ${password.length}');
+      debugPrint('📝 Metadata: $metadata');
 
       // Registrar usuario en Supabase
       final response = await _auth.signUp(
@@ -83,27 +84,27 @@ class AuthService {
         data: metadata,
       );
 
-      print('📦 Response recibido de Supabase');
-      print('👤 User: ${response.user?.id}');
-      print('📧 Email: ${response.user?.email}');
-      print('🔓 Session: ${response.session != null ? "Sí" : "No"}');
+      debugPrint('📦 Response recibido de Supabase');
+      debugPrint('👤 User: ${response.user?.id}');
+      debugPrint('📧 Email: ${response.user?.email}');
+      debugPrint('🔓 Session: ${response.session != null ? "Sí" : "No"}');
 
       if (response.user == null) {
-        print('❌ Usuario es null después del registro');
+        debugPrint('❌ Usuario es null después del registro');
         return AuthResult.error('Error al crear la cuenta');
       }
 
-      print('✅ Usuario creado exitosamente: ${response.user!.id}');
+      debugPrint('✅ Usuario creado exitosamente: ${response.user!.id}');
       
       return AuthResult.success(
         user: AppUser.fromSupabaseUser(response.user!),
         message: 'Cuenta creada exitosamente',
       );
     } on AuthException catch (e) {
-      print('❌ AuthException capturada en signUp:');
-      print('   - Message: ${e.message}');
-      print('   - Status Code: ${e.statusCode}');
-      print('   - Email que causó el error: $email');
+      debugPrint('❌ AuthException capturada en signUp:');
+      debugPrint('   - Message: ${e.message}');
+      debugPrint('   - Status Code: ${e.statusCode}');
+      debugPrint('   - Email que causó el error: $email');
       
       final message = e.message.toLowerCase();
       
@@ -111,23 +112,23 @@ class AuthService {
       if (message.contains('user already registered') || 
           message.contains('email already registered') ||
           message.contains('already been registered')) {
-        print('🔄 Usuario ya registrado según Supabase');
+        debugPrint('🔄 Usuario ya registrado según Supabase');
         return AuthResult.error('Este email ya está registrado. Si es tu cuenta, intenta iniciar sesión. Si quieres crear una nueva cuenta, usa un email diferente.');
       }
       
       // Si Supabase dice que el email es inválido, puede ser que ya exista
       if (message.contains('email address') && message.contains('invalid')) {
-        print('🔄 Email marcado como inválido por Supabase (posiblemente ya existe)');
+        debugPrint('🔄 Email marcado como inválido por Supabase (posiblemente ya existe)');
         return AuthResult.error('Este email ya está registrado o no es válido. Si es tu cuenta, intenta iniciar sesión. Si quieres crear una nueva cuenta, usa un email diferente.');
       }
       
       final errorMsg = _getAuthErrorMessage(e);
-      print('   - Error traducido: $errorMsg');
+      debugPrint('   - Error traducido: $errorMsg');
       return AuthResult.error(errorMsg);
     } catch (e) {
-      print('❌ Excepción inesperada: $e');
-      print('   - Type: ${e.runtimeType}');
-      print('   - Stack: ${StackTrace.current}');
+      debugPrint('❌ Excepción inesperada: $e');
+      debugPrint('   - Type: ${e.runtimeType}');
+      debugPrint('   - Stack: ${StackTrace.current}');
       return AuthResult.error('Error inesperado: ${e.toString()}');
     }
   }
@@ -143,31 +144,31 @@ class AuthService {
     required String password,
   }) async {
     try {
-      print('🔐 AuthService.signIn - Iniciando...');
-      print('📧 Email: $email');
-      print('🔐 Password length: ${password.length}');
+      debugPrint('🔐 AuthService.signIn - Iniciando...');
+      debugPrint('📧 Email: $email');
+      debugPrint('🔐 Password length: ${password.length}');
       
       // Validaciones básicas
       if (email.isEmpty || password.isEmpty) {
-        print('❌ Email o contraseña vacíos');
+        debugPrint('❌ Email o contraseña vacíos');
         return AuthResult.error('Email y contraseña son requeridos');
       }
 
       if (!_isValidEmail(email)) {
-        print('❌ Email inválido: $email');
+        debugPrint('❌ Email inválido: $email');
         return AuthResult.error('Email inválido');
       }
 
-      print('✅ Validaciones pasadas, iniciando sesión en Supabase...');
+      debugPrint('✅ Validaciones pasadas, iniciando sesión en Supabase...');
 
       // Verificar si el email está confirmado antes de intentar login
-      print('🔍 Verificando si el email está confirmado...');
+      debugPrint('🔍 Verificando si el email está confirmado...');
       final isConfirmed = await isEmailConfirmed(email);
       if (!isConfirmed) {
-        print('❌ El email no está confirmado: $email');
+        debugPrint('❌ El email no está confirmado: $email');
         return AuthResult.error('Debes confirmar tu email antes de iniciar sesión. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación');
       }
-      print('✅ Email confirmado: $email');
+      debugPrint('✅ Email confirmado: $email');
 
       // Iniciar sesión
       final response = await _auth.signInWithPassword(
@@ -175,33 +176,33 @@ class AuthService {
         password: password,
       );
 
-      print('📦 Response recibido de Supabase');
-      print('👤 User: ${response.user?.id}');
-      print('📧 Email: ${response.user?.email}');
-      print('🔓 Session: ${response.session != null ? "Sí" : "No"}');
+      debugPrint('📦 Response recibido de Supabase');
+      debugPrint('👤 User: ${response.user?.id}');
+      debugPrint('📧 Email: ${response.user?.email}');
+      debugPrint('🔓 Session: ${response.session != null ? "Sí" : "No"}');
 
       if (response.user == null) {
-        print('❌ Usuario es null después del login');
+        debugPrint('❌ Usuario es null después del login');
         return AuthResult.error('Error al iniciar sesión');
       }
 
-      print('✅ Sesión iniciada exitosamente: ${response.user!.id}');
+      debugPrint('✅ Sesión iniciada exitosamente: ${response.user!.id}');
       
       return AuthResult.success(
         user: AppUser.fromSupabaseUser(response.user!),
         message: 'Sesión iniciada exitosamente',
       );
     } on AuthException catch (e) {
-      print('❌ AuthException capturada en signIn:');
-      print('   - Message: ${e.message}');
-      print('   - Status Code: ${e.statusCode}');
-      print('   - Email que causó el error: $email');
+      debugPrint('❌ AuthException capturada en signIn:');
+      debugPrint('   - Message: ${e.message}');
+      debugPrint('   - Status Code: ${e.statusCode}');
+      debugPrint('   - Email que causó el error: $email');
       final errorMsg = _getAuthErrorMessage(e);
-      print('   - Error traducido: $errorMsg');
+      debugPrint('   - Error traducido: $errorMsg');
       return AuthResult.error(errorMsg);
     } catch (e) {
-      print('❌ Excepción inesperada en signIn: $e');
-      print('   - Type: ${e.runtimeType}');
+      debugPrint('❌ Excepción inesperada en signIn: $e');
+      debugPrint('   - Type: ${e.runtimeType}');
       return AuthResult.error('Error inesperado: ${e.toString()}');
     }
   }
@@ -211,7 +212,7 @@ class AuthService {
     try {
       await _auth.signOut();
     } catch (e) {
-      print('Error al cerrar sesión: $e');
+      debugPrint('Error al cerrar sesión: $e');
       rethrow;
     }
   }
@@ -324,7 +325,7 @@ class AuthService {
   /// Verificar si un email ya está registrado (método simplificado)
   Future<bool> isEmailRegistered(String email) async {
     try {
-      print('🔍 Verificando si email está registrado: $email');
+      debugPrint('🔍 Verificando si email está registrado: $email');
       
       // Usar una contraseña muy específica para evitar conflictos
       final dummyPassword = 'dummy_check_${DateTime.now().millisecondsSinceEpoch}';
@@ -335,23 +336,23 @@ class AuthService {
       );
       
       // Si llegamos aquí sin excepción, algo está mal
-      print('⚠️ No se lanzó excepción, esto es inesperado');
+      debugPrint('⚠️ No se lanzó excepción, esto es inesperado');
       return false;
       
     } on AuthException catch (e) {
       final message = e.message.toLowerCase();
-      print('📧 Error al verificar email: ${e.message}');
-      print('📧 Status Code: ${e.statusCode}');
+      debugPrint('📧 Error al verificar email: ${e.message}');
+      debugPrint('📧 Status Code: ${e.statusCode}');
       
       // Solo confiar en errores muy específicos
       if (message.contains('email not confirmed')) {
-        print('✅ Email existe (no confirmado)');
+        debugPrint('✅ Email existe (no confirmado)');
         return true;
       }
       
       // Para "invalid login credentials", ser más conservador
       if (message.contains('invalid login credentials')) {
-        print('❓ Email posiblemente existe, pero siendo conservador...');
+        debugPrint('❓ Email posiblemente existe, pero siendo conservador...');
         return false; // Cambiar a false para evitar falsos positivos
       }
       
@@ -359,16 +360,16 @@ class AuthService {
       if (message.contains('user not found') || 
           message.contains('email not found') ||
           message.contains('invalid email')) {
-        print('❌ Email no existe');
+        debugPrint('❌ Email no existe');
         return false;
       }
       
       // Para cualquier otro error, asumir que no existe
-      print('❓ Error desconocido, asumiendo que email no existe');
+      debugPrint('❓ Error desconocido, asumiendo que email no existe');
       return false;
       
     } catch (e) {
-      print('❌ Excepción inesperada al verificar email: $e');
+      debugPrint('❌ Excepción inesperada al verificar email: $e');
       return false;
     }
   }
@@ -376,7 +377,7 @@ class AuthService {
   /// Verificar si un email está confirmado
   Future<bool> isEmailConfirmed(String email) async {
     try {
-      print('🔍 Verificando si email está confirmado: $email');
+      debugPrint('🔍 Verificando si email está confirmado: $email');
       
       // Intentar iniciar sesión con una contraseña falsa
       // Si obtenemos "email not confirmed", significa que existe pero no está confirmado
@@ -386,40 +387,40 @@ class AuthService {
       );
       
       // Si llegamos aquí sin excepción, algo está mal
-      print('⚠️ No se lanzó excepción al verificar confirmación');
+      debugPrint('⚠️ No se lanzó excepción al verificar confirmación');
       return false;
       
     } on AuthException catch (e) {
       final message = e.message.toLowerCase();
-      print('📧 Error al verificar confirmación: ${e.message}');
+      debugPrint('📧 Error al verificar confirmación: ${e.message}');
       
       if (message.contains('email not confirmed')) {
-        print('❌ Email existe pero no está confirmado');
+        debugPrint('❌ Email existe pero no está confirmado');
         return false;
       } else if (message.contains('invalid login credentials')) {
-        print('✅ Email existe y está confirmado');
+        debugPrint('✅ Email existe y está confirmado');
         return true;
       } else if (message.contains('user not found') || 
                  message.contains('email not found')) {
-        print('❌ Email no existe');
+        debugPrint('❌ Email no existe');
         return false;
       }
       
       // En caso de duda, asumir que no está confirmado
-      print('❓ Error desconocido, asumiendo que no está confirmado');
+      debugPrint('❓ Error desconocido, asumiendo que no está confirmado');
       return false;
       
     } catch (e) {
-      print('❌ Excepción inesperada al verificar confirmación: $e');
+      debugPrint('❌ Excepción inesperada al verificar confirmación: $e');
       return false;
     }
   }
 
   /// Obtener mensaje de error amigable
   String _getAuthErrorMessage(AuthException error) {
-    print('🔍 Analizando error de autenticación:');
-    print('   - Status Code: ${error.statusCode}');
-    print('   - Message: ${error.message}');
+    debugPrint('🔍 Analizando error de autenticación:');
+    debugPrint('   - Status Code: ${error.statusCode}');
+    debugPrint('   - Message: ${error.message}');
     
     final message = error.message.toLowerCase();
     

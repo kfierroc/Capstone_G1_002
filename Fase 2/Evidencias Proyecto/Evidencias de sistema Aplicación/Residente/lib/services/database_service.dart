@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/registration_data.dart';
@@ -32,25 +33,25 @@ class DatabaseService {
     required RegistrationData data,
   }) async {
     try {
-      print('🔍 Validando datos del grupo familiar:');
-      print('   - userId: $userId');
-      print('   - rut: ${data.rut ?? "NULL"}');
-      print('   - address: ${data.address ?? "NULL"}');
-      print('   - latitude: ${data.latitude ?? "NULL"}');
-      print('   - longitude: ${data.longitude ?? "NULL"}');
-      print('   - housingType: ${data.housingType ?? "NULL"}');
-      print('   - mainPhone: ${data.mainPhone ?? "NULL"}');
+      debugPrint('🔍 Validando datos del grupo familiar:');
+      debugPrint('   - userId: $userId');
+      debugPrint('   - rut: ${data.rut ?? "NULL"}');
+      debugPrint('   - address: ${data.address ?? "NULL"}');
+      debugPrint('   - latitude: ${data.latitude ?? "NULL"}');
+      debugPrint('   - longitude: ${data.longitude ?? "NULL"}');
+      debugPrint('   - housingType: ${data.housingType ?? "NULL"}');
+      debugPrint('   - mainPhone: ${data.mainPhone ?? "NULL"}');
       
       // Validar que todos los datos requeridos estén presentes
       if (data.rut == null || data.address == null) {
-        print('❌ Datos incompletos:');
-        if (data.rut == null) print('   - Falta: rut');
-        if (data.address == null) print('   - Falta: address');
+        debugPrint('❌ Datos incompletos:');
+        if (data.rut == null) debugPrint('   - Falta: rut');
+        if (data.address == null) debugPrint('   - Falta: address');
         return DatabaseResult.error('Datos incompletos del grupo familiar');
       }
 
       // Crear grupo familiar adaptado al esquema actual de la BD
-      print('📝 Creando grupo familiar...');
+      debugPrint('📝 Creando grupo familiar...');
       
       // Generar ID numérico para id_grupof (compatible con integer)
       // Usar solo los últimos dígitos del timestamp para que quepa en int32
@@ -64,8 +65,8 @@ class DatabaseService {
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
       
-      print('📝 Datos a insertar en grupofamiliar:');
-      print('   ${grupoData.toString()}');
+      debugPrint('📝 Datos a insertar en grupofamiliar:');
+      debugPrint('   ${grupoData.toString()}');
       
       final grupoResponse = await _client
           .from('grupofamiliar')
@@ -73,20 +74,20 @@ class DatabaseService {
           .select()
           .single();
 
-      print('📦 Respuesta del grupo familiar: $grupoResponse');
-      print('📦 Tipo de respuesta: ${grupoResponse.runtimeType}');
-      print('📦 Campos en respuesta: ${grupoResponse.keys.toList()}');
-      print('✅ Grupo familiar creado con ID: $idGrupoF');
+      debugPrint('📦 Respuesta del grupo familiar: $grupoResponse');
+      debugPrint('📦 Tipo de respuesta: ${grupoResponse.runtimeType}');
+      debugPrint('📦 Campos en respuesta: ${grupoResponse.keys.toList()}');
+      debugPrint('✅ Grupo familiar creado con ID: $idGrupoF');
 
       // Crear residencia (temporalmente deshabilitado debido a diferencias en el esquema)
-      print('⚠️ Creación de residencia temporalmente deshabilitada');
-      print('📝 Datos que se habrían insertado en residencia:');
-      print('   - direccion: ${data.address}');
-      print('   - lat: ${data.latitude ?? 0.0}');
-      print('   - lon: ${data.longitude ?? 0.0}');
-      print('   - tipo_vivienda: ${data.housingType}');
-      print('   - telefono_principal: ${data.mainPhone}');
-      print('⚠️ La tabla residencia no tiene la columna id_grupof en el esquema real');
+      debugPrint('⚠️ Creación de residencia temporalmente deshabilitada');
+      debugPrint('📝 Datos que se habrían insertado en residencia:');
+      debugPrint('   - direccion: ${data.address}');
+      debugPrint('   - lat: ${data.latitude ?? 0.0}');
+      debugPrint('   - lon: ${data.longitude ?? 0.0}');
+      debugPrint('   - tipo_vivienda: ${data.housingType}');
+      debugPrint('   - telefono_principal: ${data.mainPhone}');
+      debugPrint('⚠️ La tabla residencia no tiene la columna id_grupof en el esquema real');
       
        // Crear objeto GrupoFamiliar para retornar
        final grupo = GrupoFamiliar.fromJson(grupoResponse);
@@ -96,14 +97,14 @@ class DatabaseService {
          message: 'Grupo familiar creado exitosamente',
        );
      } on PostgrestException catch (e) {
-       print('❌ PostgrestException capturada:');
-       print('   - Code: ${e.code}');
-       print('   - Message: ${e.message}');
-       print('   - Details: ${e.details}');
-       print('   - Hint: ${e.hint}');
+       debugPrint('❌ PostgrestException capturada:');
+       debugPrint('   - Code: ${e.code}');
+       debugPrint('   - Message: ${e.message}');
+       debugPrint('   - Details: ${e.details}');
+       debugPrint('   - Hint: ${e.hint}');
        return DatabaseResult.error(_getPostgrestErrorMessage(e));
      } catch (e) {
-       print('❌ Error inesperado: ${e.toString()}');
+       debugPrint('❌ Error inesperado: ${e.toString()}');
        return DatabaseResult.error('Error al crear grupo familiar: ${e.toString()}');
      }
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -36,9 +37,9 @@ class SupabaseConfig {
           authFlowType: AuthFlowType.pkce,
         ),
       );
-      print('✅ Supabase inicializado correctamente en Grifos');
+      debugPrint('✅ Supabase inicializado correctamente en Grifos');
     } catch (e) {
-      print('❌ Error al inicializar Supabase en Grifos: $e');
+      debugPrint('❌ Error al inicializar Supabase en Grifos: $e');
       rethrow;
     }
   }

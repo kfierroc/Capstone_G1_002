@@ -67,15 +67,17 @@ class SupabaseAuthService {
       );
 
       if (response.user != null) {
-        // Paso 2: Guardar información adicional en la tabla profiles
+        // Paso 2: Guardar información adicional en la tabla bombero
         try {
-          await _client.from('profiles').insert({
-            'id': response.user!.id,
-            'full_name': fullName.trim(),
-            'rut': rut.trim(),
-            'fire_company': company.trim(),
-            'email': email.trim(),
-            'created_at': DateTime.now().toIso8601String(),
+          // Extraer número RUT y dígito verificador
+          final rutParts = rut.trim().split('-');
+          final rutNum = int.parse(rutParts[0].replaceAll('.', ''));
+          final rutDv = rutParts.length > 1 ? rutParts[1] : '';
+          
+          await _client.from('bombero').insert({
+            'rut_num': rutNum,
+            'rut_dv': rutDv,
+            'email_b': email.trim(),
           });
 
           return AuthResult.success(
@@ -126,12 +128,17 @@ class SupabaseAuthService {
   /// Obtener perfil del usuario desde la base de datos
   Future<Map<String, dynamic>?> _getUserProfile(String userId) async {
     try {
-      final response = await _client
-          .from('profiles')
-          .select()
-          .eq('id', userId)
-          .single();
-      return response;
+      // Buscar en la tabla bombero usando el email del usuario autenticado
+      final user = _client.auth.currentUser;
+      if (user?.email != null) {
+        final response = await _client
+            .from('bombero')
+            .select()
+            .eq('email_b', user!.email!)
+            .single();
+        return response;
+      }
+      return null;
     } catch (e) {
       return null;
     }
@@ -164,19 +171,28 @@ class SupabaseAuthService {
   }) async {
     try {
       final updates = <String, dynamic>{};
-      if (fullName != null) updates['full_name'] = fullName;
-      if (rut != null) updates['rut'] = rut;
-      if (company != null) updates['fire_company'] = company;
+      
+      // Mapear campos a la estructura de la tabla bombero
+      if (rut != null) {
+        final rutParts = rut.trim().split('-');
+        final rutNum = int.parse(rutParts[0].replaceAll('.', ''));
+        final rutDv = rutParts.length > 1 ? rutParts[1] : '';
+        updates['rut_num'] = rutNum;
+        updates['rut_dv'] = rutDv;
+      }
       
       if (updates.isEmpty) {
         return AuthResult.error('No hay datos para actualizar');
       }
 
-      updates['updated_at'] = DateTime.now().toIso8601String();
-
-      await _client.from('profiles').update(updates).eq('id', userId);
-      
-      return AuthResult.success(null);
+      // Buscar el bombero por email del usuario autenticado
+      final user = _client.auth.currentUser;
+      if (user?.email != null) {
+        await _client.from('bombero').update(updates).eq('email_b', user!.email!);
+        return AuthResult.success(null);
+      } else {
+        return AuthResult.error('Usuario no autenticado');
+      }
     } catch (e) {
       return AuthResult.error('Error al actualizar perfil: ${e.toString()}');
     }

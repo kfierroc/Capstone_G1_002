@@ -14,7 +14,7 @@ class CustomButton extends StatelessWidget {
   final bool fullWidth;
 
   const CustomButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.backgroundColor,
@@ -23,7 +23,7 @@ class CustomButton extends StatelessWidget {
     this.icon,
     this.height,
     this.fullWidth = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -126,13 +126,13 @@ class CustomOutlinedButton extends StatelessWidget {
   final double? height;
 
   const CustomOutlinedButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.borderColor,
     this.textColor,
     this.height,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

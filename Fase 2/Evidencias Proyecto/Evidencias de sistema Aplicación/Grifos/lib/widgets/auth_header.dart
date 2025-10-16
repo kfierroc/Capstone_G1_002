@@ -10,12 +10,12 @@ class AuthHeader extends StatelessWidget {
   final String subtitle;
 
   const AuthHeader({
-    Key? key,
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.title,
     required this.subtitle,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

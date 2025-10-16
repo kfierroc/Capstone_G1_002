@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -17,16 +18,20 @@ class SupabaseConfig {
   /// Debe llamarse antes de usar cualquier funcionalidad de Supabase
   static Future<void> initialize() async {
     try {
-      // Cargar variables de entorno desde el archivo .env
-      await dotenv.load(fileName: ".env");
+      // Intentar cargar variables de entorno desde el archivo .env
+      try {
+        await dotenv.load(fileName: ".env");
+      } catch (e) {
+        debugPrint('⚠️ Archivo .env no encontrado. Usando valores por defecto.');
+        debugPrint('💡 Para configurar Supabase, copia env_template.txt como .env y configura tus credenciales.');
+      }
       
       // Verificar que las credenciales estén configuradas
       if (!isConfigured) {
-        throw Exception(
-          'Credenciales de Supabase no configuradas. '
-          'Crea un archivo .env con SUPABASE_URL y SUPABASE_ANON_KEY. '
-          'Ver env_template.txt para más información.'
-        );
+        debugPrint('⚠️ Credenciales de Supabase no configuradas.');
+        debugPrint('💡 Crea un archivo .env con SUPABASE_URL y SUPABASE_ANON_KEY.');
+        debugPrint('💡 Ver env_template.txt para más información.');
+        return; // No lanzar excepción, solo mostrar advertencia
       }
       
       await Supabase.initialize(
@@ -36,10 +41,10 @@ class SupabaseConfig {
           authFlowType: AuthFlowType.pkce,
         ),
       );
-      print('✅ Supabase inicializado correctamente en Bomberos');
+      debugPrint('✅ Supabase inicializado correctamente en Bomberos');
     } catch (e) {
-      print('❌ Error al inicializar Supabase en Bomberos: $e');
-      rethrow;
+      debugPrint('❌ Error al inicializar Supabase en Bomberos: $e');
+      // No rethrow para evitar que la app falle completamente
     }
   }
 
