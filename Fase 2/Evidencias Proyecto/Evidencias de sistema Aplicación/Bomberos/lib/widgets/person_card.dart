@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_styles.dart';
+import '../constants/app_theme.dart';
 
 /// Tarjeta de información de persona
 class PersonCard extends StatelessWidget {
@@ -18,13 +16,13 @@ class PersonCard extends StatelessWidget {
     final conditions = person['conditions'] as List<String>? ?? [];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSizes.spaceXl),
-      padding: const EdgeInsets.all(AppSizes.padding),
+      margin: const EdgeInsets.only(bottom: AppTheme.spaceXl),
+      padding: const EdgeInsets.all(AppTheme.paddingMd),
       decoration: BoxDecoration(
-        color: isOwner ? AppColors.ownerBackground : AppColors.backgroundLight,
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        color: isOwner ? AppTheme.ownerBackground : AppTheme.backgroundLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         border: Border.all(
-          color: isOwner ? AppColors.ownerBorder : AppColors.border,
+          color: isOwner ? AppTheme.ownerBorder : AppTheme.border,
         ),
       ),
       child: Column(
@@ -35,35 +33,35 @@ class PersonCard extends StatelessWidget {
             style: AppTextStyles.titleMedium,
           ),
           if (person['rut'] != null) ...[
-            const SizedBox(height: AppSizes.spaceSm),
+            const SizedBox(height: AppTheme.spaceSm),
             Text(
               'RUT: ${person['rut']}',
               style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+                color: AppTheme.textSecondary,
               ),
             ),
           ],
-          const SizedBox(height: AppSizes.spaceSm),
+          const SizedBox(height: AppTheme.spaceSm),
           Text(
             '${person['age']} años',
             style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: AppTheme.textSecondary,
             ),
           ),
           if (conditions.isNotEmpty) ...[
-            const SizedBox(height: AppSizes.spaceLg),
+            const SizedBox(height: AppTheme.spaceLg),
             Text(
               '⚠️ Condiciones Médicas/Especiales:',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: AppSizes.font,
-                color: AppColors.error,
+                fontSize: AppTheme.fontMd,
+                color: AppTheme.error,
               ),
             ),
-            const SizedBox(height: AppSizes.space),
+            const SizedBox(height: AppTheme.space),
             Wrap(
-              spacing: AppSizes.space,
-              runSpacing: AppSizes.space,
+              spacing: AppTheme.space,
+              runSpacing: AppTheme.space,
               children: conditions.map((condition) {
                 return _buildConditionChip(condition);
               }).toList(),
@@ -77,20 +75,20 @@ class PersonCard extends StatelessWidget {
   Widget _buildConditionChip(String condition) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.spaceLg,
-        vertical: AppSizes.spaceSm,
+        horizontal: AppTheme.spaceLg,
+        vertical: AppTheme.spaceSm,
       ),
       decoration: BoxDecoration(
-        color: AppColors.medicalBackground,
+        color: AppTheme.medicalBackground,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.medicalBorder),
+        border: Border.all(color: AppTheme.medicalBorder),
       ),
       child: Text(
         condition,
         style: TextStyle(
-          fontSize: AppSizes.fontSm,
+          fontSize: AppTheme.fontSm,
           fontWeight: FontWeight.w600,
-          color: AppColors.medicalText,
+          color: AppTheme.medicalText,
         ),
       ),
     );

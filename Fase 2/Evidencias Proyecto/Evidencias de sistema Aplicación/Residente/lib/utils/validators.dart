@@ -22,6 +22,11 @@ class Validators {
       return 'RUT debe contener solo números';
     }
 
+    // Verificar que el dígito verificador sea válido (0-9, K, o 1)
+    if (!RegExp(r'^[0-9K1]$').hasMatch(dv)) {
+      return 'Dígito verificador inválido';
+    }
+
     // Calcular dígito verificador
     String dvCalculado = _calcularDV(numero);
 
@@ -50,6 +55,8 @@ class Validators {
       return '0';
     } else if (dv == 10) {
       return 'K';
+    } else if (dv == 1) {
+      return '1'; // Caso especial: algunos RUTs pueden tener 1 como dígito verificador
     } else {
       return dv.toString();
     }

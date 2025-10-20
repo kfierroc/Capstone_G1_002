@@ -8,7 +8,7 @@ class RutInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    String text = newValue.text.replaceAll(RegExp(r'[^\dKk]'), '');
+    String text = newValue.text.replaceAll(RegExp(r'[^\dKk1]'), '');
     
     if (text.isEmpty) {
       return newValue.copyWith(text: '');

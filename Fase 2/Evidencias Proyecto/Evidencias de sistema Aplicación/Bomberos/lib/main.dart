@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'config/supabase_config.dart';
+import 'app.dart';
 import 'screens/auth/login.dart';
-import 'screens/home/home.dart';
+import 'screens/home/home_refactored.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +59,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Sistema de Emergencias',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.red, useMaterial3: true),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light, // Forzar tema claro
       // Usar AuthChecker temporal para pruebas
       home: const AuthChecker(),
       routes: {

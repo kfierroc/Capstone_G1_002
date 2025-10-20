@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/supabase_auth_service.dart';
 import '../../utils/responsive.dart';
-import '../home/home.dart';
+import '../home/home_refactored.dart';
 import 'register.dart';
 import 'password.dart';
 

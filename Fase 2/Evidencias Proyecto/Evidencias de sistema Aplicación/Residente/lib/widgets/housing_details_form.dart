@@ -57,7 +57,9 @@ class HousingDetailsForm extends StatelessWidget {
         DropdownButtonFormField<String>(
           initialValue: numberOfFloors,
           decoration: InputDecoration(
-            labelText: 'Número de pisos *',
+            labelText: selectedHousingType == 'Casa' || selectedHousingType == 'Departamento' 
+                ? 'Piso en el que resides *' 
+                : 'Número de pisos *',
             prefixIcon: const Icon(Icons.layers_outlined),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.lg),

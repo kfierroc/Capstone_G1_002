@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/registration_data.dart';
-import '../../utils/validators.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/input_formatters.dart';
 import '../../widgets/address_form_widget.dart';
@@ -205,26 +204,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
         Text('Contactos de Emergencia', style: AppTextStyles.heading3),
         const SizedBox(height: AppSpacing.lg),
 
-        TextFormField(
-          controller: _mainPhoneController,
-          validator: Validators.validatePhone,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [
-            PhoneInputFormatter(), // ← Formateo automático
-          ],
-          decoration: InputDecoration(
-            labelText: 'Teléfono principal *',
-            hintText: '9 1234 5678',
-            prefixIcon: const Icon(Icons.phone),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            filled: true,
-            fillColor: const Color(0xFFFAFAFA),
-            helperText: 'Se formatea automáticamente',
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
 
         TextFormField(
           controller: _altPhoneController,

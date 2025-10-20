@@ -456,24 +456,6 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                     ),
                     const SizedBox(height: 16),
 
-                    TextFormField(
-                      controller: _mainPhoneController,
-                      validator: Validators.validatePhone,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Teléfono principal *',
-                        hintText: '9 1234 5678',
-                        helperText:
-                            'Teléfono principal de contacto para emergencias',
-                        prefixIcon: const Icon(Icons.phone),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
 
                     TextFormField(
                       controller: _altPhoneController,
