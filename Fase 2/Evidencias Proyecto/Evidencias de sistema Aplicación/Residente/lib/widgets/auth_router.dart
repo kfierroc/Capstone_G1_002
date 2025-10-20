@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../screens/auth/login.dart';
-import '../screens/auth/reset_password.dart';
 import '../screens/home/resident_home.dart';
 
 /// Widget que maneja las rutas de autenticación de Supabase

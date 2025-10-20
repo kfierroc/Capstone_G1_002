@@ -59,8 +59,8 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
       }
 
       // 1. Registrar usuario en Supabase Auth
-      print('🔐 Iniciando registro de usuario...');
-      print('📧 Email: ${_registrationData.email}');
+      debugPrint('🔐 Iniciando registro de usuario...');
+      debugPrint('📧 Email: ${_registrationData.email}');
       
       final authService = AuthService();
       final authResult = await authService.signUp(
@@ -69,11 +69,11 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         metadata: {'name': _registrationData.fullName ?? 'Residente'},
       );
 
-      print('✅ Resultado de autenticación: ${authResult.isSuccess}');
+      debugPrint('✅ Resultado de autenticación: ${authResult.isSuccess}');
       if (authResult.isSuccess) {
-        print('👤 Usuario creado: ${authResult.user?.id}');
+        debugPrint('👤 Usuario creado: ${authResult.user?.id}');
       } else {
-        print('❌ Error de autenticación: ${authResult.error}');
+        debugPrint('❌ Error de autenticación: ${authResult.error}');
       }
 
       if (!authResult.isSuccess) {
@@ -90,9 +90,9 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
       }
 
       // 2. Crear grupo familiar en la base de datos
-      print('📝 Creando grupo familiar en base de datos...');
-      print('👤 User ID: ${authResult.user!.id}');
-      print('📍 Dirección: ${_registrationData.address}');
+      debugPrint('📝 Creando grupo familiar en base de datos...');
+      debugPrint('👤 User ID: ${authResult.user!.id}');
+      debugPrint('📍 Dirección: ${_registrationData.address}');
       
       final databaseService = DatabaseService();
       final grupoResult = await databaseService.crearGrupoFamiliar(
@@ -100,9 +100,9 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         data: _registrationData,
       );
 
-      print('✅ Resultado de creación de grupo: ${grupoResult.isSuccess}');
+      debugPrint('✅ Resultado de creación de grupo: ${grupoResult.isSuccess}');
       if (!grupoResult.isSuccess) {
-        print('❌ Error al crear grupo: ${grupoResult.error}');
+        debugPrint('❌ Error al crear grupo: ${grupoResult.error}');
       }
 
       if (!grupoResult.isSuccess) {
@@ -118,12 +118,12 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         return;
       }
 
-      print('🎉 Registro completado exitosamente');
+      debugPrint('🎉 Registro completado exitosamente');
 
       // 3. Navegar al home después del registro exitoso
       if (!mounted) return;
       
-      print('🏠 Navegando al home...');
+      debugPrint('🏠 Navegando al home...');
       
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -133,8 +133,8 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         (route) => false,
       );
     } catch (e) {
-      print('💥 Error inesperado durante el registro: $e');
-      print('📍 Stack trace: ${StackTrace.current}');
+      debugPrint('💥 Error inesperado durante el registro: $e');
+      debugPrint('📍 Stack trace: ${StackTrace.current}');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

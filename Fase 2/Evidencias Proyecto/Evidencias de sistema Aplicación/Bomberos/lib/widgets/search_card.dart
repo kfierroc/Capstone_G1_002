@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_styles.dart';
+import '../constants/app_theme.dart';
 import '../utils/responsive.dart';
 
 /// Tarjeta de búsqueda de domicilio
@@ -23,8 +21,8 @@ class SearchCard extends StatelessWidget {
 
     return Container(
       margin: ResponsiveHelper.getResponsiveMargin(context),
-      padding: EdgeInsets.all(isTablet ? AppSizes.paddingXxl : AppSizes.paddingLg),
-      decoration: AppDecorations.card(),
+      padding: EdgeInsets.all(isTablet ? AppTheme.paddingXxl : AppTheme.paddingLg),
+      decoration: AppThemeDecorations.card(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -33,93 +31,89 @@ class SearchCard extends StatelessWidget {
             style: AppTextStyles.titleMedium.copyWith(
               fontSize: ResponsiveHelper.getResponsiveFontSize(
                 context,
-                mobile: AppSizes.fontLg,
-                tablet: AppSizes.fontXxl,
+                mobile: AppTheme.fontLg,
+                tablet: AppTheme.fontXxl,
                 desktop: 24,
               ),
             ),
           ),
-          SizedBox(height: isTablet ? AppSizes.spaceMd : AppSizes.spaceSm),
+          SizedBox(height: isTablet ? AppTheme.spaceMd : AppTheme.spaceSm),
           Text(
             'Ingresa la dirección para obtener información crítica del domicilio',
             style: AppTextStyles.subtitleSecondary.copyWith(
               fontSize: ResponsiveHelper.getResponsiveFontSize(
                 context,
-                mobile: AppSizes.fontSm,
-                tablet: AppSizes.font,
-                desktop: AppSizes.fontLg,
+                mobile: AppTheme.fontSm,
+                tablet: AppTheme.fontMd,
+                desktop: AppTheme.fontLg,
               ),
             ),
           ),
-          SizedBox(height: isTablet ? AppSizes.spaceXxl : AppSizes.spaceXl),
+          SizedBox(height: isTablet ? AppTheme.spaceXxl : AppTheme.spaceXl),
           TextField(
             controller: controller,
             style: TextStyle(
               fontSize: ResponsiveHelper.getResponsiveFontSize(
                 context,
-                mobile: AppSizes.fontLg,
-                tablet: AppSizes.fontXl,
-                desktop: AppSizes.fontXxl,
+                mobile: AppTheme.fontLg,
+                tablet: AppTheme.fontXl,
+                desktop: AppTheme.fontXxl,
               ),
             ),
-            decoration: AppDecorations.textField(
+            decoration: AppThemeDecorations.textField(
               prefixIcon: Icons.location_on,
-              borderRadius: isTablet ? AppSizes.radius : AppSizes.radiusMd,
+              borderRadius: isTablet ? AppTheme.radius : AppTheme.radiusMd,
             ).copyWith(
               contentPadding: EdgeInsets.symmetric(
-                horizontal: isTablet ? AppSizes.paddingLg : AppSizes.padding,
-                vertical: isTablet ? AppSizes.paddingLg : AppSizes.padding,
+                horizontal: isTablet ? AppTheme.paddingLg : AppTheme.paddingMd,
+                vertical: isTablet ? AppTheme.paddingLg : AppTheme.paddingMd,
               ),
             ),
             onSubmitted: (_) => onSearch(),
           ),
-          SizedBox(height: isTablet ? AppSizes.spaceXl : AppSizes.spaceLg),
+          SizedBox(height: isTablet ? AppTheme.spaceXl : AppTheme.spaceLg),
           Row(
             children: [
               Expanded(
                 child: SizedBox(
                   height: isTablet
-                      ? AppSizes.buttonHeightTablet
-                      : AppSizes.buttonHeightMobile,
+                      ? AppTheme.buttonHeightTablet
+                      : AppTheme.buttonHeightMobile,
                   child: ElevatedButton(
                     onPressed: onSearch,
-                    style: AppDecorations.elevatedButton(
-                      borderRadius: isTablet ? 14 : AppSizes.radiusSm,
-                    ),
+                    style: AppThemeDecorations.elevatedButton(),
                     child: Text(
                       'Buscar',
                       style: AppTextStyles.bodyLarge.copyWith(
-                        color: AppColors.textWhite,
+                        color: AppTheme.textWhite,
                         fontSize: ResponsiveHelper.getResponsiveFontSize(
                           context,
-                          mobile: AppSizes.font,
-                          tablet: AppSizes.fontLg,
-                          desktop: AppSizes.fontXl,
+                          mobile: AppTheme.fontMd,
+                          tablet: AppTheme.fontLg,
+                          desktop: AppTheme.fontXl,
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: isTablet ? AppSizes.spaceXl : AppSizes.spaceLg),
+              SizedBox(width: isTablet ? AppTheme.spaceXl : AppTheme.spaceLg),
               Expanded(
                 child: SizedBox(
                   height: isTablet
-                      ? AppSizes.buttonHeightTablet
-                      : AppSizes.buttonHeightMobile,
+                      ? AppTheme.buttonHeightTablet
+                      : AppTheme.buttonHeightMobile,
                   child: OutlinedButton(
                     onPressed: onClear,
-                    style: AppDecorations.outlinedButton(
-                      borderRadius: isTablet ? 14 : AppSizes.radiusSm,
-                    ),
+                    style: AppThemeDecorations.outlinedButton(),
                     child: Text(
                       'Limpiar',
                       style: TextStyle(
                         fontSize: ResponsiveHelper.getResponsiveFontSize(
                           context,
-                          mobile: AppSizes.font,
-                          tablet: AppSizes.fontLg,
-                          desktop: AppSizes.fontXl,
+                          mobile: AppTheme.fontMd,
+                          tablet: AppTheme.fontLg,
+                          desktop: AppTheme.fontXl,
                         ),
                         fontWeight: FontWeight.bold,
                       ),

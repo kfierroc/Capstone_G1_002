@@ -1,0 +1,17 @@
+# Archivo de configuración para Supabase
+# Copia este archivo como .env y configura tus credenciales
+
+# URL de tu proyecto de Supabase
+# La encuentras en Settings > API > Project URL
+SUPABASE_URL=https://tu-proyecto.supabase.co
+
+# Clave anónima de tu proyecto de Supabase
+# La encuentras en Settings > API > Project API keys > anon public
+SUPABASE_ANON_KEY=tu-clave-anonima-aqui
+
+# Instrucciones:
+# 1. Ve a https://supabase.com y crea un nuevo proyecto
+# 2. En el SQL Editor, ejecuta el script supabase_schema.sql
+# 3. Ve a Settings > API y copia la URL y la clave anónima
+# 4. Reemplaza los valores de arriba con tus credenciales reales
+# 5. Renombra este archivo de env_template.txt a .env

@@ -25,13 +25,13 @@ CREATE TABLE IF NOT EXISTS comunas (
 -- 2. TABLA DE GRUPOS FAMILIARES (Residentes principales)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS grupofamiliar (
-  id_grupof UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  id_grupof SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
   
   -- Datos del titular
-  rut_titular VARCHAR NOT NULL UNIQUE,
-  email VARCHAR NOT NULL UNIQUE,
-  password VARCHAR NOT NULL,
+  rut_titular VARCHAR(12) NOT NULL UNIQUE,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL CHECK (char_length(password) >= 60),
   fecha_creacion DATE NOT NULL DEFAULT CURRENT_DATE,
   
   -- Metadatos
@@ -50,17 +50,16 @@ CREATE INDEX idx_grupofamiliar_rut_titular ON grupofamiliar(rut_titular);
 -- 3. TABLA DE RESIDENCIAS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS residencia (
-  id_residencia UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  id_grupof UUID REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE NOT NULL,
+  id_residencia SERIAL PRIMARY KEY,
   
   -- Información de ubicación
-  direccion TEXT NOT NULL,
-  lat NUMERIC NOT NULL,
-  lon NUMERIC NOT NULL,
+  direccion TEXT UNIQUE NOT NULL,
+  lat DECIMAL(16,14) NOT NULL,
+  lon DECIMAL(16,14) NOT NULL,
   cut_com INTEGER REFERENCES comunas(cut_com) NOT NULL,
   
-  -- Detalles de vivienda
-  tipo_vivienda TEXT, -- Casa, Departamento, etc.
+  -- Detalles de vivienda (agregados para compatibilidad con la app)
+  tipo_vivienda TEXT,
   numero_pisos INTEGER,
   material_construccion TEXT,
   estado_vivienda TEXT,
@@ -76,7 +75,6 @@ CREATE TABLE IF NOT EXISTS residencia (
 );
 
 -- Índices
-CREATE INDEX idx_residencia_grupof ON residencia(id_grupof);
 CREATE INDEX idx_residencia_location ON residencia(lat, lon);
 CREATE INDEX idx_residencia_comuna ON residencia(cut_com);
 
@@ -84,27 +82,26 @@ CREATE INDEX idx_residencia_comuna ON residencia(cut_com);
 -- 4. TABLA DE INTEGRANTES DEL GRUPO FAMILIAR
 -- =====================================================
 CREATE TABLE IF NOT EXISTS integrante (
-  id_integrante UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  id_grupof UUID REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE NOT NULL,
+  id_integrante SERIAL PRIMARY KEY,
+  id_grupof INTEGER REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE NOT NULL,
   
   -- Estado del integrante
   activo_i BOOLEAN NOT NULL DEFAULT true,
   fecha_ini_i DATE NOT NULL DEFAULT CURRENT_DATE,
   fecha_fin_i DATE,
   
-  -- Información personal
-  rut VARCHAR NOT NULL,
-  edad INTEGER NOT NULL,
-  anio_nac INTEGER NOT NULL,
+  -- Información personal (agregada para compatibilidad con la app)
+  rut VARCHAR(12),
+  edad INTEGER,
+  anio_nac INTEGER,
   padecimiento TEXT,
   
   -- Metadatos
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
-  CONSTRAINT valid_age CHECK (edad >= 18 AND edad <= 150),
-  CONSTRAINT valid_birth_year CHECK (anio_nac >= 1900 AND anio_nac <= EXTRACT(YEAR FROM CURRENT_DATE)),
-  CONSTRAINT valid_adult_age CHECK (EXTRACT(YEAR FROM CURRENT_DATE) - anio_nac >= 18),
+  CONSTRAINT valid_age CHECK (edad IS NULL OR (edad >= 0 AND edad <= 150)),
+  CONSTRAINT valid_birth_year CHECK (anio_nac IS NULL OR (anio_nac >= 1900 AND anio_nac <= EXTRACT(YEAR FROM CURRENT_DATE))),
   CONSTRAINT valid_dates CHECK (fecha_fin_i IS NULL OR fecha_fin_i >= fecha_ini_i)
 );
 
@@ -114,11 +111,29 @@ CREATE INDEX idx_integrante_rut ON integrante(rut);
 CREATE INDEX idx_integrante_active ON integrante(activo_i);
 
 -- =====================================================
+-- 4.1. TABLA DE INFORMACIÓN ADICIONAL DE INTEGRANTES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS info_integrante (
+  id_integrante INTEGER PRIMARY KEY REFERENCES integrante(id_integrante) ON DELETE CASCADE,
+  fecha_reg_ii DATE NOT NULL DEFAULT CURRENT_DATE,
+  anio_nac INTEGER NOT NULL,
+  padecimiento TEXT,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  CONSTRAINT valid_birth_year_ii CHECK (anio_nac >= 1900 AND anio_nac <= EXTRACT(YEAR FROM CURRENT_DATE))
+);
+
+-- Índices
+CREATE INDEX idx_info_integrante_fecha ON info_integrante(fecha_reg_ii);
+
+-- =====================================================
 -- 5. TABLA DE MASCOTAS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS mascota (
-  id_mascota UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  id_grupof UUID REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE NOT NULL,
+  id_mascota SERIAL PRIMARY KEY,
+  id_grupof INTEGER REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE NOT NULL,
   
   -- Información de la mascota
   nombre_m TEXT NOT NULL,
@@ -126,12 +141,9 @@ CREATE TABLE IF NOT EXISTS mascota (
   tamanio TEXT NOT NULL,
   fecha_reg_m DATE NOT NULL DEFAULT CURRENT_DATE,
   
-  -- Metadatos
+  -- Metadatos (agregados para compatibilidad con la app)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  CONSTRAINT valid_species CHECK (especie IN ('Perro', 'Gato', 'Otro')),
-  CONSTRAINT valid_size CHECK (tamanio IN ('Pequeño', 'Mediano', 'Grande'))
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Índices
@@ -142,9 +154,9 @@ CREATE INDEX idx_mascota_grupof ON mascota(id_grupof);
 -- =====================================================
 CREATE TABLE IF NOT EXISTS bombero (
   rut_num INTEGER PRIMARY KEY NOT NULL,
-  rut_dv BPCHAR NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
-  email_b TEXT UNIQUE,
+  rut_dv CHAR(1) NOT NULL,
+  email_b TEXT UNIQUE NOT NULL,
+  password_b TEXT NOT NULL CHECK (char_length(password_b) >= 60),
   
   -- Información adicional del bombero
   nombre TEXT,
@@ -153,20 +165,21 @@ CREATE TABLE IF NOT EXISTS bombero (
   activo BOOLEAN DEFAULT true,
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  CONSTRAINT uq_rut UNIQUE (rut_num, rut_dv)
 );
 
 -- Índices
-CREATE INDEX idx_bombero_user_id ON bombero(user_id);
 CREATE INDEX idx_bombero_email ON bombero(email_b);
 
 -- =====================================================
 -- 7. TABLA DE GRIFOS (Para futuras funcionalidades)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS grifo (
-  id_grifo UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  lat NUMERIC NOT NULL,
-  lon NUMERIC NOT NULL,
+  id_grifo SERIAL PRIMARY KEY,
+  lat DECIMAL(9,6) NOT NULL,
+  lon DECIMAL(9,6) NOT NULL,
   cut_com INTEGER REFERENCES comunas(cut_com) NOT NULL,
   
   -- Información del grifo
@@ -189,9 +202,9 @@ CREATE INDEX idx_grifo_comuna ON grifo(cut_com);
 -- 8. TABLA DE INFORMACIÓN DE GRIFOS
 -- =====================================================
 CREATE TABLE IF NOT EXISTS info_grifo (
-  id_reg_grifo UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  id_grifo UUID REFERENCES grifo(id_grifo) ON DELETE CASCADE NOT NULL,
-  rut_num INTEGER REFERENCES bombero(rut_num),
+  id_reg_grifo SERIAL PRIMARY KEY,
+  id_grifo INTEGER REFERENCES grifo(id_grifo) ON DELETE CASCADE NOT NULL,
+  rut_num INTEGER REFERENCES bombero(rut_num) ON DELETE CASCADE NOT NULL,
   
   fecha_registro DATE NOT NULL DEFAULT CURRENT_DATE,
   estado TEXT NOT NULL,
@@ -209,9 +222,9 @@ CREATE INDEX idx_info_grifo_fecha ON info_grifo(fecha_registro);
 -- 9. TABLA DE REGISTROS DE INCIDENTES
 -- =====================================================
 CREATE TABLE IF NOT EXISTS registro_v (
-  id_registro UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  id_residencia UUID REFERENCES residencia(id_residencia) NOT NULL,
-  id_grupof UUID REFERENCES grupofamiliar(id_grupof) NOT NULL,
+  id_registro SERIAL PRIMARY KEY,
+  id_residencia INTEGER REFERENCES residencia(id_residencia) NOT NULL,
+  id_grupof INTEGER REFERENCES grupofamiliar(id_grupof) NOT NULL,
   rut_num INTEGER REFERENCES bombero(rut_num),
   
   -- Estado del registro
@@ -224,6 +237,7 @@ CREATE TABLE IF NOT EXISTS registro_v (
   fecha_ini_r DATE NOT NULL DEFAULT CURRENT_DATE,
   fecha_fin_r DATE,
   
+  -- Metadatos (agregados para compatibilidad con la app)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
@@ -532,9 +546,10 @@ CREATE OR REPLACE FUNCTION crear_grupo_familiar_completo(
   p_tipo_vivienda TEXT DEFAULT NULL,
   p_telefono_principal TEXT DEFAULT NULL
 )
-RETURNS UUID AS $$
+RETURNS INTEGER AS $$
 DECLARE
-  v_id_grupof UUID;
+  v_id_grupof INTEGER;
+  v_id_residencia INTEGER;
 BEGIN
   -- Crear grupo familiar
   INSERT INTO grupofamiliar (user_id, rut_titular)
@@ -543,12 +558,21 @@ BEGIN
   
   -- Crear residencia
   INSERT INTO residencia (
-    id_grupof, direccion, lat, lon, cut_com, 
+    direccion, lat, lon, cut_com, 
     tipo_vivienda, telefono_principal
   )
   VALUES (
-    v_id_grupof, p_direccion, p_lat, p_lon, p_cut_com,
+    p_direccion, p_lat, p_lon, p_cut_com,
     p_tipo_vivienda, p_telefono_principal
+  )
+  RETURNING id_residencia INTO v_id_residencia;
+  
+  -- Crear registro_v para conectar residencia con grupo familiar
+  INSERT INTO registro_v (
+    id_residencia, id_grupof, vigente, estado, material, tipo
+  )
+  VALUES (
+    v_id_residencia, v_id_grupof, true, 'Activo', 'No especificado', 'Residencia'
   );
   
   RETURN v_id_grupof;

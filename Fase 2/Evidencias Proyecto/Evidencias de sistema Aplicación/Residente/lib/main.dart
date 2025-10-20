@@ -5,7 +5,6 @@ import 'config/supabase_config.dart';
 import 'screens/auth/login.dart';
 import 'screens/auth/reset_password.dart';
 import 'screens/home/resident_home.dart';
-import 'services/auth_service.dart';
 import 'widgets/auth_router.dart';
 
 void main() async {
@@ -24,7 +23,7 @@ void main() async {
     // Inicializar Supabase con las credenciales del .env
     await SupabaseConfig.initialize();
   } catch (e) {
-    print('Error al inicializar Supabase: $e');
+    debugPrint('Error al inicializar Supabase: $e');
     // Continuar la ejecución incluso si falla
     // (útil durante desarrollo antes de configurar credenciales)
   }

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_styles.dart';
+import '../constants/app_theme.dart';
 
 /// Tarjeta de información de contacto
 class ContactCard extends StatelessWidget {
@@ -17,9 +15,9 @@ class ContactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSizes.padding),
-      padding: const EdgeInsets.all(AppSizes.paddingLg),
-      decoration: AppDecorations.card(),
+      margin: const EdgeInsets.symmetric(horizontal: AppTheme.paddingMd),
+      padding: const EdgeInsets.all(AppTheme.paddingLg),
+      decoration: AppThemeDecorations.card(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -27,13 +25,13 @@ class ContactCard extends StatelessWidget {
             'Información de Contacto',
             style: AppTextStyles.titleLarge,
           ),
-          const Divider(height: AppSizes.paddingXl),
+          const Divider(height: AppTheme.paddingXl),
           _ContactRow(
             label: 'Contacto Principal',
             phone: mainPhone,
             icon: Icons.phone,
           ),
-          const SizedBox(height: AppSizes.spaceXl),
+          const SizedBox(height: AppTheme.spaceXl),
           _ContactRow(
             label: 'Contacto Alternativo',
             phone: altPhone,
@@ -63,12 +61,12 @@ class _ContactRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: AppSizes.iconSm, color: AppColors.textTertiary),
-            const SizedBox(width: AppSizes.space),
+            Icon(icon, size: AppTheme.iconSm, color: AppTheme.textTertiary),
+            const SizedBox(width: AppTheme.space),
             Text(label, style: AppTextStyles.subtitlePrimary),
           ],
         ),
-        const SizedBox(height: AppSizes.spaceSm),
+        const SizedBox(height: AppTheme.spaceSm),
         Text(
           phone,
           style: AppTextStyles.bodyLarge,

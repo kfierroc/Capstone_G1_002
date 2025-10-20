@@ -10,11 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Supabase para backend
   supabase_flutter: ^2.10.2
-  # Variables de entorno
   flutter_dotenv: ^5.1.0
-  # Criptografía para hashear contraseñas
   crypto: ^3.0.3
   cupertino_icons: ^1.0.8
 
@@ -34,12 +31,5 @@ flutter_icons:
 
 flutter:
   uses-material-design: true
-  
-  # Assets incluyendo archivo de variables de entorno
   assets:
     - .env
-
-# Configuración de optimización de Flutter
-# Para generar APK optimizada usar:
-# flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/app/outputs/symbols
-

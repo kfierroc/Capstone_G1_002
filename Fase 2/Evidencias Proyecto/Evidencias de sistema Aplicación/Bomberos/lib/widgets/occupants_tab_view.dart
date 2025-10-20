@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_styles.dart';
+import '../constants/app_theme.dart';
 import 'person_card.dart';
 import 'pet_card.dart';
 
@@ -39,13 +37,13 @@ class _OccupantsTabViewState extends State<OccupantsTabView>
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSizes.padding),
-      decoration: AppDecorations.card(),
+      margin: const EdgeInsets.symmetric(horizontal: AppTheme.paddingMd),
+      decoration: AppThemeDecorations.card(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(AppSizes.paddingLg),
+            padding: const EdgeInsets.all(AppTheme.paddingLg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -53,7 +51,7 @@ class _OccupantsTabViewState extends State<OccupantsTabView>
                   'Ocupantes del Domicilio',
                   style: AppTextStyles.titleLarge,
                 ),
-                const SizedBox(height: AppSizes.spaceSm),
+                const SizedBox(height: AppTheme.spaceSm),
                 Text(
                   'Información detallada de personas y mascotas en la residencia',
                   style: AppTextStyles.subtitleSecondary,
@@ -64,15 +62,15 @@ class _OccupantsTabViewState extends State<OccupantsTabView>
           Container(
             decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: AppColors.border),
-                bottom: BorderSide(color: AppColors.border),
+                top: BorderSide(color: AppTheme.border),
+                bottom: BorderSide(color: AppTheme.border),
               ),
             ),
             child: TabBar(
               controller: _tabController,
-              labelColor: AppColors.secondary,
-              unselectedLabelColor: AppColors.textTertiary,
-              indicatorColor: AppColors.secondary,
+              labelColor: AppTheme.secondary,
+              unselectedLabelColor: AppTheme.textTertiary,
+              indicatorColor: AppTheme.secondary,
               indicatorWeight: 3,
               tabs: [
                 Tab(text: 'Personas (${widget.people.length})'),
@@ -87,7 +85,7 @@ class _OccupantsTabViewState extends State<OccupantsTabView>
               children: [
                 // Tab Personas
                 ListView.builder(
-                  padding: const EdgeInsets.all(AppSizes.padding),
+                  padding: const EdgeInsets.all(AppTheme.paddingMd),
                   itemCount: widget.people.length,
                   itemBuilder: (context, index) {
                     return PersonCard(person: widget.people[index]);
@@ -95,7 +93,7 @@ class _OccupantsTabViewState extends State<OccupantsTabView>
                 ),
                 // Tab Mascotas
                 ListView.builder(
-                  padding: const EdgeInsets.all(AppSizes.padding),
+                  padding: const EdgeInsets.all(AppTheme.paddingMd),
                   itemCount: widget.pets.length,
                   itemBuilder: (context, index) {
                     return PetCard(pet: widget.pets[index]);

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_sizes.dart';
+import '../constants/app_theme.dart';
 import '../utils/responsive.dart';
 
 /// Widget para mostrar estadística crítica
@@ -23,27 +22,27 @@ class CriticalStatWidget extends StatelessWidget {
     return Column(
       children: [
         Container(
-          padding: EdgeInsets.all(isTablet ? AppSizes.spaceXl : AppSizes.spaceLg),
+          padding: EdgeInsets.all(isTablet ? AppTheme.spaceXl : AppTheme.spaceLg),
           decoration: BoxDecoration(
-            color: AppColors.textWhite.withValues(alpha: 0.2),
+            color: AppTheme.textWhite.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(
-              isTablet ? AppSizes.radius : AppSizes.radiusMd,
+              isTablet ? AppTheme.radius : AppTheme.radiusMd,
             ),
           ),
           child: Icon(
             icon,
-            color: AppColors.textWhite,
-            size: isTablet ? AppSizes.iconXxl : AppSizes.iconLg,
+            color: AppTheme.textWhite,
+            size: isTablet ? AppTheme.iconXxl : AppTheme.iconLg,
           ),
         ),
-        SizedBox(height: isTablet ? AppSizes.spaceLg : AppSizes.space),
+        SizedBox(height: isTablet ? AppTheme.spaceLg : AppTheme.space),
         Text(
           value,
           style: TextStyle(
-            color: AppColors.textWhite,
+            color: AppTheme.textWhite,
             fontSize: ResponsiveHelper.getResponsiveFontSize(
               context,
-              mobile: AppSizes.fontTitle,
+              mobile: AppTheme.fontTitleSize,
               tablet: 28,
               desktop: 32,
             ),
@@ -54,12 +53,12 @@ class CriticalStatWidget extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: AppColors.textWhite70,
+            color: AppTheme.textWhite70,
             fontSize: ResponsiveHelper.getResponsiveFontSize(
               context,
-              mobile: AppSizes.fontXs,
-              tablet: AppSizes.fontSm,
-              desktop: AppSizes.font,
+              mobile: AppTheme.fontXsSize,
+              tablet: AppTheme.fontSmSize,
+              desktop: AppTheme.fontMd,
             ),
           ),
         ),

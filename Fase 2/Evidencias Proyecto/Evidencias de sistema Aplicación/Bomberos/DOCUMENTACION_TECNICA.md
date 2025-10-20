@@ -1,659 +1,727 @@
-# 🚒 Documentación Técnica - Aplicación Bomberos
+# Documentación Técnica - Sistema de Bomberos
 
-Esta documentación explica de manera sencilla cómo funciona el código de autenticación con Supabase en la aplicación Bomberos.
+## 📋 Índice
+1. [Descripción General](#descripción-general)
+2. [Arquitectura del Sistema](#arquitectura-del-sistema)
+3. [Tecnologías Utilizadas](#tecnologías-utilizadas)
+4. [Estructura del Proyecto](#estructura-del-proyecto)
+5. [Configuración](#configuración)
+6. [Funcionalidades](#funcionalidades)
+7. [Base de Datos](#base-de-datos)
+8. [Autenticación](#autenticación)
+9. [API y Servicios](#api-y-servicios)
+10. [Instalación y Despliegue](#instalación-y-despliegue)
+11. [Testing](#testing)
+12. [Troubleshooting](#troubleshooting)
+
+---
+
+## 🎯 Descripción General
+
+El Sistema de Bomberos es una aplicación móvil desarrollada en Flutter que proporciona herramientas especializadas para bomberos en situaciones de emergencia. La aplicación incluye funcionalidades para búsqueda de domicilios, gestión de grifos de agua y protocolos de emergencia.
+
+### Características Principales
+- **Aplicación Unificada**: Integra funcionalidades de bomberos y grifos en una sola aplicación
+- **Búsqueda de Domicilios**: Sistema de búsqueda en tiempo real de información crítica de domicilios
+- **Gestión de Grifos**: Módulo completo para registro y gestión de grifos de agua
+- **Autenticación Segura**: Sistema de login/registro con Supabase
+- **Interfaz Responsive**: Adaptable a diferentes tamaños de pantalla
+- **Modo Emergencia**: Interfaz especializada para situaciones críticas
+
+---
+
+## 🏗️ Arquitectura del Sistema
+
+### Patrón de Arquitectura
+La aplicación utiliza el patrón **MVC (Model-View-Controller)** con las siguientes capas:
+
+```
+┌─────────────────────────────────────┐
+│           PRESENTATION LAYER        │
+│  (Screens, Widgets, UI Components)  │
+├─────────────────────────────────────┤
+│            BUSINESS LAYER           │
+│    (Services, Controllers, Logic)   │
+├─────────────────────────────────────┤
+│             DATA LAYER              │
+│  (Supabase, Models, Repositories)   │
+└─────────────────────────────────────┘
+```
+
+### Flujo de Datos
+1. **UI Layer**: Maneja la interacción del usuario
+2. **Service Layer**: Procesa la lógica de negocio
+3. **Data Layer**: Gestiona la persistencia de datos
+4. **Supabase**: Base de datos en la nube
+
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+### Frontend
+- **Flutter**: Framework de desarrollo móvil
+- **Dart**: Lenguaje de programación
+- **Material Design**: Sistema de diseño de Google
+
+### Backend y Base de Datos
+- **Supabase**: Backend as a Service (BaaS)
+- **PostgreSQL**: Base de datos relacional
+- **Row Level Security (RLS)**: Seguridad a nivel de fila
+
+### Herramientas de Desarrollo
+- **Flutter SDK**: ^3.9.0
+- **Dart SDK**: ^3.9.0
+- **VS Code**: Editor de código recomendado
+- **Git**: Control de versiones
+
+### Dependencias Principales
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  supabase_flutter: ^2.10.2
+  flutter_dotenv: ^5.1.0
+  cupertino_icons: ^1.0.8
+```
+
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
 Bomberos/
 ├── lib/
-│   ├── config/
-│   │   └── supabase_config.dart          # Configuración de Supabase
-│   ├── services/
-│   │   └── supabase_auth_service.dart    # Servicio de autenticación
-│   ├── screens/
-│   │   └── auth/
-│   │       ├── login.dart                # Pantalla de inicio de sesión
-│   │       ├── register.dart             # Pantalla de registro
-│   │       └── password.dart             # Recuperación de contraseña
-│   └── main.dart                         # Punto de entrada de la app
-├── .env                                  # Variables de entorno (credenciales)
-└── pubspec.yaml                          # Dependencias del proyecto
+│   ├── config/                    # Configuración
+│   │   └── supabase_config.dart   # Configuración de Supabase
+│   ├── constants/                 # Constantes
+│   │   ├── grifo_colors.dart     # Colores para módulo grifos
+│   │   └── grifo_styles.dart     # Estilos para módulo grifos
+│   ├── models/                    # Modelos de datos
+│   │   └── grifo.dart            # Modelo de grifo
+│   ├── screens/                   # Pantallas
+│   │   ├── auth/                 # Autenticación
+│   │   │   ├── login.dart
+│   │   │   └── register.dart
+│   │   ├── grifos/               # Módulo de grifos
+│   │   │   ├── grifos_home_screen.dart
+│   │   │   └── register_grifo_screen.dart
+│   │   └── home/                 # Pantallas principales
+│   │       ├── home.dart
+│   │       ├── emergency_system_screen.dart
+│   │       ├── search_results.dart
+│   │       └── address_detail.dart
+│   ├── services/                  # Servicios
+│   │   ├── supabase_auth_service.dart
+│   │   └── mock_auth_service.dart
+│   ├── utils/                     # Utilidades
+│   │   └── responsive.dart
+│   ├── widgets/                   # Widgets reutilizables
+│   │   ├── grifo_card.dart
+│   │   ├── grifo_stats_section.dart
+│   │   ├── grifo_search_section.dart
+│   │   └── grifo_map_placeholder.dart
+│   └── main.dart                  # Punto de entrada
+├── assets/                        # Recursos
+├── android/                       # Configuración Android
+├── ios/                          # Configuración iOS
+├── web/                          # Configuración Web
+├── windows/                      # Configuración Windows
+├── macos/                        # Configuración macOS
+├── linux/                        # Configuración Linux
+├── test/                         # Pruebas
+├── pubspec.yaml                  # Dependencias
+├── env_template.txt              # Plantilla de configuración
+└── README.md                     # Documentación básica
 ```
 
 ---
 
-## 🔧 1. Configuración Inicial (pubspec.yaml)
+## ⚙️ Configuración
 
-### ¿Qué hace?
-Define las dependencias que necesita el proyecto para funcionar.
+### 1. Configuración de Supabase
 
-### Código explicado:
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  supabase_flutter: ^2.10.2    # Cliente para conectarse a Supabase
-  flutter_dotenv: ^5.1.0        # Para leer variables de entorno (.env)
-  cupertino_icons: ^1.0.8       # Iconos de iOS
+#### Crear Proyecto en Supabase
+1. Ve a [https://supabase.com](https://supabase.com)
+2. Crea una nueva cuenta o inicia sesión
+3. Crea un nuevo proyecto
+4. Espera a que se complete la configuración
 
-flutter:
-  assets:
-    - .env                      # Incluir el archivo .env en la app
+#### Configurar Variables de Entorno
+1. Copia el archivo de plantilla:
+   ```bash
+   cp env_template.txt .env
+   ```
+
+2. Edita el archivo `.env` con tus credenciales:
+   ```env
+   SUPABASE_URL=https://tu-proyecto.supabase.co
+   SUPABASE_ANON_KEY=tu-clave-anonima-aqui
+   ```
+
+3. Obtén las credenciales desde:
+   - **URL**: Settings > API > Project URL
+   - **Anon Key**: Settings > API > Project API keys > anon public
+
+### 2. Configuración del Esquema de Base de Datos
+
+Ejecuta el script `supabase_schema.sql` en el SQL Editor de Supabase:
+
+```sql
+-- Crear tablas necesarias
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE,
+  full_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS bombero (
+  rut_num INTEGER PRIMARY KEY,
+  rut_dv VARCHAR(1),
+  email_b VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS domicilio (
+  id SERIAL PRIMARY KEY,
+  direccion TEXT NOT NULL,
+  comuna VARCHAR(100),
+  region VARCHAR(100),
+  coordenadas POINT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Habilitar RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bombero ENABLE ROW LEVEL SECURITY;
+ALTER TABLE domicilio ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de seguridad
+CREATE POLICY "Users can view own profile" ON profiles
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" ON profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Public read access for domicilio" ON domicilio
+  FOR SELECT USING (true);
 ```
-
-### ¿Por qué es importante?
-- `supabase_flutter`: Nos permite conectarnos a la base de datos Supabase
-- `flutter_dotenv`: Protege nuestras credenciales manteniéndolas fuera del código
-- El archivo `.env` contiene información sensible que no debe subirse a Git
 
 ---
 
-## 🔐 2. Archivo de Variables de Entorno (.env)
+## 🚀 Funcionalidades
 
-### ¿Qué hace?
-Guarda las credenciales de Supabase de forma segura.
+### 1. Sistema de Autenticación
 
-### Código explicado:
-```env
-# URL de tu proyecto en Supabase
-SUPABASE_URL=https://tuproyecto.supabase.co
+#### Login
+- **Ruta**: `/login`
+- **Funcionalidad**: Autenticación con email y contraseña
+- **Validaciones**: Email válido, contraseña requerida
+- **Integración**: Supabase Auth
 
-# Clave pública para autenticación
-SUPABASE_ANON_KEY=tu-clave-super-larga-aqui
-```
+#### Registro
+- **Ruta**: `/register`
+- **Funcionalidad**: Registro de nuevos usuarios
+- **Campos**: Email, contraseña, nombre completo, RUT, compañía
+- **Validaciones**: Email único, RUT válido, contraseña segura
 
-### ¿Por qué es importante?
-- Mantiene las credenciales fuera del código fuente
-- Facilita cambiar de proyecto sin modificar el código
-- Está en `.gitignore`, así no se sube accidentalmente a GitHub
+#### Logout
+- **Funcionalidad**: Cierre de sesión seguro
+- **Limpieza**: Elimina tokens y datos de sesión
+- **Redirección**: Vuelve a la pantalla de login
+
+### 2. Pantalla Principal
+
+#### Búsqueda de Domicilios
+- **Campo de búsqueda**: Input para dirección
+- **Búsqueda en tiempo real**: Consulta base de datos
+- **Resultados**: Lista de domicilios encontrados
+- **Navegación**: Detalles del domicilio seleccionado
+
+#### Botón de Grifos
+- **Texto**: "Consultar Grifos de Agua"
+- **Icono**: Gota de agua
+- **Color**: Azul
+- **Funcionalidad**: Navega directamente al módulo de grifos
+
+### 3. Sistema de Emergencias
+
+#### Alerta de Emergencia
+- **Indicador visual**: Banner rojo con icono de emergencia
+- **Texto**: "🚨 MODO EMERGENCIA ACTIVO"
+- **Descripción**: Instrucciones para situaciones críticas
+
+#### Búsqueda Especializada
+- **Campo optimizado**: Para direcciones de emergencia
+- **Placeholder**: "Ej: Av. Libertador 1234, Las Condes"
+- **Búsqueda rápida**: Resultados inmediatos
+
+#### Guía Rápida
+- **Protocolos de emergencia**: Lista de procedimientos
+- **Instrucciones**: Para situaciones críticas
+- **Información de contacto**: Números de emergencia
+
+### 4. Módulo de Grifos
+
+#### Pantalla Principal de Grifos
+- **Lista de grifos**: Todos los grifos registrados
+- **Filtros**: Por estado (Operativo, Dañado, Mantenimiento, Sin verificar)
+- **Búsqueda**: Por dirección o comuna
+- **Estadísticas**: Contadores por estado
+
+#### Registro de Grifos
+- **Formulario completo**: Dirección, comuna, tipo, estado
+- **Coordenadas**: Latitud y longitud
+- **Notas**: Información adicional
+- **Validaciones**: Campos requeridos
+
+#### Gestión de Estados
+- **Cambio de estado**: Desde la lista de grifos
+- **Estados disponibles**: Operativo, Dañado, Mantenimiento, Sin verificar
+- **Actualización**: En tiempo real
+
+#### Estadísticas
+- **Total de grifos**: Contador general
+- **Por estado**: Contadores específicos
+- **Visualización**: Tarjetas con iconos y colores
 
 ---
 
-## ⚙️ 3. Configuración de Supabase (supabase_config.dart)
+## 🗄️ Base de Datos
 
-### ¿Qué hace?
-Lee las credenciales del archivo `.env` e inicializa la conexión con Supabase.
+### Esquema de Tablas
 
-### Código explicado:
-
-```dart
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-class SupabaseConfig {
-  // Lee la URL desde el archivo .env
-  static String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? '';
-  
-  // Lee la clave anon desde el archivo .env
-  static String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
-
-  // Inicializa la conexión con Supabase
-  static Future<void> initialize() async {
-    // Verifica que las credenciales existan
-    if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
-      throw Exception('Las credenciales no están configuradas');
-    }
-    
-    // Conecta con Supabase
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
-    );
-  }
-
-  // Proporciona acceso al cliente de Supabase
-  static SupabaseClient get client => Supabase.instance.client;
-}
+#### Tabla: `profiles`
+```sql
+CREATE TABLE profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE,
+  full_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+  PRIMARY KEY (id)
+);
 ```
 
-### Flujo de ejecución:
-1. La app inicia → `main.dart` llama a `SupabaseConfig.initialize()`
-2. Se leen las credenciales del archivo `.env`
-3. Se valida que existan (si no, muestra error)
-4. Se establece la conexión con Supabase
-5. Ahora podemos usar `SupabaseConfig.client` en toda la app
+#### Tabla: `bombero`
+```sql
+CREATE TABLE bombero (
+  rut_num INTEGER PRIMARY KEY,
+  rut_dv VARCHAR(1),
+  email_b VARCHAR(255) UNIQUE
+);
+```
+
+#### Tabla: `domicilio`
+```sql
+CREATE TABLE domicilio (
+  id SERIAL PRIMARY KEY,
+  direccion TEXT NOT NULL,
+  comuna VARCHAR(100),
+  region VARCHAR(100),
+  coordenadas POINT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### Relaciones
+- `profiles.id` → `auth.users.id` (1:1)
+- `bombero.email_b` → `auth.users.email` (1:1)
+- `domicilio` es independiente (sin relaciones foráneas)
+
+### Índices Recomendados
+```sql
+-- Índice para búsqueda de domicilios
+CREATE INDEX idx_domicilio_direccion ON domicilio USING gin(to_tsvector('spanish', direccion));
+
+-- Índice para búsqueda por comuna
+CREATE INDEX idx_domicilio_comuna ON domicilio(comuna);
+```
 
 ---
 
-## 🔑 4. Servicio de Autenticación (supabase_auth_service.dart)
+## 🔐 Autenticación
 
-### ¿Qué hace?
-Maneja todas las operaciones de autenticación: login, registro, recuperación de contraseña, etc.
+### Flujo de Autenticación
 
-### Patrón Singleton:
+1. **Inicio de Sesión**:
+   ```dart
+   final authService = SupabaseAuthService();
+   final result = await authService.signInWithPassword(
+     email: email,
+     password: password,
+   );
+   ```
+
+2. **Verificación de Sesión**:
+   ```dart
+   final user = SupabaseConfig.client.auth.currentUser;
+   if (user != null) {
+     // Usuario autenticado
+   }
+   ```
+
+3. **Cierre de Sesión**:
+   ```dart
+   await SupabaseConfig.client.auth.signOut();
+   ```
+
+### Seguridad
+
+#### Row Level Security (RLS)
+- **Habilitado**: En todas las tablas
+- **Políticas**: Usuarios solo pueden acceder a sus propios datos
+- **Excepción**: Tabla `domicilio` es de lectura pública
+
+#### Validaciones
+- **Email**: Formato válido
+- **Contraseña**: Mínimo 6 caracteres
+- **RUT**: Formato chileno válido
+
+---
+
+## 🔌 API y Servicios
+
+### SupabaseAuthService
+
+#### Métodos Principales
 ```dart
 class SupabaseAuthService {
-  // Singleton: solo existe una instancia
-  static final SupabaseAuthService _instance = SupabaseAuthService._internal();
-  factory SupabaseAuthService() => _instance;
-  SupabaseAuthService._internal();
+  // Iniciar sesión
+  Future<AuthResult> signInWithPassword({
+    required String email,
+    required String password,
+  });
+
+  // Registrar usuario
+  Future<AuthResult> signUp({
+    required String email,
+    required String password,
+    required String fullName,
+    required String rut,
+    required String company,
+  });
+
+  // Cerrar sesión
+  Future<void> signOut();
+
+  // Recuperar contraseña
+  Future<AuthResult> resetPassword(String email);
+}
+```
+
+### SupabaseConfig
+
+#### Configuración
+```dart
+class SupabaseConfig {
+  // Inicializar Supabase
+  static Future<void> initialize();
+
+  // Obtener cliente
+  static SupabaseClient get client;
+
+  // Obtener cliente de auth
+  static GoTrueClient get auth;
+
+  // Verificar configuración
+  static bool get isConfigured;
+}
+```
+
+---
+
+## 📱 Instalación y Despliegue
+
+### Requisitos Previos
+- **Flutter SDK**: ^3.9.0
+- **Dart SDK**: ^3.9.0
+- **Android Studio**: Para desarrollo Android
+- **Xcode**: Para desarrollo iOS (macOS)
+- **Git**: Control de versiones
+
+### Instalación Local
+
+1. **Clonar repositorio**:
+   ```bash
+   git clone <repository-url>
+   cd Bomberos
+   ```
+
+2. **Instalar dependencias**:
+   ```bash
+   flutter pub get
+   ```
+
+3. **Configurar variables de entorno**:
+   ```bash
+   cp env_template.txt .env
+   # Editar .env con tus credenciales
+   ```
+
+4. **Configurar Supabase**:
+   - Crear proyecto en Supabase
+   - Ejecutar script `supabase_schema.sql`
+   - Configurar credenciales en `.env`
+
+5. **Ejecutar aplicación**:
+   ```bash
+   flutter run
+   ```
+
+### Compilación para Producción
+
+#### Android APK
+```bash
+flutter build apk --release
+```
+
+#### iOS
+```bash
+flutter build ios --release
+```
+
+#### Web
+```bash
+flutter build web --release
+```
+
+### Despliegue en App Stores
+
+#### Google Play Store
+1. Generar APK firmado
+2. Crear cuenta de desarrollador
+3. Subir APK a Google Play Console
+4. Configurar metadatos y capturas
+
+#### Apple App Store
+1. Generar IPA firmado
+2. Crear cuenta de desarrollador
+3. Subir a App Store Connect
+4. Configurar metadatos y capturas
+
+---
+
+## 🧪 Testing
+
+### Tipos de Pruebas
+
+#### Unit Tests
+```dart
+// Ejemplo de prueba unitaria
+test('should return user data when login is successful', () async {
+  // Arrange
+  final authService = SupabaseAuthService();
   
-  // Acceso al cliente de Supabase
-  SupabaseClient get _client => SupabaseConfig.client;
-}
-```
-
-**¿Por qué Singleton?** Para que todos los componentes de la app usen la misma instancia del servicio.
-
-### 4.1. Iniciar Sesión
-
-```dart
-Future<AuthResult> signInWithPassword({
-  required String email,
-  required String password,
-}) async {
-  try {
-    // Intenta iniciar sesión en Supabase
-    final response = await _client.auth.signInWithPassword(
-      email: email.trim(),
-      password: password,
-    );
-
-    if (response.user != null) {
-      // Obtiene datos adicionales del perfil
-      final profile = await _getUserProfile(response.user!.id);
-      
-      // Retorna éxito con los datos del usuario
-      return AuthResult.success(
-        UserData(
-          id: response.user!.id,
-          email: response.user!.email ?? email,
-          fullName: profile?['full_name'] ?? '',
-          rut: profile?['rut'] ?? '',
-          company: profile?['fire_company'] ?? '',
-        ),
-      );
-    } else {
-      return AuthResult.error('No se pudo iniciar sesión');
-    }
-  } on AuthException catch (e) {
-    // Traduce errores de Supabase al español
-    return AuthResult.error(_translateAuthError(e.message));
-  }
-}
-```
-
-**Flujo:**
-1. Usuario ingresa email y contraseña
-2. Se envían a Supabase para validación
-3. Si es correcto, Supabase devuelve el usuario
-4. Se obtienen datos adicionales de la tabla `profiles`
-5. Se retorna todo junto en un `AuthResult`
-
-### 4.2. Registrar Usuario
-
-```dart
-Future<AuthResult> signUp({
-  required String email,
-  required String password,
-  required String fullName,
-  required String rut,
-  required String company,
-}) async {
-  try {
-    // PASO 1: Registrar usuario en Supabase Auth
-    final response = await _client.auth.signUp(
-      email: email.trim(),
-      password: password,
-    );
-
-    if (response.user != null) {
-      // PASO 2: Guardar datos adicionales en tabla profiles
-      try {
-        await _client.from('profiles').insert({
-          'id': response.user!.id,
-          'full_name': fullName.trim(),
-          'rut': rut.trim(),
-          'fire_company': company.trim(),
-          'email': email.trim(),
-          'created_at': DateTime.now().toIso8601String(),
-        });
-
-        return AuthResult.success(UserData(...));
-      } on PostgrestException catch (e) {
-        // Si falla guardar el perfil, eliminar el usuario de Auth
-        await _client.auth.signOut();
-        return AuthResult.error('Error al guardar el perfil');
-      }
-    }
-  } on AuthException catch (e) {
-    return AuthResult.error(_translateAuthError(e.message));
-  }
-}
-```
-
-**Flujo:**
-1. Usuario llena formulario de registro
-2. Se crea cuenta en Supabase Auth (tabla `auth.users`)
-3. Se guardan datos adicionales en tabla `profiles`
-4. Si algo falla en paso 3, se elimina la cuenta del paso 2
-5. Se retorna éxito o error
-
-### 4.3. Recuperar Contraseña
-
-```dart
-Future<AuthResult> resetPassword(String email) async {
-  try {
-    // Envía email con enlace de recuperación
-    await _client.auth.resetPasswordForEmail(email.trim());
-    return AuthResult.success(null);
-  } on AuthException catch (e) {
-    return AuthResult.error(_translateAuthError(e.message));
-  }
-}
-```
-
-**Flujo:**
-1. Usuario ingresa su email
-2. Supabase envía un correo con enlace de recuperación
-3. Usuario hace clic en el enlace y crea nueva contraseña
-
-### 4.4. Traducción de Errores
-
-```dart
-String _translateAuthError(String error) {
-  if (error.contains('Invalid login credentials')) {
-    return 'Credenciales incorrectas. Verifica tu email y contraseña.';
-  } else if (error.contains('User already registered')) {
-    return 'Este correo electrónico ya está registrado.';
-  } else if (error.contains('Password should be at least')) {
-    return 'La contraseña debe tener al menos 6 caracteres.';
-  }
-  // ... más traducciones
-  return error;
-}
-```
-
-**¿Por qué?** Supabase devuelve errores en inglés, esta función los traduce al español.
-
----
-
-## 📱 5. Pantalla de Login (login.dart)
-
-### ¿Qué hace?
-Muestra la interfaz donde el usuario ingresa sus credenciales.
-
-### Estructura:
-```dart
-class _LoginScreenState extends State<LoginScreen> {
-  // Controladores para los campos de texto
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  // Act
+  final result = await authService.signInWithPassword(
+    email: 'test@example.com',
+    password: 'password123',
+  );
   
-  // Clave para validar el formulario
-  final _formKey = GlobalKey<FormState>();
+  // Assert
+  expect(result.isSuccess, true);
+  expect(result.user?.email, 'test@example.com');
+});
+```
+
+#### Widget Tests
+```dart
+// Ejemplo de prueba de widget
+testWidgets('should display login form', (WidgetTester tester) async {
+  await tester.pumpWidget(MyApp());
   
-  // Estado de carga
-  bool _isLoading = false;
-}
+  expect(find.byType(TextFormField), findsNWidgets(2));
+  expect(find.byType(ElevatedButton), findsOneWidget);
+});
 ```
 
-### Función de Login:
-
+#### Integration Tests
 ```dart
-Future<void> _login() async {
-  // 1. Validar que los campos estén correctos
-  if (_formKey.currentState!.validate()) {
-    // 2. Mostrar indicador de carga
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // 3. Llamar al servicio de autenticación
-      final authService = SupabaseAuthService();
-      final result = await authService.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      // 4. Verificar el resultado
-      if (mounted) {
-        if (result.isSuccess) {
-          // ✅ Login exitoso
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('¡Bienvenido ${result.user!.fullName}!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          
-          // Navegar a la pantalla principal
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        } else {
-          // ❌ Error en login
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.error ?? 'Error de autenticación'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // ❌ Error inesperado
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      // 5. Ocultar indicador de carga
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-}
+// Ejemplo de prueba de integración
+testWidgets('should complete login flow', (WidgetTester tester) async {
+  await tester.pumpWidget(MyApp());
+  
+  // Llenar formulario
+  await tester.enterText(find.byKey(Key('email')), 'test@example.com');
+  await tester.enterText(find.byKey(Key('password')), 'password123');
+  
+  // Presionar botón
+  await tester.tap(find.byType(ElevatedButton));
+  await tester.pumpAndSettle();
+  
+  // Verificar navegación
+  expect(find.byType(HomeScreen), findsOneWidget);
+});
 ```
 
-### Flujo completo:
-1. Usuario ingresa email y contraseña
-2. Presiona "Iniciar Sesión"
-3. Se validan los campos (no vacíos, email válido, etc.)
-4. Se muestra spinner de carga
-5. Se llama a `SupabaseAuthService.signInWithPassword()`
-6. Si es exitoso → Navega a HomeScreen
-7. Si falla → Muestra mensaje de error
-8. Se oculta el spinner de carga
+### Ejecutar Pruebas
+```bash
+# Todas las pruebas
+flutter test
+
+# Pruebas específicas
+flutter test test/widget_test.dart
+
+# Pruebas de integración
+flutter drive --target=test_driver/app.dart
+```
 
 ---
 
-## 📝 6. Pantalla de Registro (register.dart)
+## 🔧 Troubleshooting
 
-### ¿Qué hace?
-Permite crear una cuenta nueva con validación de RUT chileno.
+### Problemas Comunes
 
-### Validación de RUT:
+#### 1. Error de Configuración de Supabase
+**Síntoma**: Error al inicializar Supabase
+**Solución**:
+```bash
+# Verificar archivo .env
+cat .env
 
+# Verificar credenciales en Supabase
+# Settings > API > Project URL y anon key
+```
+
+#### 2. Error de Compilación
+**Síntoma**: Error al ejecutar `flutter run`
+**Solución**:
+```bash
+# Limpiar caché
+flutter clean
+
+# Reinstalar dependencias
+flutter pub get
+
+# Verificar versión de Flutter
+flutter doctor
+```
+
+#### 3. Error de Autenticación
+**Síntoma**: No se puede iniciar sesión
+**Solución**:
+- Verificar que el usuario existe en Supabase Auth
+- Verificar que RLS está configurado correctamente
+- Verificar políticas de seguridad
+
+#### 4. Error de Búsqueda
+**Síntoma**: No se encuentran resultados de búsqueda
+**Solución**:
+- Verificar que la tabla `domicilio` tiene datos
+- Verificar que los índices están creados
+- Verificar permisos de lectura
+
+### Logs y Debugging
+
+#### Habilitar Logs de Supabase
 ```dart
-String? _validateRut(String? value) {
-  if (value == null || value.isEmpty) {
-    return 'Por favor ingresa tu RUT';
-  }
-
-  // Limpiar formato (quitar puntos y guión)
-  String cleanRut = value.replaceAll('.', '').replaceAll('-', '').toUpperCase();
-
-  if (cleanRut.length < 8) {
-    return 'RUT inválido';
-  }
-
-  // Separar número y dígito verificador
-  String rutNumber = cleanRut.substring(0, cleanRut.length - 1);
-  String verifier = cleanRut.substring(cleanRut.length - 1);
-
-  // Calcular dígito verificador
-  int sum = 0;
-  int multiplier = 2;
-
-  for (int i = rutNumber.length - 1; i >= 0; i--) {
-    sum += int.parse(rutNumber[i]) * multiplier;
-    multiplier = multiplier == 7 ? 2 : multiplier + 1;
-  }
-
-  int mod = 11 - (sum % 11);
-  String calculatedVerifier = mod == 11 ? '0' : mod == 10 ? 'K' : mod.toString();
-
-  // Verificar que coincida
-  if (verifier != calculatedVerifier) {
-    return 'RUT inválido';
-  }
-
-  return null; // RUT válido
+// En main.dart
+void main() {
+  // Habilitar logs de debug
+  Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+    debug: true, // Habilitar logs
+  );
 }
 ```
 
-**Algoritmo de validación:**
-1. Limpia el formato (12.345.678-9 → 123456789)
-2. Separa número (12345678) y verificador (9)
-3. Aplica algoritmo módulo 11
-4. Compara resultado con el verificador ingresado
+#### Logs de Flutter
+```bash
+# Ver logs en tiempo real
+flutter logs
 
-### Función de Registro:
+# Ver logs específicos de la app
+flutter logs --app-id com.example.bomberos
+```
 
-```dart
-Future<void> _register() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() => _isLoading = true);
+### Contacto y Soporte
 
-    try {
-      final authService = SupabaseAuthService();
-      final result = await authService.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        fullName: _fullNameController.text.trim(),
-        rut: _rutController.text.trim(),
-        company: _companyController.text.trim(),
-      );
+#### Recursos Útiles
+- **Documentación Flutter**: [https://docs.flutter.dev](https://docs.flutter.dev)
+- **Documentación Supabase**: [https://supabase.com/docs](https://supabase.com/docs)
+- **Stack Overflow**: Para preguntas técnicas
+- **GitHub Issues**: Para reportar bugs
 
-      if (mounted) {
-        if (result.isSuccess) {
-          // Mostrar mensaje de éxito
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('¡Registro exitoso! Bienvenido ${result.user!.fullName}'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          
-          // Navegar a home
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        } else {
-          // Mostrar error
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result.error ?? 'Error al registrar'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-}
+#### Información del Sistema
+```bash
+# Información de Flutter
+flutter doctor -v
+
+# Información del dispositivo
+flutter devices
+
+# Información de la app
+flutter run --verbose
 ```
 
 ---
 
-## 🚀 7. Punto de Entrada (main.dart)
+## 📊 Métricas y Monitoreo
 
-### ¿Qué hace?
-Es lo primero que se ejecuta cuando se abre la app.
+### Métricas de Rendimiento
+- **Tiempo de carga**: < 3 segundos
+- **Memoria utilizada**: < 100MB
+- **Tamaño de APK**: < 50MB
 
-### Código explicado:
+### Métricas de Uso
+- **Usuarios activos**: Monitoreo en Supabase Dashboard
+- **Búsquedas realizadas**: Logs de la tabla `domicilio`
+- **Grifos registrados**: Contadores en tiempo real
 
-```dart
-Future<void> main() async {
-  // Inicializar Flutter
-  WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    // 1. Cargar archivo .env
-    await dotenv.load(fileName: ".env");
-    
-    // 2. Inicializar Supabase
-    await SupabaseConfig.initialize();
-    
-    // 3. Ejecutar la app
-    runApp(const MyApp());
-  } catch (e) {
-    // Si hay error, mostrar pantalla de error
-    runApp(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.red),
-                Text('Error de configuración'),
-                Text('No se pudo cargar el archivo .env'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-```
-
-### Verificador de Autenticación:
-
-```dart
-class _AuthCheckerState extends State<AuthChecker> {
-  @override
-  Widget build(BuildContext context) {
-    // Verificar si hay sesión activa
-    final session = Supabase.instance.client.auth.currentSession;
-
-    if (session != null) {
-      // Usuario autenticado → Ir a Home
-      return const HomeScreen();
-    } else {
-      // Usuario no autenticado → Ir a Login
-      return const LoginScreen();
-    }
-  }
-}
-```
-
-**Flujo al abrir la app:**
-1. Se carga el archivo `.env`
-2. Se inicializa Supabase
-3. Se verifica si hay sesión activa
-4. Si hay sesión → Muestra HomeScreen
-5. Si no hay sesión → Muestra LoginScreen
+### Alertas
+- **Errores de autenticación**: Monitoreo en Supabase
+- **Fallos de búsqueda**: Logs de aplicación
+- **Problemas de conectividad**: Retry automático
 
 ---
 
-## 🔄 Flujo Completo de Autenticación
+## 🔄 Actualizaciones y Mantenimiento
 
-### Registro de Usuario:
-```
-Usuario llena formulario
-    ↓
-Se validan los datos (RUT, email, etc.)
-    ↓
-Se llama a SupabaseAuthService.signUp()
-    ↓
-Se crea cuenta en Supabase Auth
-    ↓
-Se guardan datos en tabla profiles
-    ↓
-Se inicia sesión automáticamente
-    ↓
-Se navega a HomeScreen
-```
+### Versionado
+- **Semantic Versioning**: MAJOR.MINOR.PATCH
+- **Changelog**: Documentación de cambios
+- **Release Notes**: Notas de versión
 
-### Inicio de Sesión:
-```
-Usuario ingresa email y contraseña
-    ↓
-Se llama a SupabaseAuthService.signInWithPassword()
-    ↓
-Supabase valida las credenciales
-    ↓
-Si es correcto, retorna token de sesión
-    ↓
-Se obtienen datos del perfil
-    ↓
-Se navega a HomeScreen
+### Actualizaciones de Dependencias
+```bash
+# Verificar dependencias obsoletas
+flutter pub outdated
+
+# Actualizar dependencias
+flutter pub upgrade
+
+# Verificar compatibilidad
+flutter pub deps
 ```
 
-### Persistencia de Sesión:
-```
-App se cierra
-    ↓
-App se abre de nuevo
-    ↓
-main.dart verifica si hay sesión
-    ↓
-Si hay sesión → Va directo a HomeScreen
-Si no hay sesión → Muestra LoginScreen
-```
+### Backup y Recuperación
+- **Base de datos**: Backup automático en Supabase
+- **Código**: Control de versiones con Git
+- **Configuración**: Documentación en README
 
 ---
 
-## 🗄️ Estructura de la Base de Datos
+## 📝 Conclusión
 
-### Tabla: `auth.users` (Supabase)
-Manejada automáticamente por Supabase:
-- `id` - UUID único
-- `email` - Email del usuario
-- `encrypted_password` - Contraseña encriptada
-- `last_sign_in_at` - Última vez que inició sesión
+El Sistema de Bomberos es una aplicación robusta y escalable que proporciona herramientas esenciales para bomberos en situaciones de emergencia. La integración con Supabase asegura un backend confiable y escalable, mientras que Flutter proporciona una experiencia de usuario nativa y responsive.
 
-### Tabla: `profiles` (Nuestra tabla)
-Datos adicionales que creamos nosotros:
-- `id` - UUID (referencia a auth.users)
-- `full_name` - Nombre completo
-- `rut` - RUT chileno
-- `fire_company` - Compañía de bomberos
-- `email` - Email (duplicado para búsquedas rápidas)
-- `created_at` - Fecha de creación
-- `updated_at` - Fecha de actualización
+### Características Destacadas
+- ✅ **Aplicación unificada** con funcionalidades completas
+- ✅ **Autenticación segura** con Supabase
+- ✅ **Búsqueda en tiempo real** de domicilios
+- ✅ **Gestión completa de grifos**
+- ✅ **Interfaz responsive** y moderna
+- ✅ **Código limpio** y bien documentado
 
----
-
-## 🔒 Seguridad
-
-### Row Level Security (RLS):
-```sql
--- Los usuarios solo pueden ver su propio perfil
-CREATE POLICY "Ver propio perfil"
-ON profiles FOR SELECT
-USING (auth.uid() = id);
-
--- Los usuarios solo pueden editar su propio perfil
-CREATE POLICY "Editar propio perfil"
-ON profiles FOR UPDATE
-USING (auth.uid() = id);
-```
-
-**¿Qué significa?** Aunque alguien intente acceder a la base de datos directamente, solo podrá ver y modificar sus propios datos.
+### Próximos Pasos
+1. **Testing exhaustivo** en dispositivos reales
+2. **Optimización de rendimiento**
+3. **Implementación de notificaciones push**
+4. **Integración con mapas en tiempo real**
+5. **Analytics y métricas de uso**
 
 ---
 
-## 📝 Resumen
-
-1. **`.env`** → Guarda las credenciales de forma segura
-2. **`supabase_config.dart`** → Lee el `.env` y conecta con Supabase
-3. **`supabase_auth_service.dart`** → Maneja login, registro y recuperación
-4. **`login.dart`** → Interfaz de inicio de sesión
-5. **`register.dart`** → Interfaz de registro con validación de RUT
-6. **`password.dart`** → Recuperación de contraseña
-7. **`main.dart`** → Inicializa todo y verifica sesión
-
-**La app Grifos usa exactamente el mismo código**, por eso ambas comparten usuarios.
-
----
-
-## 🎓 Conceptos Clave
-
-- **Singleton**: Patrón que asegura que solo existe una instancia de una clase
-- **async/await**: Forma de manejar operaciones asíncronas (como llamadas a API)
-- **try/catch**: Manejo de errores
-- **StatefulWidget**: Widget que puede cambiar su estado (como mostrar un spinner)
-- **Future**: Representa un valor que estará disponible en el futuro
-- **Row Level Security**: Seguridad a nivel de fila en la base de datos
-
----
-
-¿Tienes dudas sobre alguna parte específica? Revisa la documentación de Supabase o consulta con el equipo. 🚒
-
+*Documentación generada para el Sistema de Bomberos v1.0.0*
+*Última actualización: Diciembre 2024*

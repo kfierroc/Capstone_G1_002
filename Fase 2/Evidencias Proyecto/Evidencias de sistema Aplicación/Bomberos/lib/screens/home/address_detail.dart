@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/responsive.dart';
-import '../../widgets/emergency_alert_banner.dart';
+import '../../widgets/home/emergency_alert_banner.dart';
 import '../../widgets/search_card.dart';
 import '../../widgets/critical_summary_card.dart';
 import '../../widgets/address_info_card.dart';

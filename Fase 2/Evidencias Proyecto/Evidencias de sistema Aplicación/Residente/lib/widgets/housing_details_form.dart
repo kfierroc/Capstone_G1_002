@@ -35,7 +35,7 @@ class HousingDetailsForm extends StatelessWidget {
         
         // Tipo de vivienda
         DropdownButtonFormField<String>(
-          value: selectedHousingType,
+          initialValue: selectedHousingType,
           decoration: InputDecoration(
             labelText: 'Tipo de vivienda *',
             prefixIcon: const Icon(Icons.home_outlined),
@@ -55,9 +55,11 @@ class HousingDetailsForm extends StatelessWidget {
 
         // Número de pisos
         DropdownButtonFormField<String>(
-          value: numberOfFloors,
+          initialValue: numberOfFloors,
           decoration: InputDecoration(
-            labelText: 'Número de pisos *',
+            labelText: selectedHousingType == 'Casa' || selectedHousingType == 'Departamento' 
+                ? 'Piso en el que resides *' 
+                : 'Número de pisos *',
             prefixIcon: const Icon(Icons.layers_outlined),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -78,7 +80,7 @@ class HousingDetailsForm extends StatelessWidget {
 
         // Material de construcción
         DropdownButtonFormField<String>(
-          value: selectedMaterial,
+          initialValue: selectedMaterial,
           decoration: InputDecoration(
             labelText: 'Material principal *',
             prefixIcon: const Icon(Icons.construction_outlined),
@@ -99,7 +101,7 @@ class HousingDetailsForm extends StatelessWidget {
 
         // Estado de la vivienda
         DropdownButtonFormField<String>(
-          value: selectedCondition,
+          initialValue: selectedCondition,
           decoration: InputDecoration(
             labelText: 'Estado general *',
             prefixIcon: const Icon(Icons.home_repair_service_outlined),

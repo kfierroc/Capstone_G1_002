@@ -203,9 +203,12 @@ class _Step4HousingDetailsState extends State<Step4HousingDetails> {
                   DropdownButtonFormField<String>(
                     initialValue: _numberOfFloors,
                     decoration: InputDecoration(
-                      labelText: 'Número de pisos *',
-                      hintText:
-                          'Indica la cantidad total de pisos de la vivienda',
+                      labelText: _selectedHousingType == 'Casa' || _selectedHousingType == 'Departamento' 
+                          ? 'Piso en el que resides *' 
+                          : 'Número de pisos *',
+                      hintText: _selectedHousingType == 'Casa' || _selectedHousingType == 'Departamento'
+                          ? 'Indica el piso donde resides'
+                          : 'Indica la cantidad total de pisos de la vivienda',
                       prefixIcon: const Icon(Icons.layers_outlined),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -362,7 +365,7 @@ class _Step4HousingDetailsState extends State<Step4HousingDetails> {
                         const SizedBox(height: 10),
                         _buildSummaryItem(
                           'Contacto:',
-                          widget.registrationData.mainPhone ??
+                          widget.registrationData.phoneNumber ??
                               'No especificado',
                         ),
                       ],

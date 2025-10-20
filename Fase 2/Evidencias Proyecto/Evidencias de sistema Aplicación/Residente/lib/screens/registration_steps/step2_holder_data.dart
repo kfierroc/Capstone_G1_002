@@ -111,9 +111,9 @@ class _Step2HolderDataState extends State<Step2HolderData>
 
       widget.registrationData.medicalConditions = _selectedConditions;
       
-      print('✅ Datos del paso 2 guardados:');
-      print('   - rut: ${widget.registrationData.rut}');
-      print('   - phone: ${widget.registrationData.phoneNumber}');
+      debugPrint('✅ Datos del paso 2 guardados:');
+      debugPrint('   - rut: ${widget.registrationData.rut}');
+      debugPrint('   - phone: ${widget.registrationData.phoneNumber}');
       
       widget.onNext();
     }

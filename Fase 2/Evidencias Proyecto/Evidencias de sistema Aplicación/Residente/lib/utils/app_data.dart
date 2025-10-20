@@ -1,5 +1,4 @@
 /// Constantes de datos para la aplicación
-
 class MedicalConditions {
   MedicalConditions._();
 

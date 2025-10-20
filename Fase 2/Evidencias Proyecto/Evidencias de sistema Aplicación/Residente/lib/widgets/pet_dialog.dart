@@ -120,7 +120,7 @@ class _PetDialogState extends State<PetDialog> {
             ),
             const SizedBox(height: AppSpacing.lg),
             DropdownButtonFormField<String>(
-              value: _selectedSpecies,
+              initialValue: _selectedSpecies,
               decoration: InputDecoration(
                 labelText: 'Selecciona la especie',
                 border: OutlineInputBorder(
@@ -138,7 +138,7 @@ class _PetDialogState extends State<PetDialog> {
             ),
             const SizedBox(height: AppSpacing.lg),
             DropdownButtonFormField<String>(
-              value: _selectedSize,
+              initialValue: _selectedSize,
               decoration: InputDecoration(
                 labelText: 'Selecciona el tamaño',
                 border: OutlineInputBorder(

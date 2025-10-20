@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants/app_sizes.dart';
-import '../constants/app_styles.dart';
+import '../constants/app_theme.dart';
 import '../utils/responsive.dart';
 import 'critical_stat_widget.dart';
 
@@ -23,10 +22,8 @@ class CriticalSummaryCard extends StatelessWidget {
 
     return Container(
       margin: ResponsiveHelper.getResponsiveMargin(context),
-      padding: EdgeInsets.all(isTablet ? AppSizes.paddingXxl : AppSizes.paddingLg),
-      decoration: AppDecorations.redGradient(
-        borderRadius: isTablet ? AppSizes.radiusLg : AppSizes.radius,
-      ),
+      padding: EdgeInsets.all(isTablet ? AppTheme.paddingXxl : AppTheme.paddingLg),
+      decoration: AppThemeDecorations.redGradient(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -35,13 +32,13 @@ class CriticalSummaryCard extends StatelessWidget {
             style: AppTextStyles.whiteTitle.copyWith(
               fontSize: ResponsiveHelper.getResponsiveFontSize(
                 context,
-                mobile: AppSizes.fontXl,
-                tablet: AppSizes.fontTitle,
+                mobile: AppTheme.fontXlSize,
+                tablet: AppTheme.fontTitleSizeValue,
                 desktop: 26,
               ),
             ),
           ),
-          SizedBox(height: isTablet ? AppSizes.paddingXl : AppSizes.spaceXxl),
+          SizedBox(height: isTablet ? AppTheme.paddingXl : AppTheme.spaceXxl),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [

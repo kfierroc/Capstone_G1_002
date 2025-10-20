@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/registration_data.dart';
@@ -32,40 +33,38 @@ class DatabaseService {
     required RegistrationData data,
   }) async {
     try {
-      print('🔍 Validando datos del grupo familiar:');
-      print('   - userId: $userId');
-      print('   - rut: ${data.rut ?? "NULL"}');
-      print('   - address: ${data.address ?? "NULL"}');
-      print('   - latitude: ${data.latitude ?? "NULL"}');
-      print('   - longitude: ${data.longitude ?? "NULL"}');
-      print('   - housingType: ${data.housingType ?? "NULL"}');
-      print('   - mainPhone: ${data.mainPhone ?? "NULL"}');
+      debugPrint('🔍 Validando datos del grupo familiar:');
+      debugPrint('   - userId: $userId');
+      debugPrint('   - rut: ${data.rut ?? "NULL"}');
+      debugPrint('   - address: ${data.address ?? "NULL"}');
+      debugPrint('   - latitude: ${data.latitude ?? "NULL"}');
+      debugPrint('   - longitude: ${data.longitude ?? "NULL"}');
+      debugPrint('   - housingType: ${data.housingType ?? "NULL"}');
+      debugPrint('   - mainPhone: ${data.mainPhone ?? "NULL"}');
       
       // Validar que todos los datos requeridos estén presentes
       if (data.rut == null || data.address == null) {
-        print('❌ Datos incompletos:');
-        if (data.rut == null) print('   - Falta: rut');
-        if (data.address == null) print('   - Falta: address');
+        debugPrint('❌ Datos incompletos:');
+        if (data.rut == null) debugPrint('   - Falta: rut');
+        if (data.address == null) debugPrint('   - Falta: address');
         return DatabaseResult.error('Datos incompletos del grupo familiar');
       }
 
       // Crear grupo familiar adaptado al esquema actual de la BD
-      print('📝 Creando grupo familiar...');
+      debugPrint('📝 Creando grupo familiar...');
       
-      // Generar ID numérico para id_grupof (compatible con integer)
-      // Usar solo los últimos dígitos del timestamp para que quepa en int32
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final idGrupoF = (timestamp % 2147483647); // Limitar al rango de int4 (max: 2,147,483,647)
+      // Generar ID manualmente para id_grupof (compatible con INTEGER)
+      final idGrupoF = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Usar segundos en lugar de milisegundos
       
       final grupoData = {
-        'id_grupof': idGrupoF,
+        'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
         'rut_titular': data.rut,
         'email': data.email, // Agregar email que es requerido
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
       
-      print('📝 Datos a insertar en grupofamiliar:');
-      print('   ${grupoData.toString()}');
+      debugPrint('📝 Datos a insertar en grupofamiliar:');
+      debugPrint('   ${grupoData.toString()}');
       
       final grupoResponse = await _client
           .from('grupofamiliar')
@@ -73,37 +72,50 @@ class DatabaseService {
           .select()
           .single();
 
-      print('📦 Respuesta del grupo familiar: $grupoResponse');
-      print('📦 Tipo de respuesta: ${grupoResponse.runtimeType}');
-      print('📦 Campos en respuesta: ${grupoResponse.keys.toList()}');
-      print('✅ Grupo familiar creado con ID: $idGrupoF');
+      debugPrint('📦 Respuesta del grupo familiar: $grupoResponse');
+      debugPrint('📦 Tipo de respuesta: ${grupoResponse.runtimeType}');
+      debugPrint('📦 Campos en respuesta: ${grupoResponse.keys.toList()}');
+      debugPrint('✅ Grupo familiar creado con ID: ${grupoResponse['id_grupof']}');
 
-      // Crear residencia (temporalmente deshabilitado debido a diferencias en el esquema)
-      print('⚠️ Creación de residencia temporalmente deshabilitada');
-      print('📝 Datos que se habrían insertado en residencia:');
-      print('   - direccion: ${data.address}');
-      print('   - lat: ${data.latitude ?? 0.0}');
-      print('   - lon: ${data.longitude ?? 0.0}');
-      print('   - tipo_vivienda: ${data.housingType}');
-      print('   - telefono_principal: ${data.mainPhone}');
-      print('⚠️ La tabla residencia no tiene la columna id_grupof en el esquema real');
+       // Crear residencia usando el método público
+       debugPrint('📝 Creando residencia y registro_v...');
+       
+       final grupo = GrupoFamiliar.fromJson(grupoResponse);
+       
+       try {
+         // Usar el método público crearResidencia que maneja residencia + registro_v
+        await crearResidencia(
+          grupoId: grupo.idGrupoF.toString(),
+          data: data,
+        );
+         debugPrint('✅ Residencia y registro_v creados exitosamente');
+       } catch (e) {
+         debugPrint('❌ Error al crear residencia: $e');
+         debugPrint('   - Tipo de error: ${e.runtimeType}');
+         if (e is PostgrestException) {
+           debugPrint('   - Código: ${e.code}');
+           debugPrint('   - Mensaje: ${e.message}');
+           debugPrint('   - Detalles: ${e.details}');
+           debugPrint('   - Hint: ${e.hint}');
+         }
+         debugPrint('   - Continuando sin residencia...');
+       }
       
        // Crear objeto GrupoFamiliar para retornar
-       final grupo = GrupoFamiliar.fromJson(grupoResponse);
        
        return DatabaseResult.success(
          data: grupo,
          message: 'Grupo familiar creado exitosamente',
        );
      } on PostgrestException catch (e) {
-       print('❌ PostgrestException capturada:');
-       print('   - Code: ${e.code}');
-       print('   - Message: ${e.message}');
-       print('   - Details: ${e.details}');
-       print('   - Hint: ${e.hint}');
+       debugPrint('❌ PostgrestException capturada:');
+       debugPrint('   - Code: ${e.code}');
+       debugPrint('   - Message: ${e.message}');
+       debugPrint('   - Details: ${e.details}');
+       debugPrint('   - Hint: ${e.hint}');
        return DatabaseResult.error(_getPostgrestErrorMessage(e));
      } catch (e) {
-       print('❌ Error inesperado: ${e.toString()}');
+       debugPrint('❌ Error inesperado: ${e.toString()}');
        return DatabaseResult.error('Error al crear grupo familiar: ${e.toString()}');
      }
   }
@@ -113,36 +125,97 @@ class DatabaseService {
     required String email,
   }) async {
     try {
+      debugPrint('🔍 Buscando grupo familiar para email: $email');
+      
+      // Primero, intentar obtener todos los grupos familiares para debugging
+      debugPrint('🔍 Verificando todos los grupos familiares en la base de datos...');
+      final allGroupsResponse = await _client
+          .from('grupofamiliar')
+          .select('id_grupof, email, rut_titular, fecha_creacion')
+          .limit(10);
+      
+      debugPrint('📊 Total de grupos familiares encontrados: ${allGroupsResponse.length}');
+      for (int i = 0; i < allGroupsResponse.length; i++) {
+        final group = allGroupsResponse[i];
+        debugPrint('   Grupo $i: id="${group['id_grupof']}", email="${group['email']}", rut="${group['rut_titular']}", fecha="${group['fecha_creacion']}"');
+      }
+      
+      // Verificar específicamente si hay múltiples registros para el email buscado
+      final duplicateCheck = await _client
+          .from('grupofamiliar')
+          .select('id_grupof, email, rut_titular, fecha_creacion')
+          .eq('email', email);
+      
+      debugPrint('🔍 Verificación de duplicados para $email:');
+      debugPrint('   - Registros encontrados: ${duplicateCheck.length}');
+      for (int i = 0; i < duplicateCheck.length; i++) {
+        final duplicate = duplicateCheck[i];
+        debugPrint('   - Duplicado $i: id="${duplicate['id_grupof']}", rut="${duplicate['rut_titular']}", fecha="${duplicate['fecha_creacion']}"');
+      }
+      
+      // Si hay múltiples registros, eliminar los registros migrados (con "Sin RUT")
+      if (duplicateCheck.length > 1) {
+        debugPrint('🔍 Limpiando registros duplicados...');
+        for (final duplicate in duplicateCheck) {
+          if (duplicate['rut_titular'] == 'Sin RUT') {
+            debugPrint('🗑️ Eliminando registro migrado: ${duplicate['id_grupof']}');
+            try {
+              await _client
+                  .from('grupofamiliar')
+                  .delete()
+                  .eq('id_grupof', duplicate['id_grupof']);
+              debugPrint('✅ Registro migrado eliminado');
+            } catch (e) {
+              debugPrint('❌ Error al eliminar registro migrado: $e');
+            }
+          }
+        }
+      }
+      
+      // Ahora buscar el grupo específico (priorizar el más antiguo)
+      debugPrint('🔍 Buscando grupo familiar específico para: $email');
       final response = await _client
           .from('grupofamiliar')
           .select()
           .eq('email', email)
+          .order('fecha_creacion', ascending: true) // Priorizar el más antiguo
+          .limit(1)
           .maybeSingle();
 
+      debugPrint('📦 Respuesta de la consulta específica: $response');
+
       if (response == null) {
+        debugPrint('❌ No se encontró grupo familiar para el email: $email');
         return DatabaseResult.error('Grupo familiar no encontrado');
       }
 
+      debugPrint('✅ Grupo familiar encontrado: $response');
       final grupo = GrupoFamiliar.fromJson(response);
       
       return DatabaseResult.success(data: grupo);
     } on PostgrestException catch (e) {
+      debugPrint('❌ PostgrestException en obtenerGrupoFamiliar:');
+      debugPrint('   - Code: ${e.code}');
+      debugPrint('   - Message: ${e.message}');
+      debugPrint('   - Details: ${e.details}');
+      debugPrint('   - Hint: ${e.hint}');
       return DatabaseResult.error(_getPostgrestErrorMessage(e));
     } catch (e) {
+      debugPrint('❌ Error inesperado en obtenerGrupoFamiliar: $e');
       return DatabaseResult.error('Error al obtener grupo familiar: ${e.toString()}');
     }
   }
 
   /// Actualizar grupo familiar
   Future<DatabaseResult<GrupoFamiliar>> actualizarGrupoFamiliar({
-    required int grupoId,
+    required String grupoId,
     required Map<String, dynamic> updates,
   }) async {
     try {
       final response = await _client
           .from('grupofamiliar')
           .update(updates)
-          .eq('id_grupof', grupoId)
+          .eq('id_grupof', int.parse(grupoId))
           .select()
           .single();
 
@@ -160,45 +233,286 @@ class DatabaseService {
   }
 
   // ============================================================================
+  // MÉTODOS AUXILIARES PARA COMUNAS
+  // ============================================================================
+
+  /// Desactivar registros_v antiguos para un grupo familiar
+  Future<void> _desactivarRegistrosAntiguos(String grupoId) async {
+    try {
+      await _client
+          .from('registro_v')
+          .update({'vigente': false})
+          .eq('id_grupof', int.parse(grupoId))
+          .eq('vigente', true);
+      
+      debugPrint('✅ Registros antiguos desactivados para grupo: $grupoId');
+    } catch (e) {
+      debugPrint('⚠️ Error al desactivar registros antiguos: $e');
+    }
+  }
+
+  // ============================================================================
+  // MÉTODOS AUXILIARES PARA COMUNAS
+  // ============================================================================
+
+  /// Obtiene una comuna válida para crear residencias
+  /// Primero busca comunas existentes, si no hay ninguna crea una temporal válida
+  Future<int> _obtenerComunaValida() async {
+    try {
+      // 1. Buscar comunas existentes
+      final comunasResponse = await _client
+          .from('comunas')
+          .select('cut_com')
+          .limit(1);
+      
+      if (comunasResponse.isNotEmpty) {
+        final cutCom = comunasResponse.first['cut_com'] as int;
+        debugPrint('✅ Usando comuna existente: $cutCom');
+        return cutCom;
+      }
+      
+      debugPrint('⚠️ No se encontraron comunas existentes, creando comuna temporal...');
+      
+      // 2. Crear comuna temporal con todos los campos requeridos
+      const cutComTemporal = 99999;
+      
+      try {
+        await _client
+            .from('comunas')
+            .insert({
+              'cut_com': cutComTemporal,
+              'comuna': 'Comuna Temporal',
+              'cut_reg': 99, // Región temporal
+              'region': 'Región Temporal',
+              'cut_prov': 999, // Provincia temporal
+              'provincia': 'Provincia Temporal',
+              'superficie': 1.0, // Superficie mínima en km²
+              'geometry': 'MULTIPOLYGON(((-1 -1, 1 -1, 1 1, -1 1, -1 -1)))', // Cuadrado genérico
+            })
+            .select();
+        
+        debugPrint('✅ Comuna temporal creada: $cutComTemporal');
+        return cutComTemporal;
+        
+      } catch (e) {
+        debugPrint('❌ Error al crear comuna temporal: $e');
+        
+        // 3. Si falla, intentar con una comuna más simple
+        const cutComAlternativo = 99998;
+        try {
+          await _client
+              .from('comunas')
+              .insert({
+                'cut_com': cutComAlternativo,
+                'comuna': 'Comuna Alternativa',
+                'cut_reg': 98,
+                'region': 'Región Alternativa',
+                'cut_prov': 998,
+                'provincia': 'Provincia Alternativa',
+                'superficie': 1.0,
+                'geometry': 'MULTIPOLYGON(((-1 -1, 1 -1, 1 1, -1 1, -1 -1)))', // Cuadrado pequeño alternativo
+              })
+              .select();
+          
+          debugPrint('✅ Comuna alternativa creada: $cutComAlternativo');
+          return cutComAlternativo;
+          
+        } catch (e2) {
+          debugPrint('❌ Error al crear comuna alternativa: $e2');
+          return 0; // Indica error
+        }
+      }
+      
+    } catch (e) {
+      debugPrint('❌ Error al buscar comunas: $e');
+      return 0; // Indica error
+    }
+  }
+
+  // ============================================================================
   // OPERACIONES DE RESIDENCIAS
   // ============================================================================
 
-  /// Obtener residencia de un grupo familiar
-  Future<DatabaseResult<Residencia>> obtenerResidencia({
-    required int grupoId,
+  /// Crear residencia para un grupo familiar
+  Future<DatabaseResult<Residencia>> crearResidencia({
+    required String grupoId,
+    required RegistrationData data,
   }) async {
     try {
-      // Obtener los datos de la residencia directamente
-      final response = await _client
+      debugPrint('📝 Creando residencia y registro_v para grupo: $grupoId');
+      
+      // 1. Buscar una comuna existente primero
+      int cutCom = await _obtenerComunaValida();
+      
+      if (cutCom == 0) {
+        return DatabaseResult.error('No se pudo obtener una comuna válida para crear la residencia');
+      }
+      
+      // 2. Crear la residencia
+      final idResidencia = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
+      final residenciaData = {
+        'id_residencia': idResidencia,
+        // 'id_grupof': int.parse(grupoId), // Esta columna no existe en residencia, se maneja en registro_v
+        'direccion': (data.address != null && data.address!.isNotEmpty) 
+            ? data.address!
+            : 'Dirección temporal $idResidencia', // Usar ID único para evitar duplicados
+        'lat': data.latitude != null ? double.parse(data.latitude!.toStringAsFixed(1)) : 0.0,
+        'lon': data.longitude != null ? double.parse(data.longitude!.toStringAsFixed(1)) : 0.0,
+        'cut_com': cutCom, // Usar el código de comuna válido
+        // Solo incluir campos que existen en la BD real
+        if (data.housingType != null) 'tipo_vivienda': data.housingType,
+        if (data.numberOfFloors != null) 'numero_pisos': data.numberOfFloors,
+        if (data.constructionMaterial != null) 'material_construccion': data.constructionMaterial,
+        if (data.mainPhone != null) 'telefono_principal': data.mainPhone,
+        if (data.alternatePhone != null) 'telefono_alternativo': data.alternatePhone,
+        if (data.specialInstructions != null) 'instrucciones_especiales': data.specialInstructions,
+        // Comentar campos que no existen en la BD real
+        // 'estado_vivienda': data.housingCondition, // No existe en la BD real
+      };
+      
+      debugPrint('📝 Datos de residencia: $residenciaData');
+      
+      final residenciaResponse = await _client
           .from('residencia')
+          .insert(residenciaData)
           .select()
-          .eq('id_grupof', grupoId)
+          .single();
+          
+      debugPrint('✅ Residencia creada: ${residenciaResponse['id_residencia']}');
+      
+      // 3. Desactivar registros antiguos para evitar duplicados
+      await _desactivarRegistrosAntiguos(grupoId);
+      
+      // 4. Crear el registro_v para relacionar grupo con residencia
+      final idRegistro = DateTime.now().millisecondsSinceEpoch ~/ 1000 + 1; // Diferente al id_residencia
+      
+      final registroVData = {
+        'id_registro': idRegistro,
+        'id_residencia': idResidencia, // Usar int directamente
+        'id_grupof': int.parse(grupoId), // Convertir String a int
+        'vigente': true,
+        'estado': 'Activo',
+        'material': data.constructionMaterial,
+        'tipo': data.housingType,
+        'fecha_ini_r': DateTime.now().toIso8601String().split('T')[0],
+      };
+      
+      debugPrint('📝 Datos de registro_v: $registroVData');
+      
+      await _client
+          .from('registro_v')
+          .insert(registroVData)
+          .select()
+          .single();
+          
+      debugPrint('✅ Registro_v creado: $idRegistro');
+      
+      final residencia = Residencia.fromJson(residenciaResponse);
+      
+      return DatabaseResult.success(
+        data: residencia,
+        message: 'Residencia y registro creados exitosamente',
+      );
+    } on PostgrestException catch (e) {
+      debugPrint('❌ Error al crear residencia: $e');
+      return DatabaseResult.error(_getPostgrestErrorMessage(e));
+    } catch (e) {
+      debugPrint('❌ Error inesperado al crear residencia: $e');
+      return DatabaseResult.error('Error al crear residencia: ${e.toString()}');
+    }
+  }
+
+  /// Obtener residencia de un grupo familiar
+  Future<DatabaseResult<Residencia>> obtenerResidencia({
+    required String grupoId,
+  }) async {
+    try {
+      debugPrint('🔍 Buscando residencia para grupo: $grupoId');
+      
+      // Obtener residencia a través de registro_v
+      final response = await _client
+          .from('registro_v')
+          .select('''
+            id_registro,
+            id_residencia,
+            id_grupof,
+            vigente,
+            estado,
+            material,
+            tipo,
+            fecha_ini_r,
+            fecha_fin_r,
+            residencia:residencia(*)
+          ''')
+          .eq('id_grupof', int.parse(grupoId))
+          .eq('vigente', true)
+          .order('fecha_ini_r', ascending: false) // Ordenar por fecha más reciente
+          .limit(1)
           .maybeSingle();
 
       if (response == null) {
+        debugPrint('❌ No se encontró registro_v vigente para grupo: $grupoId');
         return DatabaseResult.error('Residencia no encontrada');
       }
 
-      final residencia = Residencia.fromJson(response);
+      debugPrint('✅ Registro_v encontrado: ${response['id_registro']}');
+      
+      // Extraer datos de la residencia desde la relación
+      final residenciaData = response['residencia'] as Map<String, dynamic>?;
+      if (residenciaData == null) {
+        debugPrint('❌ No se encontraron datos de residencia en la relación');
+        return DatabaseResult.error('Datos de residencia no encontrados');
+      }
+
+      final residencia = Residencia.fromJson(residenciaData);
       
       return DatabaseResult.success(data: residencia);
     } on PostgrestException catch (e) {
+      debugPrint('❌ Error al obtener residencia: $e');
       return DatabaseResult.error(_getPostgrestErrorMessage(e));
     } catch (e) {
+      debugPrint('❌ Error inesperado al obtener residencia: $e');
       return DatabaseResult.error('Error al obtener residencia: ${e.toString()}');
     }
   }
 
   /// Actualizar residencia
   Future<DatabaseResult<Residencia>> actualizarResidencia({
-    required int grupoId,
+    required String grupoId,
     required Map<String, dynamic> updates,
   }) async {
     try {
+      debugPrint('📝 Actualizando residencia para grupo: $grupoId');
+      
+      // 1. Obtener el registro_v vigente para encontrar la residencia
+      final registroResponse = await _client
+          .from('registro_v')
+          .select('id_residencia')
+          .eq('id_grupof', int.parse(grupoId))
+          .eq('vigente', true)
+          .order('fecha_ini_r', ascending: false) // Ordenar por fecha más reciente
+          .limit(1)
+          .maybeSingle();
+
+      if (registroResponse == null) {
+        debugPrint('❌ No se encontró registro_v vigente para grupo: $grupoId');
+        return DatabaseResult.error('No se encontró residencia asociada al grupo');
+      }
+
+      final idResidencia = registroResponse['id_residencia'];
+      debugPrint('✅ Residencia encontrada: $idResidencia');
+      
+      if (idResidencia == null) {
+        debugPrint('❌ ID de residencia es null');
+        return DatabaseResult.error('ID de residencia no encontrado');
+      }
+      
+      // 2. Actualizar la residencia
       final response = await _client
           .from('residencia')
           .update(updates)
-          .eq('id_grupof', grupoId)
+          .eq('id_residencia', int.parse(idResidencia.toString()))
           .select()
           .single();
 
@@ -209,8 +523,10 @@ class DatabaseService {
         message: 'Residencia actualizada exitosamente',
       );
     } on PostgrestException catch (e) {
+      debugPrint('❌ Error al actualizar residencia: $e');
       return DatabaseResult.error(_getPostgrestErrorMessage(e));
     } catch (e) {
+      debugPrint('❌ Error inesperado al actualizar residencia: $e');
       return DatabaseResult.error('Error al actualizar residencia: ${e.toString()}');
     }
   }
@@ -221,13 +537,13 @@ class DatabaseService {
 
   /// Obtener todos los integrantes de un grupo familiar
   Future<DatabaseResult<List<Integrante>>> obtenerIntegrantes({
-    required int grupoId,
+    required String grupoId,
   }) async {
     try {
       final response = await _client
           .from('integrante')
           .select()
-          .eq('id_grupof', grupoId)
+          .eq('id_grupof', int.parse(grupoId))
           .eq('activo_i', true)
           .order('created_at', ascending: true);
 
@@ -245,19 +561,25 @@ class DatabaseService {
 
   /// Agregar integrante al grupo familiar
   Future<DatabaseResult<Integrante>> agregarIntegrante({
-    required int grupoId,
+    required String grupoId,
     required String rut,
     required int edad,
     required int anioNac,
     String? padecimiento,
   }) async {
     try {
+      // Generar ID manualmente para integrante
+      final idIntegrante = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
       final integranteData = {
-        'id_grupof': grupoId,
-        'rut': rut,
-        'edad': edad,
-        'anio_nac': anioNac,
-        'padecimiento': padecimiento,
+        'id_integrante': idIntegrante, // ID manual para compatibilidad con esquema actual
+        'id_grupof': int.parse(grupoId), // Convertir a int
+        'activo_i': true, // Columna requerida
+        'fecha_ini_i': DateTime.now().toIso8601String().split('T')[0], // Columna requerida
+        'rut': rut, // Ahora existe en la BD real
+        'edad': edad, // Ahora existe en la BD real
+        'anio_nac': anioNac, // Ahora existe en la BD real
+        'padecimiento': padecimiento, // Ahora existe en la BD real
       };
 
       final response = await _client
@@ -288,7 +610,7 @@ class DatabaseService {
       final response = await _client
           .from('integrante')
           .update(updates)
-          .eq('id_integrante', integranteId)
+          .eq('id_integrante', int.parse(integranteId))
           .select()
           .single();
 
@@ -316,7 +638,7 @@ class DatabaseService {
             'activo_i': false,
             'fecha_fin_i': DateTime.now().toIso8601String().split('T')[0],
           })
-          .eq('id_integrante', integranteId);
+          .eq('id_integrante', int.parse(integranteId));
 
       return DatabaseResult.success(
         data: null,
@@ -335,13 +657,13 @@ class DatabaseService {
 
   /// Obtener todas las mascotas de un grupo familiar
   Future<DatabaseResult<List<Mascota>>> obtenerMascotas({
-    required int grupoId,
+    required String grupoId,
   }) async {
     try {
       final response = await _client
           .from('mascota')
           .select()
-          .eq('id_grupof', grupoId)
+          .eq('id_grupof', int.parse(grupoId))
           .order('created_at', ascending: true);
 
       final mascotas = (response as List)
@@ -358,17 +680,22 @@ class DatabaseService {
 
   /// Agregar mascota al grupo familiar
   Future<DatabaseResult<Mascota>> agregarMascota({
-    required int grupoId,
+    required String grupoId,
     required String nombre,
     required String especie,
     required String tamanio,
   }) async {
     try {
+      // Generar ID manualmente para mascota
+      final idMascota = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
       final mascotaData = {
-        'id_grupof': grupoId,
+        'id_mascota': idMascota, // ID manual para compatibilidad con esquema actual
+        'id_grupof': int.parse(grupoId), // Convertir a int
         'nombre_m': nombre,
         'especie': especie,
         'tamanio': tamanio,
+        'fecha_reg_m': DateTime.now().toIso8601String().split('T')[0], // Agregar fecha de registro
       };
 
       final response = await _client
@@ -399,7 +726,7 @@ class DatabaseService {
       final response = await _client
           .from('mascota')
           .update(updates)
-          .eq('id_mascota', mascotaId)
+          .eq('id_mascota', int.parse(mascotaId))
           .select()
           .single();
 
@@ -424,7 +751,7 @@ class DatabaseService {
       await _client
           .from('mascota')
           .delete()
-          .eq('id_mascota', mascotaId);
+          .eq('id_mascota', int.parse(mascotaId));
 
       return DatabaseResult.success(
         data: null,
@@ -462,6 +789,219 @@ class DatabaseService {
   }
 
   // ============================================================================
+  // OPERACIONES COMPLETAS DE USUARIO
+  // ============================================================================
+
+  /// Cargar toda la información del usuario (grupo familiar + residencia + integrantes + mascotas)
+  Future<DatabaseResult<Map<String, dynamic>>> cargarInformacionCompletaUsuario({
+    required String email,
+  }) async {
+    try {
+      debugPrint('🔍 Cargando información completa del usuario: $email');
+      
+      // 1. Obtener grupo familiar
+      final grupoResult = await obtenerGrupoFamiliar(email: email);
+      if (!grupoResult.isSuccess) {
+        debugPrint('⚠️ Grupo familiar no encontrado para $email');
+        debugPrint('🔍 Verificando si el usuario realmente no existe...');
+        
+        // Verificar si realmente no existe consultando directamente
+        try {
+          final directResponse = await _client
+              .from('grupofamiliar')
+              .select('email, rut_titular')
+              .eq('email', email)
+              .maybeSingle();
+          
+          if (directResponse != null) {
+            debugPrint('⚠️ El usuario SÍ existe en la BD pero hay un problema con obtenerGrupoFamiliar');
+            debugPrint('   - Email encontrado: ${directResponse['email']}');
+            debugPrint('   - RUT: ${directResponse['rut_titular']}');
+            return DatabaseResult.error('Error al cargar datos del usuario. Contacta al soporte técnico.');
+          }
+        } catch (e) {
+          debugPrint('❌ Error al verificar existencia directa: $e');
+        }
+        
+        debugPrint('🔍 Usuario realmente no existe, intentando migrar...');
+        
+        // Intentar migrar usuario existente solo si realmente no existe
+        final migracionResult = await _migrarUsuarioExistente(email: email);
+        if (!migracionResult.isSuccess) {
+          return DatabaseResult.error('No se encontró información del usuario. Asegúrate de completar el registro correctamente. Error de migración: ${migracionResult.error}');
+        }
+        
+        debugPrint('✅ Usuario migrado exitosamente: ${migracionResult.data!.idGrupoF}');
+      } else {
+        debugPrint('✅ Grupo familiar encontrado: ${grupoResult.data!.idGrupoF}');
+      }
+      
+      // Obtener el grupo familiar final
+      final grupoFinalResult = await obtenerGrupoFamiliar(email: email);
+      if (!grupoFinalResult.isSuccess) {
+        return DatabaseResult.error('Error al obtener grupo familiar');
+      }
+      
+      final grupo = grupoFinalResult.data!;
+      
+      // 2. Obtener residencia
+      debugPrint('🔍 Buscando residencia para grupo: ${grupo.idGrupoF}');
+      final residenciaResult = await obtenerResidencia(grupoId: grupo.idGrupoF.toString());
+      Residencia? residencia = residenciaResult.isSuccess ? residenciaResult.data : null;
+      
+      if (residencia == null) {
+        debugPrint('⚠️ No se encontró residencia para el grupo ${grupo.idGrupoF}');
+        debugPrint('   - Esto significa que no se creó la residencia durante el registro');
+        debugPrint('   - Creando residencia automáticamente...');
+        
+        try {
+          // Crear residencia automáticamente para usuarios existentes
+          final residenciaResult = await crearResidencia(
+            grupoId: grupo.idGrupoF.toString(),
+            data: RegistrationData(
+              email: grupo.email,
+              rut: grupo.rutTitular,
+              address: 'Dirección no especificada',
+              latitude: 0.0,
+              longitude: 0.0,
+              mainPhone: 'Sin teléfono',
+              alternatePhone: null,
+              housingType: 'No especificado',
+              numberOfFloors: 1,
+              constructionMaterial: 'No especificado',
+              housingCondition: 'No especificado',
+              specialInstructions: 'Usuario migrado - información por completar',
+            ),
+          );
+          
+          if (residenciaResult.isSuccess) {
+            debugPrint('✅ Residencia creada automáticamente para usuario existente');
+            // Recargar la residencia recién creada
+            final nuevaResidenciaResult = await obtenerResidencia(grupoId: grupo.idGrupoF.toString());
+            if (nuevaResidenciaResult.isSuccess) {
+              residencia = nuevaResidenciaResult.data;
+              debugPrint('✅ Residencia cargada: ${residencia?.direccion}');
+            }
+          } else {
+            debugPrint('❌ Error al crear residencia automáticamente: ${residenciaResult.error}');
+          }
+        } catch (e) {
+          debugPrint('❌ Error al crear residencia automáticamente: $e');
+        }
+      } else {
+        debugPrint('✅ Residencia encontrada: ${residencia.direccion}');
+      }
+      
+      // 3. Obtener integrantes
+      final integrantesResult = await obtenerIntegrantes(grupoId: grupo.idGrupoF.toString());
+      final integrantes = integrantesResult.isSuccess ? integrantesResult.data ?? [] : [];
+      
+      // 4. Obtener mascotas
+      final mascotasResult = await obtenerMascotas(grupoId: grupo.idGrupoF.toString());
+      final mascotas = mascotasResult.isSuccess ? mascotasResult.data ?? [] : [];
+      
+      // 5. Construir RegistrationData con la información obtenida
+      final registrationData = RegistrationData(
+        email: grupo.email,
+        rut: grupo.rutTitular,
+        fullName: null, // No se guarda en la BD actual
+        phoneNumber: residencia?.telefonoPrincipal,
+        address: residencia?.direccion,
+        latitude: residencia?.lat,
+        longitude: residencia?.lon,
+        mainPhone: residencia?.telefonoPrincipal,
+        alternatePhone: residencia?.telefonoAlternativo,
+        housingType: residencia?.tipoVivienda,
+        numberOfFloors: residencia?.numeroPisos,
+        constructionMaterial: residencia?.materialConstruccion,
+        housingCondition: residencia?.estadoVivienda,
+        specialInstructions: residencia?.instruccionesEspeciales,
+      );
+      
+      debugPrint('✅ Información del usuario cargada exitosamente');
+      debugPrint('   - Grupo ID: ${grupo.idGrupoF}');
+      debugPrint('   - Email: ${grupo.email}');
+      debugPrint('   - RUT: ${grupo.rutTitular}');
+      debugPrint('   - Fecha creación: ${grupo.fechaCreacion}');
+      debugPrint('   - Dirección: ${residencia?.direccion}');
+      debugPrint('   - Teléfono: ${residencia?.telefonoPrincipal}');
+      debugPrint('   - Integrantes: ${integrantes.length}');
+      debugPrint('   - Mascotas: ${mascotas.length}');
+      
+      // Verificar si los datos parecen ser de migración
+      if (grupo.rutTitular == 'Sin RUT') {
+        debugPrint('⚠️ ADVERTENCIA: Se está cargando un usuario migrado con datos por defecto');
+        debugPrint('   - Esto sugiere que el usuario real no se está encontrando correctamente');
+        debugPrint('   - Verificar si hay múltiples registros para el mismo email');
+      }
+      
+      return DatabaseResult.success(
+        data: {
+          'registrationData': registrationData,
+          'grupoFamiliar': grupo,
+          'residencia': residencia,
+          'integrantes': integrantes,
+          'mascotas': mascotas,
+        },
+        message: 'Información del usuario cargada exitosamente',
+      );
+      
+    } catch (e) {
+      debugPrint('❌ Error al cargar información del usuario: $e');
+      return DatabaseResult.error('Error al cargar información del usuario: ${e.toString()}');
+    }
+  }
+
+  /// Migrar usuario existente que no tiene grupo familiar en la base de datos
+  Future<DatabaseResult<GrupoFamiliar>> _migrarUsuarioExistente({
+    required String email,
+  }) async {
+    try {
+      debugPrint('🔍 Migrando usuario existente: $email');
+      
+      // Obtener el user_id del usuario autenticado
+      // final authService = AuthService();
+      // final userId = authService.userId;
+      
+      // if (userId == null) {
+      //   return DatabaseResult.error('No se pudo obtener el ID del usuario autenticado');
+      // }
+      
+      // Generar ID manualmente para id_grupof (compatible con INTEGER)
+      final idGrupoF = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Usar segundos en lugar de milisegundos
+      
+      final grupoData = {
+        'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
+        // 'user_id': userId, // Comentado temporalmente hasta que se actualice el esquema
+        'rut_titular': 'Sin RUT', // Valor temporal que se puede actualizar
+        'email': email,
+        'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
+      };
+      
+      debugPrint('📝 Datos a insertar en grupofamiliar para migración:');
+      debugPrint('   ${grupoData.toString()}');
+      
+      final response = await _client
+          .from('grupofamiliar')
+          .insert(grupoData)
+          .select()
+          .single();
+
+      final grupo = GrupoFamiliar.fromJson(response);
+      
+      debugPrint('✅ Usuario migrado exitosamente: ${grupo.idGrupoF}');
+      
+      return DatabaseResult.success(
+        data: grupo,
+        message: 'Usuario migrado exitosamente',
+      );
+    } catch (e) {
+      debugPrint('❌ Error al migrar usuario: $e');
+      return DatabaseResult.error('Error al migrar usuario: ${e.toString()}');
+    }
+  }
+
+  // ============================================================================
   // UTILIDADES
   // ============================================================================
 
@@ -485,7 +1025,7 @@ class DatabaseService {
 
 /// Modelo de Grupo Familiar (grupofamiliar) - Adaptado al esquema real
 class GrupoFamiliar {
-  final int idGrupoF;           // Integer como en el esquema real
+  final int idGrupoF;           // INTEGER como en el esquema real
   final String rutTitular;
   final String email;           // Email como en el esquema real
   final DateTime fechaCreacion;
@@ -503,7 +1043,7 @@ class GrupoFamiliar {
 
   factory GrupoFamiliar.fromJson(Map<String, dynamic> json) {
     return GrupoFamiliar(
-      idGrupoF: json['id_grupof'] as int,
+      idGrupoF: json['id_grupof'] as int, // Usar int directamente
       rutTitular: json['rut_titular'] as String,
       email: json['email'] as String,
       fechaCreacion: DateTime.parse(json['fecha_creacion'] as String),
@@ -530,8 +1070,8 @@ class GrupoFamiliar {
 
 /// Modelo de Residencia (adaptado al esquema real)
 class Residencia {
-  final String idResidencia;    // UUID de la residencia
-  final int idGrupoF;           // Integer del grupo familiar
+  final int idResidencia;    // INTEGER de la residencia
+  final int idGrupoF;           // INTEGER del grupo familiar
   final String direccion;
   final double lat;             // Coordenadas como double
   final double lon;             // Coordenadas como double
@@ -552,7 +1092,7 @@ class Residencia {
     required this.direccion,
     required this.lat,
     required this.lon,
-    required this.cutCom,
+    required this.cutCom, // Requerido ya que lo estamos enviando
     this.tipoVivienda,
     this.numeroPisos,
     this.materialConstruccion,
@@ -566,21 +1106,25 @@ class Residencia {
 
   factory Residencia.fromJson(Map<String, dynamic> json) {
     return Residencia(
-      idResidencia: json['id_residencia'] as String,
-      idGrupoF: json['id_grupof'] as int,
+      idResidencia: json['id_residencia'] as int, // Usar int directamente
+      idGrupoF: 0, // Esta columna no existe en residencia, se maneja en registro_v
       direccion: json['direccion'] as String,
       lat: (json['lat'] as num).toDouble(),
       lon: (json['lon'] as num).toDouble(),
       cutCom: json['cut_com'] as int,
-      tipoVivienda: json['tipo_vivienda'] as String?,
-      numeroPisos: json['numero_pisos'] as int?,
-      materialConstruccion: json['material_construccion'] as String?,
-      estadoVivienda: json['estado_vivienda'] as String?,
-      telefonoPrincipal: json['telefono_principal'] as String?,
-      telefonoAlternativo: json['telefono_alternativo'] as String?,
-      instruccionesEspeciales: json['instrucciones_especiales'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      tipoVivienda: json['tipo_vivienda'] as String?, // Ahora existe
+      numeroPisos: json['numero_pisos'] as int?, // Ahora existe
+      materialConstruccion: json['material_construccion'] as String?, // Ahora existe
+      estadoVivienda: json['estado_vivienda'] as String?, // Puede no existir en la BD real
+      telefonoPrincipal: json['telefono_principal'] as String?, // Ahora existe
+      telefonoAlternativo: json['telefono_alternativo'] as String?, // Ahora existe
+      instruccionesEspeciales: json['instrucciones_especiales'] as String?, // Ahora existe
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -592,13 +1136,13 @@ class Residencia {
       'lat': lat,
       'lon': lon,
       'cut_com': cutCom,
-      'tipo_vivienda': tipoVivienda,
-      'numero_pisos': numeroPisos,
-      'material_construccion': materialConstruccion,
-      'estado_vivienda': estadoVivienda,
-      'telefono_principal': telefonoPrincipal,
-      'telefono_alternativo': telefonoAlternativo,
-      'instrucciones_especiales': instruccionesEspeciales,
+      // 'tipo_vivienda': tipoVivienda, // Columna no existe en la BD
+      // 'numero_pisos': numeroPisos, // Columna no existe en la BD
+      // 'material_construccion': materialConstruccion, // Columna no existe en la BD
+      // 'estado_vivienda': estadoVivienda, // Columna no existe en la BD
+      // 'telefono_principal': telefonoPrincipal, // Columna no existe en la BD
+      // 'telefono_alternativo': telefonoAlternativo, // Columna no existe en la BD
+      // 'instrucciones_especiales': instruccionesEspeciales, // Columna no existe en la BD
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -613,7 +1157,7 @@ class Residencia {
 
 /// Modelo de Integrante (actualizado)
 class Integrante {
-  final String idIntegrante;
+  final int idIntegrante;
   final int idGrupoF;
   final bool activoI;
   final DateTime fechaIniI;
@@ -641,19 +1185,25 @@ class Integrante {
 
   factory Integrante.fromJson(Map<String, dynamic> json) {
     return Integrante(
-      idIntegrante: json['id_integrante'] as String,
-      idGrupoF: json['id_grupof'] as int,
-      activoI: json['activo_i'] as bool,
-      fechaIniI: DateTime.parse(json['fecha_ini_i'] as String),
+      idIntegrante: json['id_integrante'] as int, // Usar int directamente
+      idGrupoF: json['id_grupof'] as int, // Usar int directamente
+      activoI: json['activo_i'] as bool? ?? true,
+      fechaIniI: json['fecha_ini_i'] != null 
+          ? DateTime.parse(json['fecha_ini_i'] as String)
+          : DateTime.now(),
       fechaFinI: json['fecha_fin_i'] != null 
           ? DateTime.parse(json['fecha_fin_i'] as String)
           : null,
-      rut: json['rut'] as String,
-      edad: json['edad'] as int,
-      anioNac: json['anio_nac'] as int,
+      rut: json['rut'] as String? ?? '',
+      edad: json['edad'] as int? ?? 0,
+      anioNac: json['anio_nac'] as int? ?? 0,
       padecimiento: json['padecimiento'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -676,7 +1226,7 @@ class Integrante {
   /// Convertir a FamilyMember (para compatibilidad)
   FamilyMember toFamilyMember() {
     return FamilyMember(
-      id: idIntegrante,
+      id: idIntegrante.toString(),
       residentId: idGrupoF.toString(),
       rut: rut,
       age: edad,
@@ -690,7 +1240,7 @@ class Integrante {
 
 /// Modelo de Mascota (actualizado)
 class Mascota {
-  final String idMascota;
+  final int idMascota;
   final int idGrupoF;
   final String nombreM;
   final String especie;
@@ -712,14 +1262,20 @@ class Mascota {
 
   factory Mascota.fromJson(Map<String, dynamic> json) {
     return Mascota(
-      idMascota: json['id_mascota'] as String,
-      idGrupoF: json['id_grupof'] as int,
-      nombreM: json['nombre_m'] as String,
-      especie: json['especie'] as String,
-      tamanio: json['tamanio'] as String,
-      fechaRegM: DateTime.parse(json['fecha_reg_m'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      idMascota: json['id_mascota'] as int, // Usar int directamente
+      idGrupoF: json['id_grupof'] as int, // Usar int directamente
+      nombreM: json['nombre_m'] as String? ?? '',
+      especie: json['especie'] as String? ?? '',
+      tamanio: json['tamanio'] as String? ?? '',
+      fechaRegM: json['fecha_reg_m'] != null 
+          ? DateTime.parse(json['fecha_reg_m'] as String)
+          : DateTime.now(),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -739,7 +1295,7 @@ class Mascota {
   /// Convertir a Pet (para compatibilidad)
   Pet toPet() {
     return Pet(
-      id: idMascota,
+      id: idMascota.toString(),
       residentId: idGrupoF.toString(),
       name: nombreM,
       species: especie,
