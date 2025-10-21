@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../models/registration_data.dart';
-import '../../models/family_member.dart';
-import '../../models/pet.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
+import '../../models/models.dart';
+import '../../services/unified_auth_service.dart';
+import '../../services/database_service.dart' as db;
 import '../../utils/app_styles.dart';
 import 'tabs/family_tab.dart';
 import 'tabs/pets_tab.dart';
@@ -33,7 +31,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
   
   // Listas optimizadas con modelos tipados
   List<FamilyMember> _familyMembers = [];
-  List<Pet> _pets = [];
+  List<Mascota> _pets = [];
   
   bool _isLoading = true;
   bool _isLoadingData = false; // Bandera para evitar cargas duplicadas
@@ -45,7 +43,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
     _registrationData = widget.registrationData ?? RegistrationData();
     
     // Verificar autenticación antes de cargar datos
-    final authService = AuthService();
+    final authService = UnifiedAuthService();
     debugPrint('🔍 Verificando autenticación en initState:');
     debugPrint('   - Está autenticado: ${authService.isAuthenticated}');
     debugPrint('   - Usuario actual: ${authService.currentUser?.id}');
@@ -88,7 +86,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         });
       }
       
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final currentUser = authService.currentUser;
       final userEmail = authService.userEmail;
       
@@ -111,7 +109,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       
       debugPrint('✅ Email obtenido exitosamente: $userEmail');
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final result = await databaseService.cargarInformacionCompletaUsuario(email: userEmail);
       
       if (result.isSuccess) {
@@ -123,8 +121,8 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         if (mounted) {
           setState(() {
             _registrationData = registrationData;
-            _familyMembers = integrantes.map((i) => i.toFamilyMember()).toList();
-            _pets = mascotas.map((m) => m.toPet()).toList();
+            _familyMembers = integrantes.map((i) => i.toFamilyMember()).where((member) => member != null).cast<FamilyMember>().toList();
+            _pets = mascotas.map((m) => m).toList();
             _isLoading = false;
           });
         }
@@ -164,7 +162,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
   
   Future<void> _addFamilyMember(FamilyMember member) async {
     try {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
       if (userEmail == null) {
@@ -172,7 +170,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         return;
       }
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
@@ -183,10 +181,10 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       final grupo = grupoResult.data!;
       final integranteResult = await databaseService.agregarIntegrante(
         grupoId: grupo.idGrupoF.toString(),
-        rut: member.rut,
-        edad: member.age,
-        anioNac: member.birthYear,
-        padecimiento: member.conditions.isNotEmpty ? member.conditions.join(', ') : null,
+        rut: member.rut, // Se pasa pero no se usa en la BD real
+        edad: member.age, // Se pasa pero no se usa en la BD real
+        anioNac: member.birthYear, // Este SÍ se guarda en info_integrante
+        padecimiento: member.conditions.isNotEmpty ? member.conditions.join(', ') : null, // Este SÍ se guarda en info_integrante
       );
       
       if (integranteResult.isSuccess) {
@@ -203,7 +201,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
 
   Future<void> _editFamilyMember(int index, FamilyMember member) async {
     try {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
       if (userEmail == null) {
@@ -211,7 +209,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         return;
       }
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
@@ -227,10 +225,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       
       final integrante = integrantesResult.data![index];
       final updates = {
-        'rut': member.rut,
-        'edad': member.age,
-        'anio_nac': member.birthYear,
-        'padecimiento': member.conditions.isNotEmpty ? member.conditions.join(', ') : null,
+        // Solo campos que existen en las tablas reales
+        'anio_nac': member.birthYear, // Tabla info_integrante
+        'padecimiento': member.conditions.isNotEmpty ? member.conditions.join(', ') : null, // Tabla info_integrante
       };
       
       final result = await databaseService.actualizarIntegrante(
@@ -252,7 +249,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
 
   Future<void> _deleteFamilyMember(int index) async {
     try {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
       if (userEmail == null) {
@@ -260,7 +257,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         return;
       }
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
@@ -293,9 +290,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
   // MANEJO DE MASCOTAS
   // ============================================
   
-  Future<void> _addPet(Pet pet) async {
+  Future<void> _addPet(Mascota pet) async {
     try {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
       if (userEmail == null) {
@@ -303,7 +300,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         return;
       }
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
@@ -314,9 +311,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       final grupo = grupoResult.data!;
       final mascotaResult = await databaseService.agregarMascota(
         grupoId: grupo.idGrupoF.toString(),
-        nombre: pet.name,
-        especie: pet.species,
-        tamanio: pet.size,
+        nombre: pet.nombreM,
+        especie: pet.especie,
+        tamanio: pet.tamanio,
       );
       
       if (mascotaResult.isSuccess) {
@@ -331,9 +328,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
     }
   }
 
-  Future<void> _editPet(int index, Pet pet) async {
+  Future<void> _editPet(int index, Mascota pet) async {
     try {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
       if (userEmail == null) {
@@ -341,7 +338,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         return;
       }
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
@@ -357,9 +354,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       
       final mascota = mascotasResult.data![index];
       final updates = {
-        'nombre_m': pet.name,
-        'especie': pet.species,
-        'tamanio': pet.size,
+        'nombre_m': pet.nombreM,
+        'especie': pet.especie,
+        'tamanio': pet.tamanio,
       };
       
       final result = await databaseService.actualizarMascota(
@@ -382,7 +379,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
 
   Future<void> _deletePet(int index) async {
     try {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
       if (userEmail == null) {
@@ -390,7 +387,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         return;
       }
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
@@ -426,7 +423,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
   
   Future<void> _updateRegistrationData(RegistrationData newData) async {
     try {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
       if (userEmail == null) {
@@ -434,7 +431,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         return;
       }
       
-      final databaseService = DatabaseService();
+      final databaseService = db.DatabaseService();
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
@@ -467,22 +464,35 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
             'lat': double.parse(newData.latitude!.toStringAsFixed(1)), // Limitar a 1 decimal
           if (newData.longitude != null && newData.longitude! != 0.0) 
             'lon': double.parse(newData.longitude!.toStringAsFixed(1)), // Limitar a 1 decimal
-          // Solo incluir campos que existen en la BD real
-          if (newData.mainPhone != null) 'telefono_principal': newData.mainPhone,
-          if (newData.alternatePhone != null) 'telefono_alternativo': newData.alternatePhone,
-          if (newData.housingType != null) 'tipo_vivienda': newData.housingType,
-          if (newData.numberOfFloors != null) 'numero_pisos': newData.numberOfFloors,
-          if (newData.constructionMaterial != null) 'material_construccion': newData.constructionMaterial,
-          if (newData.specialInstructions != null) 'instrucciones_especiales': newData.specialInstructions,
-          // Comentar campos que no existen en la BD real
-          // if (newData.housingCondition != null) 'estado_vivienda': newData.housingCondition,
+          // Descomentar después de ejecutar el script SQL
+          // if (newData.mainPhone != null) 'telefono_principal': newData.mainPhone,
+          // if (newData.numberOfFloors != null) 'numero_pisos': newData.numberOfFloors,
+          // if (newData.specialInstructions != null) 'instrucciones_especiales': newData.specialInstructions,
         };
         
         if (residenciaUpdates.isNotEmpty) {
-        await databaseService.actualizarResidencia(
-          grupoId: grupo.idGrupoF.toString(),
-          updates: residenciaUpdates,
-        );
+          await databaseService.actualizarResidencia(
+            grupoId: grupo.idGrupoF.toString(),
+            updates: residenciaUpdates,
+          );
+        }
+        
+        // Actualizar también el registro_v si hay cambios en material o tipo
+        if (newData.constructionMaterial != null || newData.housingType != null) {
+          final registroVUpdates = <String, dynamic>{};
+          if (newData.constructionMaterial != null) {
+            registroVUpdates['material'] = newData.constructionMaterial;
+          }
+          if (newData.housingType != null) {
+            registroVUpdates['tipo'] = newData.housingType;
+          }
+          
+          if (registroVUpdates.isNotEmpty) {
+            await databaseService.actualizarRegistroV(
+              grupoId: grupo.idGrupoF.toString(),
+              updates: registroVUpdates,
+            );
+          }
         }
       } else {
         // Residencia no existe, crear una nueva
@@ -534,7 +544,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
     );
 
     if (shouldLogout == true && mounted) {
-      final authService = AuthService();
+      final authService = UnifiedAuthService();
       await authService.signOut();
 
       if (mounted) {

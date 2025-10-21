@@ -6,7 +6,7 @@ import '../utils/responsive.dart';
 
 class GrifoCard extends StatelessWidget {
   final Grifo grifo;
-  final Function(String, String) onCambiarEstado;
+  final Function(int, String) onCambiarEstado;
 
   const GrifoCard({
     super.key,
@@ -17,7 +17,8 @@ class GrifoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isTablet = ResponsiveHelper.isTablet(context);
-    final estadoColor = GrifoColors.getEstadoColor(grifo.estado);
+    // Por ahora usamos un color por defecto ya que el estado está en info_grifo
+    final estadoColor = Colors.blue;
 
     return Container(
       margin: EdgeInsets.symmetric(
@@ -42,8 +43,6 @@ class GrifoCard extends StatelessWidget {
             SizedBox(height: isTablet ? 16 : 12),
             _buildInfo(),
             SizedBox(height: isTablet ? 16 : 12),
-            _buildNotas(),
-            SizedBox(height: isTablet ? 16 : 12),
             _buildActions(context),
           ],
         ),
@@ -62,7 +61,7 @@ class GrifoCard extends StatelessWidget {
             border: Border.all(color: estadoColor, width: 1),
           ),
           child: Text(
-            grifo.estado,
+            'Grifo ${grifo.idGrifo}',
             style: TextStyle(
               color: estadoColor,
               fontWeight: FontWeight.bold,
@@ -78,7 +77,7 @@ class GrifoCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            grifo.tipo,
+            grifo.cutCom,
             style: TextStyle(
               color: GrifoColors.primary,
               fontWeight: FontWeight.w500,
@@ -95,12 +94,12 @@ class GrifoCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          grifo.direccion,
+          'Grifo ${grifo.idGrifo}',
           style: GrifoStyles.titleMedium,
         ),
         const SizedBox(height: 4),
         Text(
-          grifo.comuna,
+          'Comuna: ${grifo.cutCom}',
           style: GrifoStyles.bodyMedium.copyWith(
             color: GrifoColors.textSecondary,
           ),
@@ -109,50 +108,18 @@ class GrifoCard extends StatelessWidget {
         Row(
           children: [
             Icon(
-              Icons.access_time,
+              Icons.location_on,
               size: 16,
               color: GrifoColors.textTertiary,
             ),
             const SizedBox(width: 4),
             Text(
-              'Última inspección: ${_formatDate(grifo.ultimaInspeccion)}',
+              'Coordenadas: ${grifo.lat.toStringAsFixed(4)}, ${grifo.lon.toStringAsFixed(4)}',
               style: GrifoStyles.caption,
             ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildNotas() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: GrifoColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Notas:',
-            style: GrifoStyles.bodyMedium.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            grifo.notas,
-            style: GrifoStyles.bodySmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Reportado por: ${grifo.reportadoPor}',
-            style: GrifoStyles.caption,
-          ),
-        ],
-      ),
     );
   }
 
@@ -205,28 +172,9 @@ class GrifoCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: estados.map((estado) => ListTile(
             title: Text(estado),
-            leading: Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: grifo.estado == estado ? Colors.blue : Colors.grey,
-                  width: 2,
-                ),
-                color: grifo.estado == estado ? Colors.blue : Colors.transparent,
-              ),
-              child: grifo.estado == estado
-                  ? const Icon(
-                      Icons.check,
-                      size: 12,
-                      color: Colors.white,
-                    )
-                  : null,
-            ),
             onTap: () {
               Navigator.pop(context);
-              onCambiarEstado(grifo.id, estado);
+              onCambiarEstado(grifo.idGrifo, estado);
             },
           )).toList(),
         ),
@@ -238,22 +186,15 @@ class GrifoCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(grifo.direccion),
+        title: Text('Grifo ${grifo.idGrifo}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('Comuna:', grifo.comuna),
-            _buildDetailRow('Tipo:', grifo.tipo),
-            _buildDetailRow('Estado:', grifo.estado),
-            _buildDetailRow('Última inspección:', _formatDate(grifo.ultimaInspeccion)),
-            _buildDetailRow('Reportado por:', grifo.reportadoPor),
-            _buildDetailRow('Fecha reporte:', _formatDate(grifo.fechaReporte)),
-            _buildDetailRow('Coordenadas:', '${grifo.lat}, ${grifo.lng}'),
-            const SizedBox(height: 12),
-            const Text('Notas:', style: GrifoStyles.titleMedium),
-            const SizedBox(height: 4),
-            Text(grifo.notas, style: GrifoStyles.bodyMedium),
+            _buildDetailRow('ID:', grifo.idGrifo.toString()),
+            _buildDetailRow('Comuna:', grifo.cutCom),
+            _buildDetailRow('Latitud:', grifo.lat.toStringAsFixed(6)),
+            _buildDetailRow('Longitud:', grifo.lon.toStringAsFixed(6)),
           ],
         ),
         actions: [
@@ -290,9 +231,5 @@ class GrifoCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }

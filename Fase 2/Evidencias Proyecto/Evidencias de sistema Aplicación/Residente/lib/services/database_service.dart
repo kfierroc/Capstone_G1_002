@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/registration_data.dart';
-import '../models/family_member.dart';
-import '../models/pet.dart';
+import '../models/integrante.dart';
+import '../models/mascota.dart';
 
 /// Servicio de base de datos actualizado para el modelo de datos del usuario
 /// 
@@ -353,22 +353,14 @@ class DatabaseService {
       
       final residenciaData = {
         'id_residencia': idResidencia,
-        // 'id_grupof': int.parse(grupoId), // Esta columna no existe en residencia, se maneja en registro_v
         'direccion': (data.address != null && data.address!.isNotEmpty) 
             ? data.address!
-            : 'Dirección temporal $idResidencia', // Usar ID único para evitar duplicados
+            : 'Dirección temporal $idResidencia',
         'lat': data.latitude != null ? double.parse(data.latitude!.toStringAsFixed(1)) : 0.0,
         'lon': data.longitude != null ? double.parse(data.longitude!.toStringAsFixed(1)) : 0.0,
-        'cut_com': cutCom, // Usar el código de comuna válido
-        // Solo incluir campos que existen en la BD real
-        if (data.housingType != null) 'tipo_vivienda': data.housingType,
-        if (data.numberOfFloors != null) 'numero_pisos': data.numberOfFloors,
-        if (data.constructionMaterial != null) 'material_construccion': data.constructionMaterial,
-        if (data.mainPhone != null) 'telefono_principal': data.mainPhone,
-        if (data.alternatePhone != null) 'telefono_alternativo': data.alternatePhone,
-        if (data.specialInstructions != null) 'instrucciones_especiales': data.specialInstructions,
-        // Comentar campos que no existen en la BD real
-        // 'estado_vivienda': data.housingCondition, // No existe en la BD real
+        'cut_com': cutCom,
+        // Solo campos que existen en la tabla residencia según esquema real
+        // Los campos de teléfono, pisos e instrucciones se agregarán después de ejecutar el script SQL
       };
       
       debugPrint('📝 Datos de residencia: $residenciaData');
@@ -531,24 +523,53 @@ class DatabaseService {
     }
   }
 
-  // ============================================================================
-  // OPERACIONES DE INTEGRANTES
-  // ============================================================================
+  /// Actualizar registro_v de un grupo familiar
+  Future<DatabaseResult<void>> actualizarRegistroV({
+    required String grupoId,
+    required Map<String, dynamic> updates,
+  }) async {
+    try {
+      debugPrint('📝 Actualizando registro_v para grupo: $grupoId');
+      
+      await _client
+          .from('registro_v')
+          .update(updates)
+          .eq('id_grupof', int.parse(grupoId))
+          .eq('vigente', true);
 
-  /// Obtener todos los integrantes de un grupo familiar
+      debugPrint('✅ Registro_v actualizado exitosamente');
+      
+      return DatabaseResult.success(
+        data: null,
+        message: 'Registro_v actualizado exitosamente',
+      );
+    } on PostgrestException catch (e) {
+      debugPrint('❌ Error al actualizar registro_v: $e');
+      return DatabaseResult.error(_getPostgrestErrorMessage(e));
+    } catch (e) {
+      debugPrint('❌ Error inesperado al actualizar registro_v: $e');
+      return DatabaseResult.error('Error al actualizar registro_v: ${e.toString()}');
+    }
+  }
+
+  /// Obtener todos los integrantes de un grupo familiar con JOIN a info_integrante
   Future<DatabaseResult<List<Integrante>>> obtenerIntegrantes({
     required String grupoId,
   }) async {
     try {
+      // Hacer JOIN con info_integrante para obtener todos los datos
       final response = await _client
           .from('integrante')
-          .select()
+          .select('''
+            *,
+            info_integrante(*)
+          ''')
           .eq('id_grupof', int.parse(grupoId))
           .eq('activo_i', true)
-          .order('created_at', ascending: true);
+          .order('fecha_ini_i', ascending: true);
 
       final integrantes = (response as List)
-          .map((json) => Integrante.fromJson(json))
+          .map((json) => _crearIntegranteDesdeJoin(json))
           .toList();
 
       return DatabaseResult.success(data: integrantes);
@@ -557,6 +578,40 @@ class DatabaseService {
     } catch (e) {
       return DatabaseResult.error('Error al obtener integrantes: ${e.toString()}');
     }
+  }
+
+  /// Crear Integrante desde el resultado del JOIN con info_integrante
+  Integrante _crearIntegranteDesdeJoin(Map<String, dynamic> json) {
+    final infoIntegrante = json['info_integrante'] as Map<String, dynamic>?;
+    
+    return Integrante(
+      idIntegrante: json['id_integrante'] as int,
+      activoI: json['activo_i'] as bool? ?? true,
+      fechaIniI: json['fecha_ini_i'] != null 
+          ? DateTime.parse(json['fecha_ini_i'] as String)
+          : DateTime.now(),
+      fechaFinI: json['fecha_fin_i'] != null 
+          ? DateTime.parse(json['fecha_fin_i'] as String)
+          : null,
+      idGrupof: json['id_grupof'] as int,
+      // Datos de info_integrante
+      rut: '', // Campo no existe en ninguna tabla según esquema real
+      edad: infoIntegrante != null ? _calcularEdad(infoIntegrante['anio_nac'] as int?) : 0,
+      anioNac: infoIntegrante?['anio_nac'] as int? ?? 0,
+      padecimiento: infoIntegrante?['padecimiento'] as String?,
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'] as String)
+          : DateTime.now(),
+    );
+  }
+
+  /// Calcular edad desde año de nacimiento
+  int _calcularEdad(int? anioNac) {
+    if (anioNac == null) return 0;
+    return DateTime.now().year - anioNac;
   }
 
   /// Agregar integrante al grupo familiar
@@ -571,15 +626,17 @@ class DatabaseService {
       // Generar ID manualmente para integrante
       final idIntegrante = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
+      // Campos que SÍ existen en tabla integrante según esquema real
       final integranteData = {
         'id_integrante': idIntegrante, // ID manual para compatibilidad con esquema actual
         'id_grupof': int.parse(grupoId), // Convertir a int
         'activo_i': true, // Columna requerida
         'fecha_ini_i': DateTime.now().toIso8601String().split('T')[0], // Columna requerida
-        'rut': rut, // Ahora existe en la BD real
-        'edad': edad, // Ahora existe en la BD real
-        'anio_nac': anioNac, // Ahora existe en la BD real
-        'padecimiento': padecimiento, // Ahora existe en la BD real
+        // Campos que NO existen en tabla integrante según esquema real:
+        // 'rut': rut, // Está en info_integrante
+        // 'edad': edad, // Está en info_integrante
+        // 'anio_nac': anioNac, // Está en info_integrante
+        // 'padecimiento': padecimiento, // Está en info_integrante
       };
 
       final response = await _client
@@ -587,6 +644,18 @@ class DatabaseService {
           .insert(integranteData)
           .select()
           .single();
+
+      // Ahora insertar en info_integrante con los datos adicionales
+      final infoIntegranteData = {
+        'id_integrante': idIntegrante, // FK a integrante
+        'fecha_reg_ii': DateTime.now().toIso8601String().split('T')[0],
+        'anio_nac': anioNac, // Este campo SÍ existe en info_integrante
+        'padecimiento': padecimiento, // Este campo SÍ existe en info_integrante
+      };
+
+      await _client
+          .from('info_integrante')
+          .insert(infoIntegranteData);
 
       final integrante = Integrante.fromJson(response);
       
@@ -607,14 +676,56 @@ class DatabaseService {
     required Map<String, dynamic> updates,
   }) async {
     try {
+      // Separar campos que van a integrante vs info_integrante
+      final integranteUpdates = <String, dynamic>{};
+      final infoIntegranteUpdates = <String, dynamic>{};
+      
+      // Campos que van a la tabla integrante
+      if (updates.containsKey('activo_i')) {
+        integranteUpdates['activo_i'] = updates['activo_i'];
+      }
+      if (updates.containsKey('fecha_ini_i')) {
+        integranteUpdates['fecha_ini_i'] = updates['fecha_ini_i'];
+      }
+      if (updates.containsKey('fecha_fin_i')) {
+        integranteUpdates['fecha_fin_i'] = updates['fecha_fin_i'];
+      }
+      
+      // Campos que van a la tabla info_integrante
+      if (updates.containsKey('anio_nac')) {
+        infoIntegranteUpdates['anio_nac'] = updates['anio_nac'];
+      }
+      if (updates.containsKey('padecimiento')) {
+        infoIntegranteUpdates['padecimiento'] = updates['padecimiento'];
+      }
+      
+      // Actualizar tabla integrante si hay cambios
+      if (integranteUpdates.isNotEmpty) {
+        await _client
+            .from('integrante')
+            .update(integranteUpdates)
+            .eq('id_integrante', int.parse(integranteId));
+      }
+      
+      // Actualizar tabla info_integrante si hay cambios
+      if (infoIntegranteUpdates.isNotEmpty) {
+        await _client
+            .from('info_integrante')
+            .update(infoIntegranteUpdates)
+            .eq('id_integrante', int.parse(integranteId));
+      }
+      
+      // Obtener el integrante actualizado con JOIN
       final response = await _client
           .from('integrante')
-          .update(updates)
+          .select('''
+            *,
+            info_integrante(*)
+          ''')
           .eq('id_integrante', int.parse(integranteId))
-          .select()
           .single();
 
-      final integrante = Integrante.fromJson(response);
+      final integrante = _crearIntegranteDesdeJoin(response);
       
       return DatabaseResult.success(
         data: integrante,
@@ -664,7 +775,7 @@ class DatabaseService {
           .from('mascota')
           .select()
           .eq('id_grupof', int.parse(grupoId))
-          .order('created_at', ascending: true);
+          .order('fecha_reg_m', ascending: true);
 
       final mascotas = (response as List)
           .map((json) => Mascota.fromJson(json))
@@ -686,11 +797,7 @@ class DatabaseService {
     required String tamanio,
   }) async {
     try {
-      // Generar ID manualmente para mascota
-      final idMascota = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      
       final mascotaData = {
-        'id_mascota': idMascota, // ID manual para compatibilidad con esquema actual
         'id_grupof': int.parse(grupoId), // Convertir a int
         'nombre_m': nombre,
         'especie': especie,
@@ -901,21 +1008,26 @@ class DatabaseService {
       final mascotas = mascotasResult.isSuccess ? mascotasResult.data ?? [] : [];
       
       // 5. Construir RegistrationData con la información obtenida
+      // Obtener datos del integrante titular (primer integrante)
+      final integranteTitular = integrantes.isNotEmpty ? integrantes.first : null;
+      
       final registrationData = RegistrationData(
         email: grupo.email,
         rut: grupo.rutTitular,
         fullName: null, // No se guarda en la BD actual
-        phoneNumber: residencia?.telefonoPrincipal,
+        phoneNumber: null, // Los campos de teléfono no existen aún en residencia
         address: residencia?.direccion,
         latitude: residencia?.lat,
         longitude: residencia?.lon,
-        mainPhone: residencia?.telefonoPrincipal,
-        alternatePhone: residencia?.telefonoAlternativo,
-        housingType: residencia?.tipoVivienda,
-        numberOfFloors: residencia?.numeroPisos,
-        constructionMaterial: residencia?.materialConstruccion,
-        housingCondition: residencia?.estadoVivienda,
-        specialInstructions: residencia?.instruccionesEspeciales,
+        mainPhone: null, // Los campos de teléfono no existen aún en residencia
+        alternatePhone: null, // Los campos de teléfono no existen aún en residencia
+        housingType: null, // Está en registro_v como 'tipo'
+        numberOfFloors: null, // Los campos no existen aún en residencia
+        constructionMaterial: null, // Está en registro_v como 'material'
+        housingCondition: null, // No existe en el esquema actual
+        specialInstructions: null, // Los campos no existen aún en residencia
+        age: integranteTitular?.edad, // ✅ Agregar edad del integrante titular
+        birthYear: integranteTitular?.anioNac, // ✅ Agregar año de nacimiento
       );
       
       debugPrint('✅ Información del usuario cargada exitosamente');
@@ -924,7 +1036,9 @@ class DatabaseService {
       debugPrint('   - RUT: ${grupo.rutTitular}');
       debugPrint('   - Fecha creación: ${grupo.fechaCreacion}');
       debugPrint('   - Dirección: ${residencia?.direccion}');
-      debugPrint('   - Teléfono: ${residencia?.telefonoPrincipal}');
+      debugPrint('   - Coordenadas: ${residencia?.lat}, ${residencia?.lon}');
+      debugPrint('   - Integrante titular edad: ${integranteTitular?.edad}');
+      debugPrint('   - Integrante titular año nacimiento: ${integranteTitular?.anioNac}');
       debugPrint('   - Integrantes: ${integrantes.length}');
       debugPrint('   - Mascotas: ${mascotas.length}');
       
@@ -1081,7 +1195,6 @@ class Residencia {
   final String? materialConstruccion;
   final String? estadoVivienda;
   final String? telefonoPrincipal;
-  final String? telefonoAlternativo;
   final String? instruccionesEspeciales;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1098,7 +1211,6 @@ class Residencia {
     this.materialConstruccion,
     this.estadoVivienda,
     this.telefonoPrincipal,
-    this.telefonoAlternativo,
     this.instruccionesEspeciales,
     required this.createdAt,
     required this.updatedAt,
@@ -1114,10 +1226,9 @@ class Residencia {
       cutCom: json['cut_com'] as int,
       tipoVivienda: json['tipo_vivienda'] as String?, // Ahora existe
       numeroPisos: json['numero_pisos'] as int?, // Ahora existe
-      materialConstruccion: json['material_construccion'] as String?, // Ahora existe
+      materialConstruccion: json['material'] as String?, // Corregido nombre de columna
       estadoVivienda: json['estado_vivienda'] as String?, // Puede no existir en la BD real
       telefonoPrincipal: json['telefono_principal'] as String?, // Ahora existe
-      telefonoAlternativo: json['telefono_alternativo'] as String?, // Ahora existe
       instruccionesEspeciales: json['instrucciones_especiales'] as String?, // Ahora existe
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'] as String)
@@ -1138,10 +1249,9 @@ class Residencia {
       'cut_com': cutCom,
       // 'tipo_vivienda': tipoVivienda, // Columna no existe en la BD
       // 'numero_pisos': numeroPisos, // Columna no existe en la BD
-      // 'material_construccion': materialConstruccion, // Columna no existe en la BD
+      // 'material': materialConstruccion, // Corregido nombre de columna
       // 'estado_vivienda': estadoVivienda, // Columna no existe en la BD
       // 'telefono_principal': telefonoPrincipal, // Columna no existe en la BD
-      // 'telefono_alternativo': telefonoAlternativo, // Columna no existe en la BD
       // 'instrucciones_especiales': instruccionesEspeciales, // Columna no existe en la BD
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -1153,157 +1263,6 @@ class Residencia {
   
   /// Obtener longitud (ya no escalada)
   double get longitude => lon;
-}
-
-/// Modelo de Integrante (actualizado)
-class Integrante {
-  final int idIntegrante;
-  final int idGrupoF;
-  final bool activoI;
-  final DateTime fechaIniI;
-  final DateTime? fechaFinI;
-  final String rut;
-  final int edad;
-  final int anioNac;
-  final String? padecimiento;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-
-  Integrante({
-    required this.idIntegrante,
-    required this.idGrupoF,
-    required this.activoI,
-    required this.fechaIniI,
-    this.fechaFinI,
-    required this.rut,
-    required this.edad,
-    required this.anioNac,
-    this.padecimiento,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  factory Integrante.fromJson(Map<String, dynamic> json) {
-    return Integrante(
-      idIntegrante: json['id_integrante'] as int, // Usar int directamente
-      idGrupoF: json['id_grupof'] as int, // Usar int directamente
-      activoI: json['activo_i'] as bool? ?? true,
-      fechaIniI: json['fecha_ini_i'] != null 
-          ? DateTime.parse(json['fecha_ini_i'] as String)
-          : DateTime.now(),
-      fechaFinI: json['fecha_fin_i'] != null 
-          ? DateTime.parse(json['fecha_fin_i'] as String)
-          : null,
-      rut: json['rut'] as String? ?? '',
-      edad: json['edad'] as int? ?? 0,
-      anioNac: json['anio_nac'] as int? ?? 0,
-      padecimiento: json['padecimiento'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at'] as String)
-          : DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id_integrante': idIntegrante,
-      'id_grupof': idGrupoF,
-      'activo_i': activoI,
-      'fecha_ini_i': fechaIniI.toIso8601String(),
-      'fecha_fin_i': fechaFinI?.toIso8601String(),
-      'rut': rut,
-      'edad': edad,
-      'anio_nac': anioNac,
-      'padecimiento': padecimiento,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-    };
-  }
-
-  /// Convertir a FamilyMember (para compatibilidad)
-  FamilyMember toFamilyMember() {
-    return FamilyMember(
-      id: idIntegrante.toString(),
-      residentId: idGrupoF.toString(),
-      rut: rut,
-      age: edad,
-      birthYear: anioNac,
-      conditions: padecimiento != null ? [padecimiento!] : [],
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-    );
-  }
-}
-
-/// Modelo de Mascota (actualizado)
-class Mascota {
-  final int idMascota;
-  final int idGrupoF;
-  final String nombreM;
-  final String especie;
-  final String tamanio;
-  final DateTime fechaRegM;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-
-  Mascota({
-    required this.idMascota,
-    required this.idGrupoF,
-    required this.nombreM,
-    required this.especie,
-    required this.tamanio,
-    required this.fechaRegM,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  factory Mascota.fromJson(Map<String, dynamic> json) {
-    return Mascota(
-      idMascota: json['id_mascota'] as int, // Usar int directamente
-      idGrupoF: json['id_grupof'] as int, // Usar int directamente
-      nombreM: json['nombre_m'] as String? ?? '',
-      especie: json['especie'] as String? ?? '',
-      tamanio: json['tamanio'] as String? ?? '',
-      fechaRegM: json['fecha_reg_m'] != null 
-          ? DateTime.parse(json['fecha_reg_m'] as String)
-          : DateTime.now(),
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at'] as String)
-          : DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id_mascota': idMascota,
-      'id_grupof': idGrupoF,
-      'nombre_m': nombreM,
-      'especie': especie,
-      'tamanio': tamanio,
-      'fecha_reg_m': fechaRegM.toIso8601String(),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-    };
-  }
-
-  /// Convertir a Pet (para compatibilidad)
-  Pet toPet() {
-    return Pet(
-      id: idMascota.toString(),
-      residentId: idGrupoF.toString(),
-      name: nombreM,
-      species: especie,
-      size: tamanio,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-    );
-  }
 }
 
 /// Modelo de Comuna

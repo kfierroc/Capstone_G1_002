@@ -64,7 +64,6 @@ CREATE TABLE IF NOT EXISTS residencia (
   material_construccion TEXT,
   estado_vivienda TEXT,
   telefono_principal TEXT,
-  telefono_alternativo TEXT,
   instrucciones_especiales TEXT,
   
   -- Metadatos

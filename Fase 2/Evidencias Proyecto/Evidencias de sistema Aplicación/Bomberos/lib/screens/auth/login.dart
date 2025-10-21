@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/supabase_auth_service.dart';
 import '../../utils/responsive.dart';
-import '../home/home_refactored.dart';
+import '../home/home_main.dart';
 import 'register.dart';
 import 'password.dart';
 
@@ -48,6 +48,28 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
+  /// Extrae el nombre del email de forma más inteligente
+  String _extractNameFromEmail(String email) {
+    if (email.isEmpty) return 'Usuario';
+    
+    // Remover el dominio del email
+    final emailPart = email.split('@').first;
+    
+    // Si contiene puntos, tomar la primera parte como nombre
+    if (emailPart.contains('.')) {
+      final parts = emailPart.split('.');
+      // Tomar la primera parte y capitalizarla
+      return parts.first.isNotEmpty 
+          ? '${parts.first[0].toUpperCase()}${parts.first.substring(1).toLowerCase()}'
+          : 'Usuario';
+    }
+    
+    // Si no contiene puntos, usar todo el texto antes del @
+    return emailPart.isNotEmpty 
+        ? '${emailPart[0].toUpperCase()}${emailPart.substring(1).toLowerCase()}'
+        : 'Usuario';
+  }
+
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -64,10 +86,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (mounted) {
           if (result.isSuccess) {
+            // Mostrar mensaje de bienvenida con nombre y cargo
+            final nombreCompleto = _extractNameFromEmail(result.user?.email ?? '');
+            final cargo = 'Voluntario';
+            
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('¡Bienvenido ${result.user!.fullName}!'),
+                content: Text('¡Bienvenido, $cargo $nombreCompleto!'),
                 backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
               ),
             );
             // Navegar al home después del login exitoso
@@ -364,7 +391,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       SizedBox(height: isTablet ? 30 : 20),
-
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
