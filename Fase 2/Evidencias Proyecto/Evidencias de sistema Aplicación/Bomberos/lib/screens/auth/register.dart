@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/supabase_auth_service.dart';
-import '../home/home_refactored.dart';
+import '../home/home_main.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -158,6 +158,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
+    // Prevenir múltiples llamadas simultáneas
+    if (_isLoading) return;
+    
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -166,12 +169,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       try {
         // Usar servicio de autenticación con Supabase
         final authService = SupabaseAuthService();
-        final result = await authService.signUp(
+        final result = await authService.signUpBombero(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          fullName: _fullNameController.text.trim(),
-          rut: _rutController.text.trim(),
-          company: _companyController.text.trim(),
+          rutCompleto: _rutController.text.trim(),
         );
 
         if (mounted) {
@@ -179,33 +180,70 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  '¡Registro exitoso! Bienvenido ${result.user!.fullName}',
+                  '¡Registro exitoso! Bienvenido ${result.user!.email}',
                 ),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 3),
               ),
             );
-            
+
             // Navegar al home después del registro exitoso
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const HomeScreen()),
             );
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result.error ?? 'Error al registrar'),
-                backgroundColor: Colors.red,
-              ),
-            );
+            // Mostrar error específico con más detalles
+            String errorMessage = result.error ?? 'Error al registrar';
+            
+            // Si es un error de duplicado, mostrar sugerencias
+            if (errorMessage.contains('Ya existe un bombero registrado')) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(errorMessage),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '💡 Sugerencias:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Text('• Verifica que el RUT sea correcto'),
+                      const Text('• Si ya tienes cuenta, ve a "Iniciar Sesión"'),
+                      const Text('• Si olvidaste tu contraseña, usa "Recuperar contraseña"'),
+                    ],
+                  ),
+                  backgroundColor: Colors.orange,
+                  duration: const Duration(seconds: 8),
+                  action: SnackBarAction(
+                    label: 'Iniciar Sesión',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(errorMessage),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+            }
           }
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: ${e.toString()}'),
+              content: Text('Error inesperado: ${e.toString()}'),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
             ),
           );
         }

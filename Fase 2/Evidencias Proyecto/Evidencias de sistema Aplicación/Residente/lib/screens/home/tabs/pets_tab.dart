@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../models/pet.dart';
+import '../../../models/mascota.dart';
 import '../../../utils/app_styles.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../../widgets/pet_card.dart';
@@ -7,9 +7,9 @@ import '../../../widgets/pet_dialog.dart';
 
 /// Tab optimizado para gestión de mascotas
 class PetsTab extends StatefulWidget {
-  final List<Pet> pets;
-  final Function(Pet) onAdd;
-  final Function(int, Pet) onEdit;
+  final List<Mascota> pets;
+  final Function(Mascota) onAdd;
+  final Function(int, Mascota) onEdit;
   final Function(int) onDelete;
 
   const PetsTab({
@@ -90,7 +90,7 @@ class _PetsTabState extends State<PetsTab>
     );
   }
 
-  void _showEditDialog(Pet pet, int index) {
+  void _showEditDialog(Mascota pet, int index) {
     showDialog(
       context: context,
       builder: (context) => PetDialog(

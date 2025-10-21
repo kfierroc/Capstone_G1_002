@@ -2,8 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
 
-/// Servicio de autenticación para el proyecto Bomberos
-/// Maneja el registro y login usando Supabase Auth con la tabla bombero
+/// Servicio de autenticación para el proyecto Residente
+/// Maneja el registro y login usando Supabase Auth con la tabla grupofamiliar
 class SupabaseAuthService {
   static final SupabaseAuthService _instance = SupabaseAuthService._internal();
   factory SupabaseAuthService() => _instance;
@@ -18,28 +18,13 @@ class SupabaseAuthService {
   // Verificar si hay usuario autenticado
   bool get isAuthenticated => currentUser != null;
 
-  /// Registrar nuevo bombero con Supabase Auth
-  /// 
-  /// Los usuarios deben verificar su correo electrónico antes de poder iniciar sesión.
-  /// Se enviará un email de confirmación automáticamente después del registro.
-  Future<AuthResult> signUpBombero({
+  /// Registrar nuevo grupo familiar con Supabase Auth
+  Future<AuthResult> signUpGrupoFamiliar({
     required String email,
     required String password,
-    required String rutCompleto,
+    required String rutTitular,
   }) async {
     try {
-      // Paso 0: Validar que el RUT no esté ya registrado
-      final bomberoExistente = await _getBomberoByRut(rutCompleto);
-      if (bomberoExistente != null) {
-        return AuthResult.error('Ya existe un bombero registrado con este RUT: $rutCompleto');
-      }
-
-      // Paso 0.5: Validar que el email no esté ya registrado
-      final bomberoConEmail = await _getBomberoByEmail(email.trim());
-      if (bomberoConEmail != null) {
-        return AuthResult.error('Ya existe un bombero registrado con este email: ${email.trim()}');
-      }
-
       // Paso 1: Registrar usuario en Supabase Auth
       final response = await _client.auth.signUp(
         email: email.trim(),
@@ -47,41 +32,35 @@ class SupabaseAuthService {
       );
 
       if (response.user != null) {
-        // Paso 2: Guardar información en la tabla bombero
+        // Paso 2: Guardar información en la tabla grupofamiliar
         try {
-          final bombero = Bombero.fromRutCompleto(rutCompleto, email.trim());
-          final bomberoData = bombero.toInsertData();
+          final grupoFamiliarData = {
+            'rut_titular': rutTitular.trim(),
+            'email': email.trim(),
+            'auth_user_id': response.user!.id,
+            'fecha_creacion': DateTime.now().toIso8601String(),
+          };
 
-          final bomberoResponse = await _client
-              .from('bombero')
-              .insert(bomberoData)
+          final grupoFamiliarResponse = await _client
+              .from('grupofamiliar')
+              .insert(grupoFamiliarData)
               .select()
               .single();
 
-          final bomberoInsertado = Bombero.fromJson(bomberoResponse);
+          final grupoFamiliar = GrupoFamiliar.fromJson(grupoFamiliarResponse);
 
           return AuthResult.success(
             UserData(
               id: response.user!.id,
               email: email.trim(),
-              rutCompleto: rutCompleto,
-              bombero: bomberoInsertado,
+              rutTitular: rutTitular.trim(),
+              grupoFamiliar: grupoFamiliar,
             ),
           );
         } on PostgrestException catch (e) {
-          // Si falla al guardar el bombero, eliminar el usuario de Auth
+          // Si falla al guardar el grupo familiar, eliminar el usuario de Auth
           await _client.auth.signOut();
-          
-          // Traducir errores específicos de PostgreSQL
-          if (e.message.contains('duplicate key value violates unique constraint')) {
-            if (e.message.contains('Bombero_pkey')) {
-              return AuthResult.error('Ya existe un bombero registrado con este RUT: $rutCompleto');
-            } else if (e.message.contains('bombero_email_b_key')) {
-              return AuthResult.error('Ya existe un bombero registrado con este email: ${email.trim()}');
-            }
-          }
-          
-          return AuthResult.error('Error al guardar información del bombero: ${e.message}');
+          return AuthResult.error('Error al guardar el grupo familiar: ${e.message}');
         }
       } else {
         return AuthResult.error('No se pudo crear el usuario');
@@ -105,21 +84,21 @@ class SupabaseAuthService {
       );
 
       if (response.user != null) {
-        // Obtener datos del bombero
-        final bombero = await _getBomberoByEmail(email.trim());
+        // Obtener datos del grupo familiar
+        final grupoFamiliar = await _getGrupoFamiliarByAuthUserId(response.user!.id);
         
-        if (bombero != null) {
+        if (grupoFamiliar != null) {
           return AuthResult.success(
             UserData(
               id: response.user!.id,
               email: response.user!.email ?? email,
-              rutCompleto: bombero.rutCompleto,
-              bombero: bombero,
+              rutTitular: grupoFamiliar.rutTitular,
+              grupoFamiliar: grupoFamiliar,
             ),
           );
         } else {
           await _client.auth.signOut();
-          return AuthResult.error('No se encontró información del bombero');
+          return AuthResult.error('No se encontró información del grupo familiar');
         }
       } else {
         return AuthResult.error('No se pudo iniciar sesión');
@@ -152,68 +131,36 @@ class SupabaseAuthService {
     }
   }
 
-  /// Reenviar email de confirmación
-  Future<AuthResult> resendConfirmationEmail(String email) async {
-    try {
-      await _client.auth.resend(
-        type: OtpType.signup,
-        email: email.trim(),
-      );
-      return AuthResult.success(null);
-    } on AuthException catch (e) {
-      return AuthResult.error(_translateAuthError(e.message));
-    } catch (e) {
-      return AuthResult.error('Error al reenviar email de confirmación: ${e.toString()}');
-    }
-  }
-
-  /// Obtener bombero del usuario autenticado
-  Future<Bombero?> getCurrentUserBombero() async {
+  /// Obtener grupo familiar del usuario autenticado
+  Future<GrupoFamiliar?> getCurrentUserGrupoFamiliar() async {
     try {
       final user = _client.auth.currentUser;
-      if (user?.email == null) return null;
+      if (user == null) return null;
       
-      return await _getBomberoByEmail(user!.email!);
+      return await _getGrupoFamiliarByAuthUserId(user.id);
     } catch (e) {
       return null;
     }
   }
 
-  /// Obtener bombero por email
-  Future<Bombero?> _getBomberoByEmail(String email) async {
+  /// Obtener grupo familiar por auth_user_id
+  Future<GrupoFamiliar?> _getGrupoFamiliarByAuthUserId(String authUserId) async {
     try {
       final response = await _client
-          .from('bombero')
+          .from('grupofamiliar')
           .select()
-          .eq('email_b', email)
+          .eq('auth_user_id', authUserId)
           .single();
       
-      return Bombero.fromJson(response);
+      return GrupoFamiliar.fromJson(response);
     } catch (e) {
       return null;
     }
   }
 
-  /// Obtener bombero por RUT completo
-  Future<Bombero?> _getBomberoByRut(String rutCompleto) async {
-    try {
-      final bombero = Bombero.fromRutCompleto(rutCompleto, '');
-      final response = await _client
-          .from('bombero')
-          .select()
-          .eq('rut_num', bombero.rutNum)
-          .single();
-      
-      return Bombero.fromJson(response);
-    } catch (e) {
-      return null;
-    }
-  }
-
-
-  /// Actualizar información del bombero
-  Future<AuthResult> updateBombero({
-    String? rutDv,
+  /// Actualizar información del grupo familiar
+  Future<AuthResult> updateGrupoFamiliar({
+    required String rutTitular,
     String? email,
   }) async {
     try {
@@ -222,38 +169,32 @@ class SupabaseAuthService {
         return AuthResult.error('Usuario no autenticado');
       }
 
-      final updates = <String, dynamic>{};
-
-      if (rutDv != null && rutDv.trim().isNotEmpty) {
-        updates['rut_dv'] = rutDv.trim();
-      }
+      final updates = <String, dynamic>{
+        'rut_titular': rutTitular.trim(),
+      };
 
       if (email != null && email.trim().isNotEmpty) {
-        updates['email_b'] = email.trim();
-      }
-
-      if (updates.isEmpty) {
-        return AuthResult.error('No hay datos para actualizar');
+        updates['email'] = email.trim();
       }
 
       await _client
-          .from('bombero')
+          .from('grupofamiliar')
           .update(updates)
-          .eq('email_b', user.email!);
+          .eq('auth_user_id', user.id);
 
       // Obtener datos actualizados
-      final bombero = await _getBomberoByEmail(user.email!);
+      final grupoFamiliar = await _getGrupoFamiliarByAuthUserId(user.id);
       
       return AuthResult.success(
         UserData(
           id: user.id,
-          email: user.email!,
-          rutCompleto: bombero?.rutCompleto ?? '',
-          bombero: bombero,
+          email: user.email ?? email ?? '',
+          rutTitular: rutTitular,
+          grupoFamiliar: grupoFamiliar,
         ),
       );
     } catch (e) {
-      return AuthResult.error('Error al actualizar bombero: ${e.toString()}');
+      return AuthResult.error('Error al actualizar grupo familiar: ${e.toString()}');
     }
   }
 
@@ -268,7 +209,7 @@ class SupabaseAuthService {
     } else if (error.contains('Invalid email')) {
       return 'El correo electrónico no es válido.';
     } else if (error.contains('Email not confirmed')) {
-      return 'Por favor, confirma tu correo electrónico antes de iniciar sesión.';
+      return 'Por favor, confirma tu correo electrónico.';
     } else if (error.contains('User not found')) {
       return 'Usuario no encontrado.';
     }
@@ -276,33 +217,33 @@ class SupabaseAuthService {
   }
 }
 
-/// Clase para representar los datos del usuario bombero
+/// Clase para representar los datos del usuario
 class UserData {
   final String id;
   final String email;
-  final String rutCompleto;
-  final Bombero? bombero;
+  final String rutTitular;
+  final GrupoFamiliar? grupoFamiliar;
 
   UserData({
     required this.id,
     required this.email,
-    required this.rutCompleto,
-    this.bombero,
+    required this.rutTitular,
+    this.grupoFamiliar,
   });
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'email': email,
-    'rut_completo': rutCompleto,
-    'bombero': bombero?.toJson(),
+    'rut_titular': rutTitular,
+    'grupo_familiar': grupoFamiliar?.toJson(),
   };
 
   factory UserData.fromJson(Map<String, dynamic> json) => UserData(
     id: json['id'] as String,
     email: json['email'] as String,
-    rutCompleto: json['rut_completo'] as String,
-    bombero: json['bombero'] != null 
-        ? Bombero.fromJson(json['bombero'] as Map<String, dynamic>)
+    rutTitular: json['rut_titular'] as String,
+    grupoFamiliar: json['grupo_familiar'] != null 
+        ? GrupoFamiliar.fromJson(json['grupo_familiar'] as Map<String, dynamic>)
         : null,
   );
 }

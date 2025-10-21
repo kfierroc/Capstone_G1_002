@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import '../../services/unified_auth_service.dart';
 import '../../utils/responsive.dart';
 import '../../utils/validators.dart';
 import 'register.dart';
@@ -35,9 +35,9 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       try {
-        // Usar servicio de autenticación con Supabase
-        final authService = AuthService();
-        final result = await authService.signIn(
+        // Usar servicio de autenticación unificado
+        final authService = UnifiedAuthService();
+        final result = await authService.signInWithPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (result.isSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('¡Bienvenido ${result.user!.name}!'),
+                content: Text('¡Bienvenido ${result.data!.email}!'),
                 backgroundColor: Colors.green,
               ),
             );

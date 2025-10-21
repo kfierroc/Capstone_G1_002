@@ -23,80 +23,53 @@ class _GrifosHomeScreenState extends State<GrifosHomeScreen> {
   // Mock de datos
   final List<Grifo> _grifos = [
     Grifo(
-      id: '1',
-      direccion: 'Plaza Central',
-      comuna: 'Maipú',
-      tipo: 'Alto flujo',
-      estado: 'Dañado',
-      ultimaInspeccion: DateTime(2024, 1, 10),
-      notas: 'Válvula dañada, requiere reparación urgente. No operativo.',
-      reportadoPor: 'Teniente Silva',
-      fechaReporte: DateTime(2024, 1, 10),
+      idGrifo: 1,
       lat: -33.5110,
-      lng: -70.7580,
+      lon: -70.7580,
+      cutCom: '13101',
     ),
     Grifo(
-      id: '2',
-      direccion: 'Calle Los Aromos 123',
-      comuna: 'Ñuñoa',
-      tipo: 'Seco',
-      estado: 'Sin verificar',
-      ultimaInspeccion: DateTime(2023, 12, 20),
-      notas: 'Requiere inspección, reportado por vecinos como posiblemente dañado',
-      reportadoPor: 'Llamada ciudadana',
-      fechaReporte: DateTime(2024, 1, 8),
+      idGrifo: 2,
       lat: -33.4574,
-      lng: -70.5945,
+      lon: -70.5945,
+      cutCom: '13102',
     ),
     Grifo(
-      id: '3',
-      direccion: 'Av. Libertador 1234',
-      comuna: 'Las Condes',
-      tipo: 'Alto flujo',
-      estado: 'Operativo',
-      ultimaInspeccion: DateTime(2024, 1, 15),
-      notas: 'Funcionando correctamente, presión adecuada',
-      reportadoPor: 'Capitán Rodriguez',
-      fechaReporte: DateTime(2024, 1, 15),
+      idGrifo: 3,
       lat: -33.4172,
-      lng: -70.6067,
+      lon: -70.6067,
+      cutCom: '13103',
     ),
   ];
 
   List<Grifo> get _grifosFiltrados {
     return _grifos.where((grifo) {
-      bool cumpleFiltro =
-          _filtroEstado == 'Todos' || grifo.estado == _filtroEstado;
+      // Por ahora solo filtramos por búsqueda ya que el nuevo modelo no tiene estado
       bool cumpleBusqueda = _busqueda.isEmpty ||
-          grifo.direccion.toLowerCase().contains(_busqueda.toLowerCase()) ||
-          grifo.comuna.toLowerCase().contains(_busqueda.toLowerCase());
-      return cumpleFiltro && cumpleBusqueda;
+          grifo.cutCom.toLowerCase().contains(_busqueda.toLowerCase());
+      return cumpleBusqueda;
     }).toList();
   }
 
   Map<String, int> get _estadisticas {
     return {
       'total': _grifos.length,
-      'operativos': _grifos.where((g) => g.estado == 'Operativo').length,
-      'dañados': _grifos.where((g) => g.estado == 'Dañado').length,
-      'mantenimiento': _grifos.where((g) => g.estado == 'Mantenimiento').length,
-      'sin_verificar': _grifos.where((g) => g.estado == 'Sin verificar').length,
+      'operativos': 0, // Se obtendrá de info_grifo
+      'dañados': 0,
+      'mantenimiento': 0,
+      'sin_verificar': 0,
     };
   }
 
-  void _cambiarEstadoGrifo(String id, String nuevoEstado) {
+  void _cambiarEstadoGrifo(int id, String nuevoEstado) {
     setState(() {
-      final index = _grifos.indexWhere((g) => g.id == id);
+      final index = _grifos.indexWhere((g) => g.idGrifo == id);
       if (index != -1) {
+        // En el nuevo modelo, el estado se maneja en info_grifo
+        // Por ahora solo actualizamos la lista local
         final grifo = _grifos[index];
         _grifos.removeAt(index);
-        _grifos.insert(
-          0,
-          grifo.copyWith(
-            estado: nuevoEstado,
-            ultimaInspeccion: DateTime.now(),
-          ),
-        );
+        _grifos.insert(0, grifo);
       }
     });
   }

@@ -42,10 +42,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
 
     try {
-      final results = await _searchService.searchAddresses(widget.searchQuery);
+      final result = await _searchService.searchAddresses(widget.searchQuery);
       if (mounted) {
         setState(() {
-          _results = results;
+          _results = result.isSuccess ? result.data ?? [] : [];
           _isLoading = false;
         });
       }
@@ -61,7 +61,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   /// Realiza una nueva búsqueda
   void _performSearch() {
-    if (!_searchService.isValidSearchQuery(_searchController.text)) {
+    if (_searchController.text.length < 3) {
       _showErrorSnackBar('Por favor ingresa al menos 3 caracteres');
       return;
     }
@@ -343,17 +343,20 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   }
 
   Widget _buildInfoChips(Map<String, dynamic> result) {
+    final integrantes = result['integrantes'] as List<dynamic>? ?? [];
+    final mascotas = result['mascotas'] as List<dynamic>? ?? [];
+    
     return Row(
       children: [
         _buildInfoChip(
           Icons.people,
-          '${result['people_count']} persona(s)',
+          '${integrantes.length} integrante(s)',
           AppTheme.primaryBlue,
         ),
         const SizedBox(width: AppTheme.spacingSm),
         _buildInfoChip(
           Icons.pets,
-          '${result['pets_count']} mascota(s)',
+          '${mascotas.length} mascota(s)',
           AppTheme.primaryOrange,
         ),
       ],
@@ -412,7 +415,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => AddressDetailScreen(
-              addressId: result['id'] as String,
+              residenceData: result,
             ),
           ),
         );

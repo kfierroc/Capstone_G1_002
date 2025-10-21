@@ -350,17 +350,10 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       final nuevoGrifo = Grifo(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        direccion: _direccionController.text,
-        comuna: _comunaController.text,
-        tipo: _tipo,
-        estado: _estado,
-        ultimaInspeccion: DateTime.now(),
-        notas: _notasController.text,
-        reportadoPor: 'Capitán Rodriguez',
-        fechaReporte: DateTime.now(),
+        idGrifo: DateTime.now().millisecondsSinceEpoch,
         lat: _lat,
-        lng: _lng,
+        lon: _lng,
+        cutCom: _comunaController.text,
       );
 
       Navigator.pop(context, nuevoGrifo);

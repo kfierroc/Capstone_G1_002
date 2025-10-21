@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/registration_data.dart';
-import '../../services/auth_service.dart';
+import '../../services/unified_auth_service.dart';
 import '../../services/database_service.dart';
 import '../registration_steps/step1_create_account.dart';
 import '../registration_steps/step2_holder_data.dart';
@@ -58,20 +58,30 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         );
       }
 
-      // 1. Registrar usuario en Supabase Auth
+      // 1. Registrar usuario en Supabase Auth y crear grupo familiar
       debugPrint('🔐 Iniciando registro de usuario...');
       debugPrint('📧 Email: ${_registrationData.email}');
       
-      final authService = AuthService();
-      final authResult = await authService.signUp(
+      final authService = UnifiedAuthService();
+      
+      // Verificar si ya existe una sesión activa
+      if (authService.isAuthenticated) {
+        debugPrint('⚠️ Ya hay una sesión activa, cerrando sesión anterior...');
+        await authService.signOut();
+        // Esperar un momento para que se procese el cierre de sesión
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      
+      final authResult = await authService.signUpGrupoFamiliar(
         email: _registrationData.email ?? '',
         password: _registrationData.password ?? '',
-        metadata: {'name': _registrationData.fullName ?? 'Residente'},
+        rutTitular: _registrationData.rut ?? 'Sin RUT',
       );
 
       debugPrint('✅ Resultado de autenticación: ${authResult.isSuccess}');
       if (authResult.isSuccess) {
-        debugPrint('👤 Usuario creado: ${authResult.user?.id}');
+        debugPrint('👤 Usuario creado: ${authResult.data?.id}');
+        debugPrint('👥 Grupo familiar creado: ${authResult.data?.grupoFamiliar?.idGrupof}');
       } else {
         debugPrint('❌ Error de autenticación: ${authResult.error}');
       }
@@ -89,33 +99,45 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         return;
       }
 
-      // 2. Crear grupo familiar en la base de datos
-      debugPrint('📝 Creando grupo familiar en base de datos...');
-      debugPrint('👤 User ID: ${authResult.user!.id}');
-      debugPrint('📍 Dirección: ${_registrationData.address}');
-      
+      // 2. Crear residencia y registro_v
+      debugPrint('📝 Creando residencia y registro_v...');
       final databaseService = DatabaseService();
-      final grupoResult = await databaseService.crearGrupoFamiliar(
-        userId: authResult.user!.id, // Aunque no se use en la BD, lo mantenemos para compatibilidad
+      final residenciaResult = await databaseService.crearResidencia(
+        grupoId: authResult.data!.grupoFamiliar!.idGrupof.toString(),
         data: _registrationData,
       );
 
-      debugPrint('✅ Resultado de creación de grupo: ${grupoResult.isSuccess}');
-      if (!grupoResult.isSuccess) {
-        debugPrint('❌ Error al crear grupo: ${grupoResult.error}');
-      }
-
-      if (!grupoResult.isSuccess) {
+      if (!residenciaResult.isSuccess) {
+        debugPrint('❌ Error al crear residencia: ${residenciaResult.error}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error al crear perfil: ${grupoResult.error}'),
+              content: Text('Error al crear residencia: ${residenciaResult.error}'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
           );
         }
         return;
+      }
+
+      debugPrint('✅ Residencia y registro_v creados exitosamente');
+
+      // 3. Crear integrante titular (el usuario que se registra)
+      debugPrint('👤 Creando integrante titular...');
+      final integranteResult = await databaseService.agregarIntegrante(
+        grupoId: authResult.data!.grupoFamiliar!.idGrupof.toString(),
+        rut: _registrationData.rut ?? 'Sin RUT', // Usar RUT del titular
+        edad: _registrationData.age ?? 25, // Edad por defecto si no se especifica
+        anioNac: _registrationData.birthYear ?? DateTime.now().year - 25, // Año de nacimiento calculado
+        padecimiento: null, // Sin padecimientos por defecto
+      );
+
+      if (integranteResult.isSuccess) {
+        debugPrint('✅ Integrante titular creado exitosamente');
+      } else {
+        debugPrint('⚠️ Error al crear integrante titular: ${integranteResult.error}');
+        // No es crítico, continuar con el registro
       }
 
       debugPrint('🎉 Registro completado exitosamente');

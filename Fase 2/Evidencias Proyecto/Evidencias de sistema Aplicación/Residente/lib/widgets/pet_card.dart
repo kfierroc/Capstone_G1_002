@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../models/pet.dart';
+import '../models/mascota.dart';
 import '../utils/app_styles.dart';
 
 /// Card optimizado para mostrar información de mascota
 class PetCard extends StatelessWidget {
-  final Pet pet;
+  final Mascota pet;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -40,10 +40,10 @@ class PetCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(pet.name, style: AppTextStyles.heading3),
+                Text(pet.nombreM, style: AppTextStyles.heading3),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  '${pet.species} • ${pet.size}',
+                  '${pet.especie} • ${pet.tamanio}',
                   style: AppTextStyles.bodyMedium,
                 ),
               ],

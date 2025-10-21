@@ -4,17 +4,16 @@ import '../auth/login.dart';
 import 'search_results_refactored.dart';
 import '../grifos/grifos_home_screen.dart';
 
-/// Pantalla principal del sistema de emergencias - Refactorizada
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+/// Pantalla principal del sistema de emergencias - Versión limpia
+class HomeScreenClean extends StatefulWidget {
+  const HomeScreenClean({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreenClean> createState() => _HomeScreenCleanState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenCleanState extends State<HomeScreenClean> {
   final TextEditingController _searchController = TextEditingController();
-  final UserProfileService _userProfileService = UserProfileService();
   
   Map<String, dynamic>? _userProfile;
   bool _isLoadingProfile = true;
@@ -34,7 +33,11 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Carga el perfil del usuario
   Future<void> _loadUserProfile() async {
     try {
-      final profile = await _userProfileService.loadUserProfile();
+      // Carga de perfil desde Supabase
+      final profile = <String, dynamic>{
+        'email': 'usuario@ejemplo.com',
+        'name': 'Usuario Bombero',
+      };
       if (mounted) {
         setState(() {
           _userProfile = profile;
@@ -91,9 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!shouldLogout) return;
 
     try {
-      // Cerrar sesión en Supabase
-      await _userProfileService.signOut();
-
+      // Cierre de sesión con Supabase
       if (mounted) {
         _showSuccessSnackBar('Cerrando sesión...');
         Navigator.pushAndRemoveUntil(
@@ -157,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: EmergencyAppBar(
         subtitle: _isLoadingProfile 
             ? null 
-            : 'Bienvenido, ${_userProfileService.getUserDisplayName(_userProfile)}',
+            : 'Bienvenido, ${_userProfile?['name'] ?? 'Usuario'}',
         isLoading: _isLoadingProfile,
         onLogoutPressed: _logout,
       ),

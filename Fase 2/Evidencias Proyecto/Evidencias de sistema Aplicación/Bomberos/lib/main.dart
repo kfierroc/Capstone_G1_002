@@ -3,7 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'screens/auth/login.dart';
-import 'screens/home/home_refactored.dart';
+import 'screens/home/home_main.dart';
+import 'screens/grifos/grifos_home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,10 +12,10 @@ Future<void> main() async {
   try {
     // Cargar variables de entorno desde .env
     await dotenv.load(fileName: ".env");
-    
+
     // Inicializar Supabase con las credenciales del .env
     await SupabaseConfig.initialize();
-    
+
     runApp(const MyApp());
   } catch (e) {
     // Si hay error al cargar .env, mostrar mensaje de error
@@ -67,6 +68,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
+        '/grifos': (context) => const GrifosHomeScreen(),
       },
     );
   }

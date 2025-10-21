@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../models/pet.dart';
+import '../models/mascota.dart';
 import '../utils/app_styles.dart';
 import '../utils/app_data.dart';
 
 /// Diálogo optimizado para agregar/editar mascota
 class PetDialog extends StatefulWidget {
-  final Pet? initialData;
-  final Function(Pet) onSave;
+  final Mascota? initialData;
+  final Function(Mascota) onSave;
 
   const PetDialog({
     super.key,
@@ -28,9 +28,9 @@ class _PetDialogState extends State<PetDialog> {
   void initState() {
     super.initState();
     if (widget.initialData != null) {
-      _nameController.text = widget.initialData!.name;
-      _selectedSpecies = widget.initialData!.species;
-      _selectedSize = widget.initialData!.size;
+      _nameController.text = widget.initialData!.nombreM;
+      _selectedSpecies = widget.initialData!.especie;
+      _selectedSize = widget.initialData!.tamanio;
     }
   }
 
@@ -42,11 +42,13 @@ class _PetDialogState extends State<PetDialog> {
 
   void _save() {
     if (_formKey.currentState!.validate()) {
-      final pet = Pet(
-        id: widget.initialData?.id ?? DateTime.now().toString(),
-        name: _nameController.text.trim(),
-        species: _selectedSpecies!,
-        size: _selectedSize!,
+      final pet = Mascota(
+        idMascota: widget.initialData?.idMascota ?? DateTime.now().millisecondsSinceEpoch,
+        nombreM: _nameController.text.trim(),
+        especie: _selectedSpecies!,
+        tamanio: _selectedSize!,
+        fechaRegM: DateTime.now(),
+        idGrupof: 1, // Obtener del usuario actual
       );
 
       widget.onSave(pet);
