@@ -1,9 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
-import '../models/registration_data.dart';
-import '../models/integrante.dart';
-import '../models/mascota.dart';
+import '../models/models.dart';
 
 /// Servicio de base de datos actualizado para el modelo de datos del usuario
 /// 
@@ -20,6 +18,19 @@ class DatabaseService {
 
   /// Obtener el cliente de Supabase
   SupabaseClient get _client => SupabaseConfig.client;
+
+  /// Parsear condiciones médicas desde string a lista
+  List<String> _parseMedicalConditions(String? padecimiento) {
+    if (padecimiento == null || padecimiento.isEmpty) {
+      return <String>[];
+    }
+    
+    return padecimiento
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
 
   // ============================================================================
   // OPERACIONES DE GRUPOS FAMILIARES
@@ -40,7 +51,7 @@ class DatabaseService {
       debugPrint('   - latitude: ${data.latitude ?? "NULL"}');
       debugPrint('   - longitude: ${data.longitude ?? "NULL"}');
       debugPrint('   - housingType: ${data.housingType ?? "NULL"}');
-      debugPrint('   - mainPhone: ${data.mainPhone ?? "NULL"}');
+      debugPrint('   - mainPhone: ${data.phoneNumber ?? "NULL"}'); // Updated to use phoneNumber from step 2
       
       // Validar que todos los datos requeridos estén presentes
       if (data.rut == null || data.address == null) {
@@ -59,6 +70,9 @@ class DatabaseService {
       final grupoData = {
         'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
         'rut_titular': data.rut,
+        'nomb_titular': data.fullName ?? '', // NUEVO CAMPO según esquema actualizado
+        'ape_p_titular': '', // NUEVO CAMPO - se puede extraer del fullName si es necesario
+        'telefono_titular': data.phoneNumber ?? '', // Updated to use phoneNumber from step 2
         'email': data.email, // Agregar email que es requerido
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
@@ -266,56 +280,56 @@ class DatabaseService {
           .limit(1);
       
       if (comunasResponse.isNotEmpty) {
-        final cutCom = comunasResponse.first['cut_com'] as int;
-        debugPrint('✅ Usando comuna existente: $cutCom');
-        return cutCom;
+        final cutCom = comunasResponse.first['cut_com'] as int; // Cambiado de out_com a cut_com
+        debugPrint('✅ Usando comuna existente: $cutCom'); // Cambiado de outCom a cutCom
+        return cutCom; // Cambiado de outCom a cutCom
       }
       
       debugPrint('⚠️ No se encontraron comunas existentes, creando comuna temporal...');
       
       // 2. Crear comuna temporal con todos los campos requeridos
-      const cutComTemporal = 99999;
+      const cutComTemporal = 99999; // Cambiado de outComTemporal a cutComTemporal
       
       try {
         await _client
             .from('comunas')
             .insert({
-              'cut_com': cutComTemporal,
+              'cut_com': cutComTemporal, // Cambiado de out_com a cut_com
               'comuna': 'Comuna Temporal',
-              'cut_reg': 99, // Región temporal
+              'out_reg': 99, // Región temporal
               'region': 'Región Temporal',
-              'cut_prov': 999, // Provincia temporal
+              'out_prov': 999, // Provincia temporal
               'provincia': 'Provincia Temporal',
               'superficie': 1.0, // Superficie mínima en km²
               'geometry': 'MULTIPOLYGON(((-1 -1, 1 -1, 1 1, -1 1, -1 -1)))', // Cuadrado genérico
             })
             .select();
         
-        debugPrint('✅ Comuna temporal creada: $cutComTemporal');
-        return cutComTemporal;
+        debugPrint('✅ Comuna temporal creada: $cutComTemporal'); // Cambiado de outComTemporal a cutComTemporal
+        return cutComTemporal; // Cambiado de outComTemporal a cutComTemporal
         
       } catch (e) {
         debugPrint('❌ Error al crear comuna temporal: $e');
         
         // 3. Si falla, intentar con una comuna más simple
-        const cutComAlternativo = 99998;
+        const cutComAlternativo = 99998; // Cambiado de outComAlternativo a cutComAlternativo
         try {
           await _client
               .from('comunas')
               .insert({
-                'cut_com': cutComAlternativo,
+                'cut_com': cutComAlternativo, // Cambiado de out_com a cut_com
                 'comuna': 'Comuna Alternativa',
-                'cut_reg': 98,
+                'out_reg': 98,
                 'region': 'Región Alternativa',
-                'cut_prov': 998,
+                'out_prov': 998,
                 'provincia': 'Provincia Alternativa',
                 'superficie': 1.0,
                 'geometry': 'MULTIPOLYGON(((-1 -1, 1 -1, 1 1, -1 1, -1 -1)))', // Cuadrado pequeño alternativo
               })
               .select();
           
-          debugPrint('✅ Comuna alternativa creada: $cutComAlternativo');
-          return cutComAlternativo;
+          debugPrint('✅ Comuna alternativa creada: $cutComAlternativo'); // Cambiado de outComAlternativo a cutComAlternativo
+          return cutComAlternativo; // Cambiado de outComAlternativo a cutComAlternativo
           
         } catch (e2) {
           debugPrint('❌ Error al crear comuna alternativa: $e2');
@@ -342,28 +356,54 @@ class DatabaseService {
       debugPrint('📝 Creando residencia y registro_v para grupo: $grupoId');
       
       // 1. Buscar una comuna existente primero
-      int cutCom = await _obtenerComunaValida();
+      int cutCom = await _obtenerComunaValida(); // Cambiado de outCom a cutCom
       
-      if (cutCom == 0) {
+      if (cutCom == 0) { // Cambiado de outCom a cutCom
         return DatabaseResult.error('No se pudo obtener una comuna válida para crear la residencia');
       }
       
       // 2. Crear la residencia
       final idResidencia = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
+      // Asegurar que lat/lon tengan la precisión correcta para DECIMAL(9,6)
+      double lat = 0.0;
+      double lon = 0.0;
+      
+      if (data.latitude != null) {
+        lat = double.parse(data.latitude!.toStringAsFixed(6));
+        // Asegurar que esté dentro del rango válido para coordenadas
+        if (lat < -90.0 || lat > 90.0) {
+          lat = -33.448890; // Santiago por defecto
+        }
+      } else {
+        lat = -33.448890; // Santiago por defecto
+      }
+      
+      if (data.longitude != null) {
+        lon = double.parse(data.longitude!.toStringAsFixed(6));
+        // Asegurar que esté dentro del rango válido para coordenadas
+        if (lon < -180.0 || lon > 180.0) {
+          lon = -70.669270; // Santiago por defecto
+        }
+      } else {
+        lon = -70.669270; // Santiago por defecto
+      }
+      
       final residenciaData = {
         'id_residencia': idResidencia,
         'direccion': (data.address != null && data.address!.isNotEmpty) 
             ? data.address!
-            : 'Dirección temporal $idResidencia',
-        'lat': data.latitude != null ? double.parse(data.latitude!.toStringAsFixed(1)) : 0.0,
-        'lon': data.longitude != null ? double.parse(data.longitude!.toStringAsFixed(1)) : 0.0,
-        'cut_com': cutCom,
+            : null, // No usar dirección temporal
+        'lat': lat,
+        'lon': lon,
+        'cut_com': cutCom, // Cambiado de out_com a cut_com
         // Solo campos que existen en la tabla residencia según esquema real
         // Los campos de teléfono, pisos e instrucciones se agregarán después de ejecutar el script SQL
       };
       
       debugPrint('📝 Datos de residencia: $residenciaData');
+      debugPrint('📍 Coordenadas procesadas: lat=$lat, lon=$lon');
+      debugPrint('📍 Precisión: lat=${lat.toStringAsFixed(6)}, lon=${lon.toStringAsFixed(6)}');
       
       final residenciaResponse = await _client
           .from('residencia')
@@ -387,6 +427,7 @@ class DatabaseService {
         'estado': 'Activo',
         'material': data.constructionMaterial,
         'tipo': data.housingType,
+        'pisos': data.numberOfFloors ?? 1, // NUEVO CAMPO según esquema actualizado
         'fecha_ini_r': DateTime.now().toIso8601String().split('T')[0],
       };
       
@@ -797,7 +838,11 @@ class DatabaseService {
     required String tamanio,
   }) async {
     try {
+      // Generar ID único para la mascota
+      final idMascota = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
       final mascotaData = {
+        'id_mascota': idMascota, // Agregar ID de mascota
         'id_grupof': int.parse(grupoId), // Convertir a int
         'nombre_m': nombre,
         'especie': especie,
@@ -968,16 +1013,16 @@ class DatabaseService {
             data: RegistrationData(
               email: grupo.email,
               rut: grupo.rutTitular,
-              address: 'Dirección no especificada',
-              latitude: 0.0,
-              longitude: 0.0,
-              mainPhone: 'Sin teléfono',
-              alternatePhone: null,
-              housingType: 'No especificado',
-              numberOfFloors: 1,
-              constructionMaterial: 'No especificado',
-              housingCondition: 'No especificado',
-              specialInstructions: 'Usuario migrado - información por completar',
+              address: null, // No especificar dirección por defecto
+              latitude: null,
+              longitude: null,
+              phoneNumber: null, // No especificar teléfono por defecto
+              // Campo alternatePhone eliminado
+              housingType: null,
+              numberOfFloors: null,
+              constructionMaterial: null,
+              housingCondition: null,
+              specialInstructions: null,
             ),
           );
           
@@ -1011,23 +1056,65 @@ class DatabaseService {
       // Obtener datos del integrante titular (primer integrante)
       final integranteTitular = integrantes.isNotEmpty ? integrantes.first : null;
       
+      // Obtener datos del registro_v para material, tipo, estado y pisos
+      String? materialVivienda;
+      String? tipoVivienda;
+      String? estadoVivienda;
+      int? pisosVivienda;
+      
+      if (integrantes.isNotEmpty) {
+        // Buscar registro_v vigente para obtener material, tipo, estado y pisos
+        try {
+          final registroVResponse = await _client
+              .from('registro_v')
+              .select('material, tipo, estado, pisos')
+              .eq('id_grupof', grupo.idGrupoF)
+              .eq('vigente', true)
+              .order('fecha_ini_r', ascending: false)
+              .limit(1)
+              .maybeSingle();
+          
+          if (registroVResponse != null) {
+            materialVivienda = registroVResponse['material'] as String?;
+            tipoVivienda = registroVResponse['tipo'] as String?;
+            estadoVivienda = registroVResponse['estado'] as String?;
+            pisosVivienda = registroVResponse['pisos'] as int?;
+            debugPrint('📋 Datos de registro_v cargados: material=$materialVivienda, tipo=$tipoVivienda, estado=$estadoVivienda, pisos=$pisosVivienda');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error al cargar registro_v: $e');
+        }
+      }
+
+      // Extraer datos del grupo familiar usando toJson para evitar problemas de reconocimiento
+      final grupoJson = grupo.toJson();
+      final nombreTitular = grupoJson['nomb_titular'] as String? ?? '';
+      final apellidoTitular = grupoJson['ape_p_titular'] as String? ?? '';
+      final telefonoTitular = grupoJson['telefono_titular'] as String? ?? '';
+      
+      // Construir nombre completo solo si hay datos
+      final nombreCompleto = nombreTitular.isNotEmpty || apellidoTitular.isNotEmpty 
+          ? '${nombreTitular.trim()} ${apellidoTitular.trim()}'.trim()
+          : 'Usuario';
+      
       final registrationData = RegistrationData(
         email: grupo.email,
         rut: grupo.rutTitular,
-        fullName: null, // No se guarda en la BD actual
-        phoneNumber: null, // Los campos de teléfono no existen aún en residencia
+        fullName: nombreCompleto, // Usar nombre completo construido
+        phoneNumber: telefonoTitular.isNotEmpty ? telefonoTitular : 'No especificado', // Usar teléfono del grupo familiar
         address: residencia?.direccion,
         latitude: residencia?.lat,
         longitude: residencia?.lon,
-        mainPhone: null, // Los campos de teléfono no existen aún en residencia
-        alternatePhone: null, // Los campos de teléfono no existen aún en residencia
-        housingType: null, // Está en registro_v como 'tipo'
-        numberOfFloors: null, // Los campos no existen aún en residencia
-        constructionMaterial: null, // Está en registro_v como 'material'
-        housingCondition: null, // No existe en el esquema actual
-        specialInstructions: null, // Los campos no existen aún en residencia
+        // Campo alternatePhone eliminado
+        housingType: tipoVivienda, // Cargar desde registro_v
+        numberOfFloors: residencia?.numeroPisos ?? pisosVivienda, // Priorizar residencia.numero_pisos
+        constructionMaterial: materialVivienda, // Cargar desde registro_v
+        housingCondition: estadoVivienda, // Cargar desde registro_v.estado
+        specialInstructions: residencia?.instruccionesEspeciales, // Cargar desde residencia
         age: integranteTitular?.edad, // ✅ Agregar edad del integrante titular
         birthYear: integranteTitular?.anioNac, // ✅ Agregar año de nacimiento
+        mainPhone: residencia?.telefonoPrincipal, // Cargar teléfono principal de residencia
+        medicalConditions: _parseMedicalConditions(integranteTitular?.padecimiento), // Cargar condiciones médicas del integrante titular
       );
       
       debugPrint('✅ Información del usuario cargada exitosamente');
@@ -1039,6 +1126,9 @@ class DatabaseService {
       debugPrint('   - Coordenadas: ${residencia?.lat}, ${residencia?.lon}');
       debugPrint('   - Integrante titular edad: ${integranteTitular?.edad}');
       debugPrint('   - Integrante titular año nacimiento: ${integranteTitular?.anioNac}');
+      debugPrint('   - Padecimiento: ${integranteTitular?.padecimiento}');
+      debugPrint('   - Condiciones médicas cargadas: ${_parseMedicalConditions(integranteTitular?.padecimiento)}');
+      debugPrint('   - Instrucciones especiales: ${residencia?.instruccionesEspeciales}');
       debugPrint('   - Integrantes: ${integrantes.length}');
       debugPrint('   - Mascotas: ${mascotas.length}');
       

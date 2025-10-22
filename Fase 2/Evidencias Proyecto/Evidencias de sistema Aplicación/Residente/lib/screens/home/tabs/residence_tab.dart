@@ -26,14 +26,15 @@ class ResidenceTab extends StatelessWidget {
             icon: Icons.home,
             title: 'Información del Domicilio',
             subtitle: 'Revisa y actualiza los datos de tu domicilio',
-            gradientColors: [AppColors.residencePrimary, AppColors.residenceSecondary],
+            gradientColors: [
+              AppColors.residencePrimary,
+              AppColors.residenceSecondary,
+            ],
           ),
           const SizedBox(height: AppSpacing.xl),
           _buildAddressCard(),
           const SizedBox(height: AppSpacing.lg),
           _buildHousingDetailsCard(),
-          const SizedBox(height: AppSpacing.lg),
-          _buildContactCard(),
           const SizedBox(height: AppSpacing.xl),
           ActionButton(
             onPressed: () => _editResidenceInfo(context),
@@ -88,31 +89,6 @@ class ResidenceTab extends StatelessWidget {
     );
   }
 
-  Widget _buildContactCard() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: AppDecorations.card,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Teléfonos de emergencia', style: AppTextStyles.heading4),
-          const Divider(height: AppSpacing.xxl),
-          DetailRow(
-            label: 'Principal',
-            value: registrationData.mainPhone ?? 'No especificado',
-          ),
-          if (registrationData.alternatePhone != null &&
-              registrationData.alternatePhone!.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.lg),
-            DetailRow(
-              label: 'Alternativo',
-              value: registrationData.alternatePhone!,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   void _editResidenceInfo(BuildContext context) {
     Navigator.push(
@@ -126,4 +102,3 @@ class ResidenceTab extends StatelessWidget {
     );
   }
 }
-

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/grifo.dart';
+import '../../models/info_grifo.dart';
+import '../../services/services.dart';
 import '../../constants/grifo_colors.dart';
 import '../../constants/grifo_styles.dart';
 import '../../utils/responsive.dart';
@@ -21,9 +23,14 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
   String _estado = 'Sin verificar';
   double _lat = -33.4489;
   double _lng = -70.6693;
+  bool _isLoading = false;
 
   final List<String> _tipos = ['Alto flujo', 'Seco', 'Hidrante', 'Bomba'];
   final List<String> _estados = ['Operativo', 'Dañado', 'Mantenimiento', 'Sin verificar'];
+
+  // Servicios
+  final GrifoService _grifoService = GrifoService();
+  final InfoGrifoService _infoGrifoService = InfoGrifoService();
 
   @override
   void dispose() {
@@ -155,11 +162,14 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
           _buildTextField(
             controller: _comunaController,
             label: 'Comuna',
-            hint: 'Ej: Las Condes',
+            hint: 'Ej: Santiago, Las Condes, Providencia',
             icon: Icons.location_city,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Por favor ingrese la comuna';
+              }
+              if (value.trim().length < 2) {
+                return 'Ingrese un nombre de comuna válido';
               }
               return null;
             },
@@ -332,9 +342,18 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
       width: double.infinity,
       height: isTablet ? 64 : 56,
       child: ElevatedButton.icon(
-        onPressed: _submitForm,
-        icon: const Icon(Icons.save),
-        label: const Text('Registrar Grifo'),
+        onPressed: _isLoading ? null : _submitForm,
+        icon: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Icon(Icons.save),
+        label: Text(_isLoading ? 'Registrando...' : 'Registrar Grifo'),
         style: ElevatedButton.styleFrom(
           backgroundColor: GrifoColors.secondary,
           foregroundColor: Colors.white,
@@ -347,23 +366,89 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     );
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      final nuevoGrifo = Grifo(
-        idGrifo: DateTime.now().millisecondsSinceEpoch,
-        lat: _lat,
-        lon: _lng,
-        cutCom: _comunaController.text,
-      );
+      setState(() {
+        _isLoading = true;
+      });
 
-      Navigator.pop(context, nuevoGrifo);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Grifo registrado exitosamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      try {
+        // Obtener el código CUT de la comuna
+        final cutComResult = await _grifoService.obtenerCutComPorNombre(_comunaController.text.trim());
+        
+        if (!cutComResult.isSuccess) {
+          throw Exception('Error al obtener código de comuna: ${cutComResult.error}');
+        }
+
+        // Crear el grifo
+        final nuevoGrifo = Grifo(
+          idGrifo: DateTime.now().millisecondsSinceEpoch,
+          lat: _lat,
+          lon: _lng,
+          cutCom: cutComResult.data!, // Usar el código CUT obtenido
+        );
+
+        // Guardar el grifo en Supabase
+        final grifoResult = await _grifoService.insertGrifo(nuevoGrifo);
+        
+        if (grifoResult.isSuccess && grifoResult.data != null) {
+          // Obtener el RUT del bombero autenticado
+          final authService = SupabaseAuthService();
+          final bombero = await authService.getCurrentUserBombero();
+          
+          if (bombero == null) {
+            debugPrint('❌ No se pudo obtener la información del bombero autenticado');
+            throw Exception('No se pudo obtener la información del bombero autenticado. Por favor, inicie sesión nuevamente.');
+          }
+          
+          debugPrint('✅ Bombero autenticado encontrado: ${bombero.rutCompleto} (${bombero.nombBombero} ${bombero.apePBombero})');
+          
+          // Crear la información inicial del grifo
+          final infoGrifo = InfoGrifo(
+            idRegGrifo: DateTime.now().millisecondsSinceEpoch,
+            idGrifo: grifoResult.data!.idGrifo,
+            fechaRegistro: DateTime.now(),
+            estado: _estado,
+            rutNum: bombero.rutNum, // Usar el RUT del bombero autenticado
+          );
+
+          debugPrint('📝 Insertando info_grifo con RUT: ${bombero.rutNum}');
+          debugPrint('📝 Datos info_grifo: ${infoGrifo.toInsertData()}');
+
+          // Guardar la información del grifo
+          final infoResult = await _infoGrifoService.insertInfoGrifo(infoGrifo);
+          
+          if (infoResult.isSuccess) {
+            if (mounted) {
+              Navigator.pop(context, grifoResult.data);
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Grifo registrado exitosamente'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } else {
+            throw Exception(infoResult.error ?? 'Error al guardar información del grifo');
+          }
+        } else {
+          throw Exception(grifoResult.error ?? 'Error al registrar el grifo');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al registrar grifo: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 }

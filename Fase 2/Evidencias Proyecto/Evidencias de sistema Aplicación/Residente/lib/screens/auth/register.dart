@@ -72,10 +72,32 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         await Future.delayed(const Duration(milliseconds: 500));
       }
       
+      // Extraer nombre y apellido del fullName
+      final fullName = _registrationData.fullName ?? '';
+      final nameParts = fullName.trim().split(' ');
+      final nombreTitular = nameParts.isNotEmpty ? nameParts.first : '';
+      final apellidoTitular = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+      // Validar y formatear teléfono
+      String telefonoTitular = _registrationData.phoneNumber ?? '+56912345678';
+      if (!telefonoTitular.startsWith('+56')) {
+        // Si no tiene formato chileno, agregarlo
+        if (telefonoTitular.startsWith('9')) {
+          telefonoTitular = '+56$telefonoTitular';
+        } else if (telefonoTitular.startsWith('56')) {
+          telefonoTitular = '+$telefonoTitular';
+        } else {
+          telefonoTitular = '+569$telefonoTitular';
+        }
+      }
+
       final authResult = await authService.signUpGrupoFamiliar(
         email: _registrationData.email ?? '',
         password: _registrationData.password ?? '',
         rutTitular: _registrationData.rut ?? 'Sin RUT',
+        nombreTitular: nombreTitular,
+        apellidoTitular: apellidoTitular,
+        telefonoTitular: telefonoTitular,
       );
 
       debugPrint('✅ Resultado de autenticación: ${authResult.isSuccess}');
@@ -99,9 +121,43 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
         return;
       }
 
-      // 2. Crear residencia y registro_v
-      debugPrint('📝 Creando residencia y registro_v...');
+      // Verificar si es un usuario existente que inició sesión automáticamente
+      // Esto se detecta verificando si ya existe una residencia para el grupo familiar
       final databaseService = DatabaseService();
+      final grupoId = authResult.data!.grupoFamiliar!.idGrupof.toString();
+      
+      debugPrint('🔍 Verificando si el grupo $grupoId ya tiene residencia...');
+      final residenciaExistente = await databaseService.obtenerResidencia(grupoId: grupoId);
+      
+      if (residenciaExistente.isSuccess && residenciaExistente.data != null) {
+        debugPrint('✅ Usuario existente con residencia encontrada');
+        debugPrint('🔄 Redirigiendo al home sin crear residencia nueva...');
+        
+        // Actualizar datos de la residencia existente si es necesario
+        await _actualizarResidenciaExistente(authResult.data!.grupoFamiliar!.idGrupof.toString());
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('¡Bienvenido de vuelta! Sesión iniciada exitosamente.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          
+          // Navegar al home directamente
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => ResidentHomeScreen()),
+          );
+        }
+        return;
+      }
+      
+      debugPrint('📝 Usuario nuevo detectado, procediendo con creación de residencia...');
+
+      // 2. Crear residencia y registro_v solo para usuarios nuevos
+      debugPrint('📝 Creando residencia y registro_v para usuario nuevo...');
       final residenciaResult = await databaseService.crearResidencia(
         grupoId: authResult.data!.grupoFamiliar!.idGrupof.toString(),
         data: _registrationData,
@@ -167,6 +223,69 @@ class _RegisterWizardScreenState extends State<RegisterWizardScreen> {
           ),
         );
       }
+    }
+  }
+
+  /// Actualizar datos de la residencia existente para usuarios que se registran nuevamente
+  Future<void> _actualizarResidenciaExistente(String grupoId) async {
+    try {
+      debugPrint('🔄 Actualizando datos de residencia existente para grupo: $grupoId');
+      
+      final databaseService = DatabaseService();
+      
+      // Obtener la residencia actual
+      final residenciaActual = await databaseService.obtenerResidencia(grupoId: grupoId);
+      if (!residenciaActual.isSuccess || residenciaActual.data == null) {
+        debugPrint('❌ No se encontró residencia para actualizar');
+        return;
+      }
+      
+      final residencia = residenciaActual.data!;
+      debugPrint('📦 Residencia actual: ${residencia.direccion}');
+      
+      // Preparar datos de actualización
+      final datosActualizacion = <String, dynamic>{};
+      
+      // Actualizar dirección si está vacía o es "Dirección no especificada"
+      if ((_registrationData.address?.isNotEmpty == true) && 
+          (residencia.direccion.isEmpty || residencia.direccion == 'Dirección no especificada')) {
+        datosActualizacion['direccion'] = _registrationData.address!.trim();
+        debugPrint('📝 Actualizando dirección: ${_registrationData.address}');
+      }
+      
+      // Actualizar coordenadas si están en 0,0 (valores por defecto)
+      if (_registrationData.latitude != null && _registrationData.longitude != null) {
+        final lat = double.parse(_registrationData.latitude!.toStringAsFixed(6));
+        final lon = double.parse(_registrationData.longitude!.toStringAsFixed(6));
+        
+        if (residencia.lat == 0.0 && residencia.lon == 0.0) {
+          datosActualizacion['lat'] = lat;
+          datosActualizacion['lon'] = lon;
+          debugPrint('📝 Actualizando coordenadas: lat=$lat, lon=$lon');
+        }
+      }
+      
+      // Solo actualizar si hay datos nuevos
+      if (datosActualizacion.isNotEmpty) {
+        debugPrint('📝 Datos de residencia a actualizar: $datosActualizacion');
+        
+        // Actualizar la residencia
+        final resultado = await databaseService.actualizarResidencia(
+          grupoId: grupoId,
+          updates: datosActualizacion,
+        );
+        
+        if (resultado.isSuccess) {
+          debugPrint('✅ Datos de residencia actualizados exitosamente');
+        } else {
+          debugPrint('❌ Error al actualizar residencia: ${resultado.error}');
+        }
+      } else {
+        debugPrint('ℹ️ No hay datos nuevos de residencia para actualizar');
+      }
+    } catch (e) {
+      debugPrint('❌ Error al actualizar residencia existente: $e');
+      // No lanzar excepción para no interrumpir el flujo
     }
   }
 

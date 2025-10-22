@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+// Exportar widgets personalizados
+export 'welcome_banner.dart';
+export 'logout_dialog.dart';
+export 'welcome_snackbar.dart';
+export 'farewell_dialog.dart';
+
 // Widget optimizado para headers de secciones
 class SectionHeader extends StatelessWidget {
   final IconData icon;

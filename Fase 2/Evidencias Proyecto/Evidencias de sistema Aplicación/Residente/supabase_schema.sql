@@ -1,18 +1,15 @@
 -- =====================================================
--- ESQUEMA DE BASE DE DATOS ACTUALIZADO PARA SISTEMA DE BOMBEROS
--- Basado en el modelo de datos del usuario
+-- ESQUEMA DE BASE DE DATOS PARA SISTEMA DE BOMBEROS
+-- Compatible con Supabase Auth y aplicaciones Flutter
 -- =====================================================
--- Ejecutar este script en el SQL Editor de Supabase
 
--- =====================================================
--- 1. TABLA DE COMUNAS (Referencia geográfica)
--- =====================================================
-CREATE TABLE IF NOT EXISTS comunas (
+-- Tabla comunas (usando cut_com como ID estándar)
+CREATE TABLE comunas (
   cut_com INTEGER PRIMARY KEY NOT NULL,
   comuna TEXT NOT NULL,
-  cut_reg INTEGER NOT NULL,
+  out_reg INTEGER NOT NULL,
   region TEXT NOT NULL,
-  cut_prov INTEGER NOT NULL,
+  out_prov INTEGER NOT NULL,
   provincia TEXT NOT NULL,
   superficie NUMERIC NOT NULL,
   geometry GEOMETRY NOT NULL,
@@ -21,147 +18,111 @@ CREATE TABLE IF NOT EXISTS comunas (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- =====================================================
--- 2. TABLA DE GRUPOS FAMILIARES (Residentes principales)
--- =====================================================
-CREATE TABLE IF NOT EXISTS grupofamiliar (
-  id_grupof SERIAL PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
-  
-  -- Datos del titular
-  rut_titular VARCHAR(12) NOT NULL UNIQUE,
-  email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL CHECK (char_length(password) >= 60),
-  fecha_creacion DATE NOT NULL DEFAULT CURRENT_DATE,
-  
-  -- Metadatos
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  CONSTRAINT valid_rut_titular CHECK (LENGTH(rut_titular) >= 8),
-  CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
-);
-
--- Índices para mejorar rendimiento
-CREATE INDEX idx_grupofamiliar_user_id ON grupofamiliar(user_id);
-CREATE INDEX idx_grupofamiliar_rut_titular ON grupofamiliar(rut_titular);
-
--- =====================================================
--- 3. TABLA DE RESIDENCIAS
--- =====================================================
-CREATE TABLE IF NOT EXISTS residencia (
-  id_residencia SERIAL PRIMARY KEY,
-  
-  -- Información de ubicación
+-- Tabla residencia (con campos adicionales requeridos por las apps)
+CREATE TABLE residencia (
+  id_residencia INTEGER PRIMARY KEY NOT NULL,
   direccion TEXT UNIQUE NOT NULL,
-  lat DECIMAL(16,14) NOT NULL,
-  lon DECIMAL(16,14) NOT NULL,
-  cut_com INTEGER REFERENCES comunas(cut_com) NOT NULL,
+  lat DECIMAL(9,6) NOT NULL,
+  lon DECIMAL(9,6) NOT NULL,
+  cut_com INTEGER NOT NULL REFERENCES comunas(cut_com),
   
-  -- Detalles de vivienda (agregados para compatibilidad con la app)
-  tipo_vivienda TEXT,
+  -- Campos adicionales requeridos por las aplicaciones
+  telefono_principal VARCHAR(20),
   numero_pisos INTEGER,
-  material_construccion TEXT,
-  estado_vivienda TEXT,
-  telefono_principal TEXT,
-  instrucciones_especiales TEXT,
+  instrucciones_especiales JSONB,
   
-  -- Metadatos
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  CONSTRAINT valid_coordinates CHECK (lat >= -90 AND lat <= 90 AND lon >= -180 AND lon <= 180)
-);
-
--- Índices
-CREATE INDEX idx_residencia_location ON residencia(lat, lon);
-CREATE INDEX idx_residencia_comuna ON residencia(cut_com);
-
--- =====================================================
--- 4. TABLA DE INTEGRANTES DEL GRUPO FAMILIAR
--- =====================================================
-CREATE TABLE IF NOT EXISTS integrante (
-  id_integrante SERIAL PRIMARY KEY,
-  id_grupof INTEGER REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE NOT NULL,
-  
-  -- Estado del integrante
-  activo_i BOOLEAN NOT NULL DEFAULT true,
-  fecha_ini_i DATE NOT NULL DEFAULT CURRENT_DATE,
-  fecha_fin_i DATE,
-  
-  -- Información personal (agregada para compatibilidad con la app)
-  rut VARCHAR(12),
-  edad INTEGER,
-  anio_nac INTEGER,
-  padecimiento TEXT,
-  
-  -- Metadatos
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  CONSTRAINT valid_age CHECK (edad IS NULL OR (edad >= 0 AND edad <= 150)),
-  CONSTRAINT valid_birth_year CHECK (anio_nac IS NULL OR (anio_nac >= 1900 AND anio_nac <= EXTRACT(YEAR FROM CURRENT_DATE))),
-  CONSTRAINT valid_dates CHECK (fecha_fin_i IS NULL OR fecha_fin_i >= fecha_ini_i)
-);
-
--- Índices
-CREATE INDEX idx_integrante_grupof ON integrante(id_grupof);
-CREATE INDEX idx_integrante_rut ON integrante(rut);
-CREATE INDEX idx_integrante_active ON integrante(activo_i);
-
--- =====================================================
--- 4.1. TABLA DE INFORMACIÓN ADICIONAL DE INTEGRANTES
--- =====================================================
-CREATE TABLE IF NOT EXISTS info_integrante (
-  id_integrante INTEGER PRIMARY KEY REFERENCES integrante(id_integrante) ON DELETE CASCADE,
-  fecha_reg_ii DATE NOT NULL DEFAULT CURRENT_DATE,
-  anio_nac INTEGER NOT NULL,
-  padecimiento TEXT,
-  
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  CONSTRAINT valid_birth_year_ii CHECK (anio_nac >= 1900 AND anio_nac <= EXTRACT(YEAR FROM CURRENT_DATE))
-);
-
--- Índices
-CREATE INDEX idx_info_integrante_fecha ON info_integrante(fecha_reg_ii);
-
--- =====================================================
--- 5. TABLA DE MASCOTAS
--- =====================================================
-CREATE TABLE IF NOT EXISTS mascota (
-  id_mascota SERIAL PRIMARY KEY,
-  id_grupof INTEGER REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE NOT NULL,
-  
-  -- Información de la mascota
-  nombre_m TEXT NOT NULL,
-  especie TEXT NOT NULL,
-  tamanio TEXT NOT NULL,
-  fecha_reg_m DATE NOT NULL DEFAULT CURRENT_DATE,
-  
-  -- Metadatos (agregados para compatibilidad con la app)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Índices
-CREATE INDEX idx_mascota_grupof ON mascota(id_grupof);
+-- Tabla grupofamiliar (solo con id estándar)
+CREATE TABLE grupofamiliar(
+  id_grupof INTEGER PRIMARY KEY NOT NULL,
+  rut_titular VARCHAR(12) NOT NULL,
+  nomb_titular VARCHAR(50) NOT NULL,
+  ape_p_titular VARCHAR(50) NOT NULL,
+  telefono_titular VARCHAR(13) NOT NULL,
+  CHECK (telefono_titular ~ '^\+56[2-9][0-9]{8,9}$'),
+  email TEXT UNIQUE NOT NULL,
+  fecha_creacion DATE NOT NULL,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- =====================================================
--- 6. TABLA DE BOMBEROS (Para futuras funcionalidades)
--- =====================================================
-CREATE TABLE IF NOT EXISTS bombero (
+-- Tabla registro_v (correcta)
+CREATE TABLE registro_v (
+  id_registro INTEGER PRIMARY KEY NOT NULL,
+  vigente BOOLEAN NOT NULL,
+  estado TEXT NOT NULL,
+  material TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  pisos INTEGER NOT NULL,
+  fecha_ini_r DATE NOT NULL,
+  fecha_fin_r DATE,
+  id_residencia INTEGER NOT NULL REFERENCES residencia(id_residencia),
+  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof),
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabla integrante (correcta)
+CREATE TABLE integrante(
+  id_integrante INTEGER PRIMARY KEY NOT NULL,
+  activo_i BOOLEAN NOT NULL,
+  fecha_ini_i DATE NOT NULL,
+  fecha_fin_i DATE,
+  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof),
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabla info_integrante (correcta)
+CREATE TABLE info_integrante(
+  id_integrante INTEGER PRIMARY KEY NOT NULL REFERENCES integrante(id_integrante),
+  fecha_reg_ii DATE NOT NULL,
+  anio_nac INTEGER NOT NULL,
+  padecimiento TEXT,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabla mascota (correcta)
+CREATE TABLE mascota(
+  id_mascota INTEGER PRIMARY KEY,
+  nombre_m TEXT NOT NULL,
+  especie TEXT NOT NULL,
+  tamanio TEXT NOT NULL,
+  fecha_reg_m DATE NOT NULL,
+  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof),
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabla grifo (usando cut_com como estándar)
+CREATE TABLE grifo (
+  id_grifo SERIAL PRIMARY KEY,
+  lat DECIMAL(9,6) NOT NULL,
+  lon DECIMAL(9,6) NOT NULL,
+  cut_com INTEGER NOT NULL REFERENCES comunas(cut_com),
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabla bombero (solo con id estándar, sin auth_user_id)
+CREATE TABLE bombero (
   rut_num INTEGER PRIMARY KEY NOT NULL,
   rut_dv CHAR(1) NOT NULL,
+  compania VARCHAR(4) NOT NULL,
+  nomb_bombero VARCHAR(50) NOT NULL,
+  ape_p_bombero VARCHAR(50) NOT NULL,
   email_b TEXT UNIQUE NOT NULL,
-  password_b TEXT NOT NULL CHECK (char_length(password_b) >= 60),
-  
-  -- Información adicional del bombero
-  nombre TEXT,
-  telefono TEXT,
-  cargo TEXT,
-  activo BOOLEAN DEFAULT true,
+  cut_com INTEGER NOT NULL REFERENCES comunas(cut_com),
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -169,418 +130,74 @@ CREATE TABLE IF NOT EXISTS bombero (
   CONSTRAINT uq_rut UNIQUE (rut_num, rut_dv)
 );
 
--- Índices
-CREATE INDEX idx_bombero_email ON bombero(email_b);
-
--- =====================================================
--- 7. TABLA DE GRIFOS (Para futuras funcionalidades)
--- =====================================================
-CREATE TABLE IF NOT EXISTS grifo (
-  id_grifo SERIAL PRIMARY KEY,
-  lat DECIMAL(9,6) NOT NULL,
-  lon DECIMAL(9,6) NOT NULL,
-  cut_com INTEGER REFERENCES comunas(cut_com) NOT NULL,
-  
-  -- Información del grifo
-  direccion TEXT,
-  tipo_grifo TEXT,
-  capacidad NUMERIC,
-  estado_operativo BOOLEAN DEFAULT true,
-  
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  CONSTRAINT valid_grifo_coordinates CHECK (lat >= -90 AND lat <= 90 AND lon >= -180 AND lon <= 180)
-);
-
--- Índices
-CREATE INDEX idx_grifo_location ON grifo(lat, lon);
-CREATE INDEX idx_grifo_comuna ON grifo(cut_com);
-
--- =====================================================
--- 8. TABLA DE INFORMACIÓN DE GRIFOS
--- =====================================================
-CREATE TABLE IF NOT EXISTS info_grifo (
+-- Tabla info_grifo (correcta)
+CREATE TABLE info_grifo (
   id_reg_grifo SERIAL PRIMARY KEY,
-  id_grifo INTEGER REFERENCES grifo(id_grifo) ON DELETE CASCADE NOT NULL,
-  rut_num INTEGER REFERENCES bombero(rut_num) ON DELETE CASCADE NOT NULL,
-  
-  fecha_registro DATE NOT NULL DEFAULT CURRENT_DATE,
+  id_grifo INTEGER NOT NULL REFERENCES grifo(id_grifo),
+  fecha_registro DATE NOT NULL,
   estado TEXT NOT NULL,
+  rut_num INTEGER NOT NULL REFERENCES bombero(rut_num),
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Índices
-CREATE INDEX idx_info_grifo_grifo ON info_grifo(id_grifo);
-CREATE INDEX idx_info_grifo_bombero ON info_grifo(rut_num);
-CREATE INDEX idx_info_grifo_fecha ON info_grifo(fecha_registro);
+-- =====================================================
+-- ÍNDICES PARA OPTIMIZACIÓN
+-- =====================================================
+
+-- Índices para búsquedas frecuentes
+CREATE INDEX idx_residencia_cut_com ON residencia(cut_com);
+CREATE INDEX idx_registro_v_id_grupof ON registro_v(id_grupof);
+CREATE INDEX idx_registro_v_id_residencia ON registro_v(id_residencia);
+CREATE INDEX idx_grifo_cut_com ON grifo(cut_com);
+CREATE INDEX idx_bombero_cut_com ON bombero(cut_com);
 
 -- =====================================================
--- 9. TABLA DE REGISTROS DE INCIDENTES
--- =====================================================
-CREATE TABLE IF NOT EXISTS registro_v (
-  id_registro SERIAL PRIMARY KEY,
-  id_residencia INTEGER REFERENCES residencia(id_residencia) NOT NULL,
-  id_grupof INTEGER REFERENCES grupofamiliar(id_grupof) NOT NULL,
-  rut_num INTEGER REFERENCES bombero(rut_num),
-  
-  -- Estado del registro
-  vigente BOOLEAN NOT NULL DEFAULT true,
-  estado TEXT NOT NULL,
-  material TEXT,
-  tipo TEXT,
-  
-  -- Fechas
-  fecha_ini_r DATE NOT NULL DEFAULT CURRENT_DATE,
-  fecha_fin_r DATE,
-  
-  -- Metadatos (agregados para compatibilidad con la app)
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  CONSTRAINT valid_incident_dates CHECK (fecha_fin_r IS NULL OR fecha_fin_r >= fecha_ini_r)
-);
-
--- Índices
-CREATE INDEX idx_registro_residencia ON registro_v(id_residencia);
-CREATE INDEX idx_registro_grupof ON registro_v(id_grupof);
-CREATE INDEX idx_registro_bombero ON registro_v(rut_num);
-CREATE INDEX idx_registro_vigente ON registro_v(vigente);
-
--- =====================================================
--- 10. FUNCIÓN PARA ACTUALIZAR updated_at AUTOMÁTICAMENTE
--- =====================================================
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Triggers para actualizar updated_at
-CREATE TRIGGER update_comunas_updated_at
-  BEFORE UPDATE ON comunas
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_grupofamiliar_updated_at
-  BEFORE UPDATE ON grupofamiliar
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_residencia_updated_at
-  BEFORE UPDATE ON residencia
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_integrante_updated_at
-  BEFORE UPDATE ON integrante
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_mascota_updated_at
-  BEFORE UPDATE ON mascota
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_bombero_updated_at
-  BEFORE UPDATE ON bombero
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_grifo_updated_at
-  BEFORE UPDATE ON grifo
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_info_grifo_updated_at
-  BEFORE UPDATE ON info_grifo
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_registro_v_updated_at
-  BEFORE UPDATE ON registro_v
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- =====================================================
--- 11. ROW LEVEL SECURITY (RLS)
+-- POLÍTICAS RLS (Row Level Security)
 -- =====================================================
 
 -- Habilitar RLS en todas las tablas
 ALTER TABLE comunas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE grupofamiliar ENABLE ROW LEVEL SECURITY;
 ALTER TABLE residencia ENABLE ROW LEVEL SECURITY;
-ALTER TABLE integrante ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mascota ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bombero ENABLE ROW LEVEL SECURITY;
-ALTER TABLE grifo ENABLE ROW LEVEL SECURITY;
-ALTER TABLE info_grifo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grupofamiliar ENABLE ROW LEVEL SECURITY;
 ALTER TABLE registro_v ENABLE ROW LEVEL SECURITY;
+ALTER TABLE integrante ENABLE ROW LEVEL SECURITY;
+ALTER TABLE info_integrante ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mascota ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grifo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bombero ENABLE ROW LEVEL SECURITY;
+ALTER TABLE info_grifo ENABLE ROW LEVEL SECURITY;
 
--- Políticas para COMUNAS (lectura pública)
-CREATE POLICY "Todos pueden leer comunas"
-  ON comunas FOR SELECT
-  USING (true);
+-- Políticas para grupofamiliar (acceso público para lectura, autenticado para escritura)
+CREATE POLICY "Anyone can view grupo familiar" ON grupofamiliar
+  FOR SELECT USING (true);
 
--- Políticas para GRUPOFAMILIAR
-CREATE POLICY "Los usuarios pueden ver su propio grupo familiar"
-  ON grupofamiliar FOR SELECT
-  USING (auth.uid() = user_id);
+CREATE POLICY "Authenticated users can insert grupo familiar" ON grupofamiliar
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Los usuarios pueden crear su propio grupo familiar"
-  ON grupofamiliar FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Authenticated users can update grupo familiar" ON grupofamiliar
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Los usuarios pueden actualizar su propio grupo familiar"
-  ON grupofamiliar FOR UPDATE
-  USING (auth.uid() = user_id);
+-- Políticas para bombero (acceso público para lectura, autenticado para escritura)
+CREATE POLICY "Anyone can view bombero data" ON bombero
+  FOR SELECT USING (true);
 
-CREATE POLICY "Los usuarios pueden eliminar su propio grupo familiar"
-  ON grupofamiliar FOR DELETE
-  USING (auth.uid() = user_id);
+CREATE POLICY "Authenticated users can insert bombero data" ON bombero
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
--- Políticas para RESIDENCIA
-CREATE POLICY "Los usuarios pueden ver sus residencias"
-  ON residencia FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = residencia.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Authenticated users can update bombero data" ON bombero
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Los usuarios pueden crear residencias"
-  ON residencia FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = residencia.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
+-- Políticas para grifo e info_grifo (bomberos pueden leer/escribir)
+CREATE POLICY "Bomberos can view grifos" ON grifo
+  FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Los usuarios pueden actualizar sus residencias"
-  ON residencia FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = residencia.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Bomberos can insert grifos" ON grifo
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Los usuarios pueden eliminar sus residencias"
-  ON residencia FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = residencia.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Bomberos can view info grifo" ON info_grifo
+  FOR SELECT USING (auth.role() = 'authenticated');
 
--- Políticas para INTEGRANTE
-CREATE POLICY "Los usuarios pueden ver sus integrantes"
-  ON integrante FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = integrante.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Los usuarios pueden crear integrantes"
-  ON integrante FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = integrante.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Los usuarios pueden actualizar sus integrantes"
-  ON integrante FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = integrante.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Los usuarios pueden eliminar sus integrantes"
-  ON integrante FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = integrante.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
--- Políticas para MASCOTA
-CREATE POLICY "Los usuarios pueden ver sus mascotas"
-  ON mascota FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = mascota.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Los usuarios pueden crear mascotas"
-  ON mascota FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = mascota.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Los usuarios pueden actualizar sus mascotas"
-  ON mascota FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = mascota.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Los usuarios pueden eliminar sus mascotas"
-  ON mascota FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = mascota.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
--- Políticas para BOMBERO (solo bomberos autenticados)
-CREATE POLICY "Los bomberos pueden ver bomberos"
-  ON bombero FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM bombero b 
-      WHERE b.user_id = auth.uid()
-    )
-  );
-
--- Políticas para GRIFO (lectura pública para bomberos)
-CREATE POLICY "Todos pueden leer grifos"
-  ON grifo FOR SELECT
-  USING (true);
-
--- Políticas para INFO_GRIFO (solo bomberos)
-CREATE POLICY "Los bomberos pueden ver info de grifos"
-  ON info_grifo FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM bombero b 
-      WHERE b.user_id = auth.uid()
-    )
-  );
-
--- Políticas para REGISTRO_V
-CREATE POLICY "Los usuarios pueden ver sus registros"
-  ON registro_v FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM grupofamiliar 
-      WHERE grupofamiliar.id_grupof = registro_v.id_grupof 
-      AND grupofamiliar.user_id = auth.uid()
-    )
-  );
-
--- =====================================================
--- 12. VISTAS ÚTILES
--- =====================================================
-
--- Vista combinada de grupo familiar con información completa
-CREATE OR REPLACE VIEW grupofamiliar_completo AS
-SELECT 
-  gf.*,
-  r.id_residencia,
-  r.direccion,
-  r.lat,
-  r.lon,
-  c.comuna,
-  c.region,
-  c.provincia,
-  (SELECT COUNT(*) FROM integrante i WHERE i.id_grupof = gf.id_grupof AND i.activo_i = true) AS integrantes_activos,
-  (SELECT COUNT(*) FROM mascota m WHERE m.id_grupof = gf.id_grupof) AS mascotas_count
-FROM grupofamiliar gf
-LEFT JOIN residencia r ON r.id_grupof = gf.id_grupof
-LEFT JOIN comunas c ON c.cut_com = r.cut_com;
-
--- Vista de integrantes con información del grupo familiar
-CREATE OR REPLACE VIEW integrante_completo AS
-SELECT 
-  i.*,
-  gf.rut_titular,
-  gf.fecha_creacion as fecha_creacion_grupo
-FROM integrante i
-JOIN grupofamiliar gf ON gf.id_grupof = i.id_grupof;
-
--- =====================================================
--- 13. FUNCIÓN PARA CREAR GRUPO FAMILIAR COMPLETO
--- =====================================================
-CREATE OR REPLACE FUNCTION crear_grupo_familiar_completo(
-  p_user_id UUID,
-  p_rut_titular VARCHAR,
-  p_direccion TEXT,
-  p_lat NUMERIC,
-  p_lon NUMERIC,
-  p_cut_com INTEGER,
-  p_tipo_vivienda TEXT DEFAULT NULL,
-  p_telefono_principal TEXT DEFAULT NULL
-)
-RETURNS INTEGER AS $$
-DECLARE
-  v_id_grupof INTEGER;
-  v_id_residencia INTEGER;
-BEGIN
-  -- Crear grupo familiar
-  INSERT INTO grupofamiliar (user_id, rut_titular)
-  VALUES (p_user_id, p_rut_titular)
-  RETURNING id_grupof INTO v_id_grupof;
-  
-  -- Crear residencia
-  INSERT INTO residencia (
-    direccion, lat, lon, cut_com, 
-    tipo_vivienda, telefono_principal
-  )
-  VALUES (
-    p_direccion, p_lat, p_lon, p_cut_com,
-    p_tipo_vivienda, p_telefono_principal
-  )
-  RETURNING id_residencia INTO v_id_residencia;
-  
-  -- Crear registro_v para conectar residencia con grupo familiar
-  INSERT INTO registro_v (
-    id_residencia, id_grupof, vigente, estado, material, tipo
-  )
-  VALUES (
-    v_id_residencia, v_id_grupof, true, 'Activo', 'No especificado', 'Residencia'
-  );
-  
-  RETURN v_id_grupof;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- =====================================================
--- FIN DEL ESQUEMA ACTUALIZADO
--- =====================================================
-
--- Verificar que todo se creó correctamente
-SELECT 'Esquema actualizado creado exitosamente' AS status;
+CREATE POLICY "Bomberos can insert info grifo" ON info_grifo
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');

@@ -15,8 +15,6 @@ class RegistrationData {
   String? address;
   double? latitude;
   double? longitude;
-  String? mainPhone;
-  String? alternatePhone;
 
   // Paso 4: Detalles de la Vivienda
   String? housingType;
@@ -24,6 +22,7 @@ class RegistrationData {
   String? constructionMaterial;
   String? housingCondition;
   String? specialInstructions;
+  String? mainPhone; // Teléfono principal de la residencia
 
   RegistrationData({
     this.email,
@@ -37,13 +36,12 @@ class RegistrationData {
     this.address,
     this.latitude,
     this.longitude,
-    this.mainPhone,
-    this.alternatePhone,
     this.housingType,
     this.numberOfFloors,
     this.constructionMaterial,
     this.housingCondition,
     this.specialInstructions,
+    this.mainPhone,
   }) : medicalConditions = medicalConditions ?? [];
 
   // Optimización: Método copyWith para actualizaciones inmutables
@@ -59,13 +57,12 @@ class RegistrationData {
     String? address,
     double? latitude,
     double? longitude,
-    String? mainPhone,
-    String? alternatePhone,
     String? housingType,
     int? numberOfFloors,
     String? constructionMaterial,
     String? housingCondition,
     String? specialInstructions,
+    String? mainPhone,
   }) {
     return RegistrationData(
       email: email ?? this.email,
@@ -79,13 +76,12 @@ class RegistrationData {
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
-      mainPhone: mainPhone ?? this.mainPhone,
-      alternatePhone: alternatePhone ?? this.alternatePhone,
       housingType: housingType ?? this.housingType,
       numberOfFloors: numberOfFloors ?? this.numberOfFloors,
       constructionMaterial: constructionMaterial ?? this.constructionMaterial,
       housingCondition: housingCondition ?? this.housingCondition,
       specialInstructions: specialInstructions ?? this.specialInstructions,
+      mainPhone: mainPhone ?? this.mainPhone,
     );
   }
 
@@ -102,7 +98,6 @@ class RegistrationData {
       'latitude': latitude,
       'longitude': longitude,
       'main_phone': mainPhone,
-      'alternate_phone': alternatePhone,
       'housing_type': housingType,
       'number_of_floors': numberOfFloors,
       'construction_material': constructionMaterial,
@@ -126,13 +121,12 @@ class RegistrationData {
       address: json['address'] as String?,
       latitude: json['latitude'] as double?,
       longitude: json['longitude'] as double?,
-      mainPhone: json['main_phone'] as String?,
-      alternatePhone: json['alternate_phone'] as String?,
       housingType: json['housing_type'] as String?,
       numberOfFloors: json['number_of_floors'] as int?,
       constructionMaterial: json['construction_material'] as String?,
       housingCondition: json['housing_condition'] as String?,
       specialInstructions: json['special_instructions'] as String?,
+      mainPhone: json['main_phone'] as String?,
     );
   }
 }

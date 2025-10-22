@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/registration_data.dart';
 import '../../utils/app_styles.dart';
-import '../../utils/input_formatters.dart';
 import '../../widgets/address_form_widget.dart';
 import '../../widgets/housing_details_form.dart';
 
@@ -31,8 +30,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
   final _addressController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
-  final _mainPhoneController = TextEditingController();
-  final _altPhoneController = TextEditingController();
 
   // Variables de vivienda
   String? _selectedHousingType;
@@ -54,8 +51,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
         widget.registrationData.latitude?.toString() ?? '';
     _longitudeController.text =
         widget.registrationData.longitude?.toString() ?? '';
-    _mainPhoneController.text = widget.registrationData.mainPhone ?? '';
-    _altPhoneController.text = widget.registrationData.alternatePhone ?? '';
 
     if (_latitudeController.text.isNotEmpty) {
       _showManualCoordinates = true;
@@ -74,8 +69,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
-    _mainPhoneController.dispose();
-    _altPhoneController.dispose();
     super.dispose();
   }
 
@@ -87,8 +80,7 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
         address: _addressController.text.trim(),
         latitude: double.tryParse(_latitudeController.text),
         longitude: double.tryParse(_longitudeController.text),
-        mainPhone: _mainPhoneController.text.trim(),
-        alternatePhone: _altPhoneController.text.trim(),
+        mainPhone: null, // No se guarda teléfono principal
         housingType: _selectedHousingType,
         numberOfFloors: _numberOfFloors != null
             ? int.parse(_numberOfFloors!)
@@ -172,8 +164,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
               );
             },
           ),
-          const SizedBox(height: AppSpacing.xxl),
-          _buildContactSection(),
         ],
       ),
     );
@@ -197,35 +187,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
     );
   }
 
-  Widget _buildContactSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Contactos de Emergencia', style: AppTextStyles.heading3),
-        const SizedBox(height: AppSpacing.lg),
-
-
-        TextFormField(
-          controller: _altPhoneController,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [
-            PhoneInputFormatter(), // ← Formateo automático
-          ],
-          decoration: InputDecoration(
-            labelText: 'Teléfono alternativo (opcional)',
-            hintText: '9 8765 4321',
-            prefixIcon: const Icon(Icons.phone_android),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            filled: true,
-            fillColor: const Color(0xFFFAFAFA),
-            helperText: 'Se formatea automáticamente',
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildActions() {
     return Container(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
@@ -26,6 +27,9 @@ class SupabaseAuthService {
     required String email,
     required String password,
     required String rutCompleto,
+    required String nombre,
+    required String apellidoPaterno,
+    required String compania,
   }) async {
     try {
       // Paso 0: Validar que el RUT no esté ya registrado
@@ -49,7 +53,18 @@ class SupabaseAuthService {
       if (response.user != null) {
         // Paso 2: Guardar información en la tabla bombero
         try {
-          final bombero = Bombero.fromRutCompleto(rutCompleto, email.trim());
+          // Obtener una comuna válida antes de crear el bombero
+          final comunaValida = await _obtenerComunaValida();
+          
+          final bombero = Bombero(
+            rutNum: Bombero.fromRutCompleto(rutCompleto, '').rutNum,
+            rutDv: Bombero.fromRutCompleto(rutCompleto, '').rutDv,
+            compania: compania.trim(),
+            nombBombero: nombre.trim(),
+            apePBombero: apellidoPaterno.trim(),
+            emailB: email.trim(),
+            cutCom: comunaValida,
+          );
           final bomberoData = bombero.toInsertData();
 
           final bomberoResponse = await _client
@@ -273,6 +288,70 @@ class SupabaseAuthService {
       return 'Usuario no encontrado.';
     }
     return error;
+  }
+
+  /// Obtener una comuna válida para crear bomberos
+  Future<int> _obtenerComunaValida() async {
+    try {
+      // Buscar comunas existentes
+      final comunasResponse = await _client
+          .from('comunas')
+          .select('cut_com')
+          .limit(1);
+      
+      if (comunasResponse.isNotEmpty) {
+        final cutCom = comunasResponse.first['cut_com'] as int;
+        debugPrint('✅ Usando comuna existente: $cutCom');
+        return cutCom;
+      }
+      
+      // Si no hay comunas, crear una temporal válida
+      const cutComTemporal = 13101; // Santiago
+      debugPrint('⚠️ No hay comunas en la BD, usando Santiago por defecto: $cutComTemporal');
+      
+      try {
+        await _client.from('comunas').insert({
+          'cut_com': cutComTemporal,
+          'comuna': 'Santiago',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 641.4,
+          'geometry': 'POINT(-70.6693 -33.4489)',
+        });
+        debugPrint('✅ Comuna temporal creada: $cutComTemporal');
+        return cutComTemporal;
+      } catch (e) {
+        debugPrint('⚠️ Error al crear comuna temporal: $e');
+        // Usar comuna alternativa
+        const cutComAlternativo = 13102; // Providencia
+        debugPrint('🔄 Intentando con comuna alternativa: $cutComAlternativo');
+        
+        try {
+          await _client.from('comunas').insert({
+            'cut_com': cutComAlternativo,
+            'comuna': 'Providencia',
+            'cut_reg': 13,
+            'region': 'Metropolitana',
+            'cut_prov': 131,
+            'provincia': 'Santiago',
+            'superficie': 14.4,
+            'geometry': 'POINT(-70.6167 -33.4255)',
+          });
+          debugPrint('✅ Comuna alternativa creada: $cutComAlternativo');
+          return cutComAlternativo;
+        } catch (e2) {
+          debugPrint('❌ Error al crear comuna alternativa: $e2');
+          // Retornar valor por defecto
+          return cutComTemporal;
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error al obtener comuna válida: $e');
+      // Retornar Santiago por defecto
+      return 13101;
+    }
   }
 }
 

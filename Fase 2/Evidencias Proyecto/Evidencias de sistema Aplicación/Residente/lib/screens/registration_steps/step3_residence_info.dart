@@ -24,8 +24,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _latitudeController = TextEditingController();
   final TextEditingController _longitudeController = TextEditingController();
-  final TextEditingController _mainPhoneController = TextEditingController();
-  final TextEditingController _altPhoneController = TextEditingController();
+  // Removed _mainPhoneController since phone is already captured in step 2
   final TextEditingController _specialInstructionsController =
       TextEditingController();
 
@@ -40,8 +39,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
         widget.registrationData.latitude?.toString() ?? '';
     _longitudeController.text =
         widget.registrationData.longitude?.toString() ?? '';
-    _mainPhoneController.text = widget.registrationData.mainPhone ?? '';
-    _altPhoneController.text = widget.registrationData.alternatePhone ?? '';
+    // Removed mainPhone initialization since phone is already captured in step 2
     _specialInstructionsController.text =
         widget.registrationData.specialInstructions ?? '';
 
@@ -55,8 +53,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
-    _mainPhoneController.dispose();
-    _altPhoneController.dispose();
+    // Removed mainPhone dispose since phone is already captured in step 2
     _specialInstructionsController.dispose();
     super.dispose();
   }
@@ -81,8 +78,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
       widget.registrationData.longitude = double.tryParse(
         _longitudeController.text,
       );
-      widget.registrationData.mainPhone = _mainPhoneController.text.trim();
-      widget.registrationData.alternatePhone = _altPhoneController.text.trim();
+      // Removed mainPhone assignment since phone is already captured in step 2
       widget.registrationData.specialInstructions =
           _specialInstructionsController.text.trim();
       widget.onNext();
@@ -123,7 +119,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Proporciona los datos básicos de tu vivienda y contactos de emergencia',
+                      'Proporciona los datos básicos de tu vivienda',
                       style: TextStyle(
                         fontSize: ResponsiveHelper.getResponsiveFontSize(
                           context,
@@ -446,34 +442,15 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
 
                     const SizedBox(height: 32),
 
-                    // Teléfonos de contacto
+                    // Instrucciones especiales
                     const Text(
-                      'Contactos de Emergencia',
+                      'Instrucciones Especiales',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
-
-
-                    TextFormField(
-                      controller: _altPhoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Teléfono alternativo (opcional)',
-                        hintText: '9 8765 4321',
-                        helperText:
-                            'Teléfono de contacto secundario (familiar, vecino, etc.)',
-                        prefixIcon: const Icon(Icons.phone_android),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
 
                     TextFormField(
                       controller: _specialInstructionsController,
