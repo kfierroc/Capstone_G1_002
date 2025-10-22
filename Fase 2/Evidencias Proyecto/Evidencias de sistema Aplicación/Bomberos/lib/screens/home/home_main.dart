@@ -21,7 +21,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    // Usar WidgetsBinding para asegurar que el widget esté completamente construido
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserProfile();
+    });
   }
 
   @override
@@ -90,7 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isLoadingProfile = false;
         });
-        _showErrorSnackBar('Error al cargar perfil: ${e.toString()}');
+        // Usar un delay más largo para asegurar que el contexto esté disponible
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _showErrorSnackBar('Error al cargar perfil: ${e.toString()}');
+          }
+        });
       }
     }
   }
@@ -175,24 +183,41 @@ class _HomeScreenState extends State<HomeScreen> {
     ) ?? false;
   }
 
-  /// Muestra mensaje de error
+  /// Muestra mensaje de error de forma segura
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.orange,
-      ),
-    );
+    // Verificar que el widget esté montado y el contexto sea válido
+    if (!mounted) return;
+    
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } catch (e) {
+      // Si hay error con ScaffoldMessenger, usar un enfoque alternativo
+      debugPrint('Error al mostrar SnackBar: $e');
+      // Podríamos usar un diálogo o simplemente loggear el error
+    }
   }
 
-  /// Muestra mensaje de éxito
+  /// Muestra mensaje de éxito de forma segura
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.blue,
-      ),
-    );
+    // Verificar que el widget esté montado y el contexto sea válido
+    if (!mounted) return;
+    
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    } catch (e) {
+      // Si hay error con ScaffoldMessenger, usar un enfoque alternativo
+      debugPrint('Error al mostrar SnackBar: $e');
+    }
   }
 
   @override

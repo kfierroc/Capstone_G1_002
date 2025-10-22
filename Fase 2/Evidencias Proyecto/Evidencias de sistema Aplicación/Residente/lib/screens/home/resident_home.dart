@@ -442,14 +442,59 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       final grupo = grupoResult.data!;
       
       // Actualizar información del grupo familiar si es necesario
-      if (newData.rut != _registrationData.rut) {
-        final grupoUpdates = {
-          'rut_titular': newData.rut,
-        };
+      final grupoUpdates = <String, dynamic>{};
+      
+      debugPrint('🔍 Verificando cambios en grupo familiar:');
+      debugPrint('   - RUT actual: ${_registrationData.rut}');
+      debugPrint('   - RUT nuevo: ${newData.rut}');
+      debugPrint('   - Teléfono actual: ${_registrationData.phoneNumber}');
+      debugPrint('   - Teléfono nuevo: ${newData.phoneNumber}');
+      
+      if (newData.rut != null && newData.rut != _registrationData.rut) {
+        grupoUpdates['rut_titular'] = newData.rut;
+        debugPrint('📝 RUT cambió: ${_registrationData.rut} -> ${newData.rut}');
+      }
+      if (newData.phoneNumber != null && newData.phoneNumber != _registrationData.phoneNumber) {
+        grupoUpdates['telefono_titular'] = newData.phoneNumber;
+        debugPrint('📝 Teléfono cambió: ${_registrationData.phoneNumber} -> ${newData.phoneNumber}');
+      }
+      
+      if (grupoUpdates.isNotEmpty) {
+        debugPrint('📝 Actualizando grupo familiar con: $grupoUpdates');
         await databaseService.actualizarGrupoFamiliar(
           grupoId: grupo.idGrupoF.toString(),
           updates: grupoUpdates,
         );
+        debugPrint('✅ Grupo familiar actualizado exitosamente');
+      }
+      
+      // Actualizar condiciones médicas del integrante titular si han cambiado
+      debugPrint('🔍 Verificando cambios en condiciones médicas:');
+      debugPrint('   - Condiciones actuales: ${_registrationData.medicalConditions}');
+      debugPrint('   - Condiciones nuevas: ${newData.medicalConditions}');
+      
+      if (newData.medicalConditions.isNotEmpty && newData.medicalConditions != _registrationData.medicalConditions) {
+        final integrantesResult = await databaseService.obtenerIntegrantes(grupoId: grupo.idGrupoF.toString());
+        if (integrantesResult.isSuccess && integrantesResult.data != null) {
+          // Buscar el integrante titular (primer integrante activo)
+          final integranteTitular = integrantesResult.data!.firstWhere(
+            (i) => i.activoI == true,
+            orElse: () => integrantesResult.data!.first,
+          );
+          
+          final integranteUpdates = {
+            'padecimiento': newData.medicalConditions.isNotEmpty 
+                ? newData.medicalConditions.join(', ') 
+                : null,
+          };
+          
+          debugPrint('📝 Actualizando condiciones médicas del integrante titular: $integranteUpdates');
+          await databaseService.actualizarIntegrante(
+            integranteId: integranteTitular.idIntegrante.toString(),
+            updates: integranteUpdates,
+          );
+          debugPrint('✅ Condiciones médicas actualizadas exitosamente');
+        }
       }
       
       // Actualizar información de residencia
@@ -457,18 +502,38 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       
       if (residenciaResult.isSuccess && residenciaResult.data != null) {
         // Residencia existe, actualizar
-        final residenciaUpdates = {
-          if (newData.address != null) 'direccion': newData.address,
-          // Solo actualizar coordenadas si son válidas y no causan overflow
-          if (newData.latitude != null && newData.latitude! != 0.0) 
-            'lat': double.parse(newData.latitude!.toStringAsFixed(1)), // Limitar a 1 decimal
-          if (newData.longitude != null && newData.longitude! != 0.0) 
-            'lon': double.parse(newData.longitude!.toStringAsFixed(1)), // Limitar a 1 decimal
-          // Descomentar después de ejecutar el script SQL
-          // if (newData.mainPhone != null) 'telefono_principal': newData.mainPhone,
-          // if (newData.numberOfFloors != null) 'numero_pisos': newData.numberOfFloors,
-          // if (newData.specialInstructions != null) 'instrucciones_especiales': newData.specialInstructions,
-        };
+        final residenciaUpdates = <String, dynamic>{};
+        
+        // Actualizar dirección si hay una nueva o si la actual es "Dirección no especificada"
+        if (newData.address != null && newData.address!.isNotEmpty && newData.address != residenciaResult.data!.direccion) {
+          residenciaUpdates['direccion'] = newData.address;
+          debugPrint('📝 Dirección cambió: ${residenciaResult.data!.direccion} -> ${newData.address}');
+        } else if (residenciaResult.data!.direccion == 'Dirección no especificada' && newData.address != null && newData.address!.isNotEmpty) {
+          residenciaUpdates['direccion'] = newData.address;
+          debugPrint('📝 Reemplazando "Dirección no especificada" con: ${newData.address}');
+        }
+        
+        // Solo actualizar coordenadas si son válidas y no causan overflow
+        if (newData.latitude != null && newData.latitude! != 0.0) {
+          residenciaUpdates['lat'] = double.parse(newData.latitude!.toStringAsFixed(6));
+        }
+        if (newData.longitude != null && newData.longitude! != 0.0) {
+          residenciaUpdates['lon'] = double.parse(newData.longitude!.toStringAsFixed(6));
+        }
+        
+        // Campos adicionales de residencia
+        if (newData.mainPhone != null && newData.mainPhone != residenciaResult.data!.telefonoPrincipal) {
+          residenciaUpdates['telefono_principal'] = newData.mainPhone;
+          debugPrint('📝 Teléfono principal cambió: ${residenciaResult.data!.telefonoPrincipal} -> ${newData.mainPhone}');
+        }
+        if (newData.specialInstructions != null && newData.specialInstructions != residenciaResult.data!.instruccionesEspeciales) {
+          residenciaUpdates['instrucciones_especiales'] = newData.specialInstructions;
+          debugPrint('📝 Instrucciones especiales cambiaron: ${residenciaResult.data!.instruccionesEspeciales} -> ${newData.specialInstructions}');
+        }
+        
+        debugPrint('🔍 Verificando cambios en instrucciones especiales:');
+        debugPrint('   - Instrucciones actuales: ${residenciaResult.data!.instruccionesEspeciales}');
+        debugPrint('   - Instrucciones nuevas: ${newData.specialInstructions}');
         
         if (residenciaUpdates.isNotEmpty) {
           await databaseService.actualizarResidencia(
@@ -477,8 +542,8 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
           );
         }
         
-        // Actualizar también el registro_v si hay cambios en material o tipo
-        if (newData.constructionMaterial != null || newData.housingType != null) {
+        // Actualizar también el registro_v si hay cambios en material, tipo, estado o pisos
+        if (newData.constructionMaterial != null || newData.housingType != null || newData.housingCondition != null || newData.numberOfFloors != null) {
           final registroVUpdates = <String, dynamic>{};
           if (newData.constructionMaterial != null) {
             registroVUpdates['material'] = newData.constructionMaterial;
@@ -486,12 +551,20 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
           if (newData.housingType != null) {
             registroVUpdates['tipo'] = newData.housingType;
           }
+          if (newData.housingCondition != null) {
+            registroVUpdates['estado'] = newData.housingCondition;
+          }
+          if (newData.numberOfFloors != null) {
+            registroVUpdates['pisos'] = newData.numberOfFloors;
+          }
           
           if (registroVUpdates.isNotEmpty) {
+            debugPrint('📝 Actualizando registro_v con: $registroVUpdates');
             await databaseService.actualizarRegistroV(
               grupoId: grupo.idGrupoF.toString(),
               updates: registroVUpdates,
             );
+            debugPrint('✅ Registro_v actualizado exitosamente');
           }
         }
       } else {
@@ -510,8 +583,24 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         }
       }
       
+      // Actualizar datos localmente para reflejar cambios inmediatamente
       if (mounted) {
-        setState(() => _registrationData = newData);
+        setState(() {
+          _registrationData = newData;
+        });
+      }
+      
+      // Recargar datos desde la base de datos para asegurar consistencia
+      await _loadUserData();
+      
+      if (mounted) {
+        debugPrint('✅ UI actualizada con datos recargados desde la base de datos');
+        debugPrint('   - Dirección: ${_registrationData.address ?? "No especificada"}');
+        debugPrint('   - Teléfono: ${_registrationData.phoneNumber ?? "No especificado"}');
+        debugPrint('   - Teléfono principal: ${_registrationData.mainPhone ?? "No especificado"}');
+        debugPrint('   - Tipo vivienda: ${_registrationData.housingType ?? "No especificado"}');
+        debugPrint('   - Condiciones médicas: ${_registrationData.medicalConditions.length} condiciones');
+        debugPrint('   - Instrucciones especiales: ${_registrationData.specialInstructions ?? "No especificadas"}');
       }
       debugPrint('✅ Datos de registro actualizados exitosamente');
     } catch (e) {

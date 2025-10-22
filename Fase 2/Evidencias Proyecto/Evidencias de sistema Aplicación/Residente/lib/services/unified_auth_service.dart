@@ -35,11 +35,44 @@ class UnifiedAuthService {
     required String email,
     required String password,
     required String rutTitular,
+    required String nombreTitular,
+    required String apellidoTitular,
+    required String telefonoTitular,
   }) async {
     try {
       debugPrint('🔐 UnifiedAuthService.signUpGrupoFamiliar - Iniciando...');
       debugPrint('📧 Email: $email');
       debugPrint('🆔 RUT Titular: $rutTitular');
+
+      // Verificar si el email ya existe en grupofamiliar
+      final emailExiste = await _verificarEmailExistente(email);
+      if (emailExiste) {
+        debugPrint('⚠️ El email $email ya existe en grupofamiliar');
+        debugPrint('🔄 Intentando iniciar sesión con credenciales existentes...');
+        
+        // Intentar iniciar sesión con las credenciales proporcionadas
+        try {
+          final signInResult = await signInWithPassword(
+            email: email,
+            password: password,
+          );
+          
+          if (signInResult.isSuccess) {
+            debugPrint('✅ Sesión iniciada exitosamente para usuario existente');
+            
+            // Actualizar datos faltantes del grupo familiar
+            await _actualizarDatosGrupoFamiliar(email, nombreTitular, apellidoTitular, telefonoTitular);
+            
+            return signInResult;
+          } else {
+            debugPrint('❌ No se pudo iniciar sesión: ${signInResult.error}');
+            return AuthResult.error('Este correo electrónico ya está registrado pero la contraseña es incorrecta. Por favor, inicie sesión o use otro email.');
+          }
+        } catch (e) {
+          debugPrint('❌ Error al intentar iniciar sesión: $e');
+          return AuthResult.error('Este correo electrónico ya está registrado. Por favor, inicie sesión o use otro email.');
+        }
+      }
 
       // Paso 1: Registrar usuario en Supabase Auth
       final response = await _client.auth.signUp(
@@ -53,12 +86,21 @@ class UnifiedAuthService {
         
         // Paso 2: Guardar información en la tabla grupofamiliar
         try {
+          // Generar un ID único para el grupo familiar usando método más seguro
+          final idGrupof = _generarIdGrupofUnico();
+          
           final grupoFamiliarData = {
+            'id_grupof': idGrupof,
             'rut_titular': rutTitular.trim(),
+            'nomb_titular': nombreTitular.trim(),
+            'ape_p_titular': apellidoTitular.trim(),
+            'telefono_titular': telefonoTitular.trim(),
             'email': email.trim(),
-            'auth_user_id': response.user!.id,
             'fecha_creacion': DateTime.now().toIso8601String(),
           };
+
+          debugPrint('📝 Insertando grupo familiar con ID: $idGrupof');
+          debugPrint('📝 Datos: $grupoFamiliarData');
 
           final grupoFamiliarResponse = await _client
               .from('grupofamiliar')
@@ -113,7 +155,7 @@ class UnifiedAuthService {
         debugPrint('✅ Usuario autenticado: ${response.user!.id}');
         
         // Obtener datos del grupo familiar
-        final grupoFamiliar = await _getGrupoFamiliarByAuthUserId(response.user!.id);
+        final grupoFamiliar = await _getGrupoFamiliarByEmail(response.user!.email!);
         
         if (grupoFamiliar != null) {
           debugPrint('✅ Grupo familiar encontrado: ${grupoFamiliar.idGrupof}');
@@ -127,7 +169,7 @@ class UnifiedAuthService {
           );
         } else {
           debugPrint('⚠️ No se encontró grupo familiar para el usuario, pero permitiendo login');
-          debugPrint('   - Esto puede ocurrir si el usuario fue creado antes de implementar auth_user_id');
+          debugPrint('   - Esto puede ocurrir si el usuario fue creado antes de implementar el sistema actual');
           debugPrint('   - El usuario puede continuar y se creará el grupo familiar si es necesario');
           
           // NO desloguear al usuario, permitir que continúe
@@ -191,62 +233,28 @@ class UnifiedAuthService {
       }
       
       debugPrint('🔍 Buscando grupo familiar para usuario: ${user.id}');
-      return await _getGrupoFamiliarByAuthUserId(user.id);
+      return await _getGrupoFamiliarByEmail(user.email!);
     } catch (e) {
       debugPrint('❌ Error al obtener grupo familiar: $e');
       return null;
     }
   }
 
-  /// Obtener grupo familiar por auth_user_id
-  Future<GrupoFamiliar?> _getGrupoFamiliarByAuthUserId(String authUserId) async {
+  /// Obtener grupo familiar por email
+  Future<GrupoFamiliar?> _getGrupoFamiliarByEmail(String email) async {
     try {
-      debugPrint('🔍 Buscando grupo familiar por auth_user_id: $authUserId');
+      debugPrint('🔍 Buscando grupo familiar por email: $email');
       
-      // Primero intentar buscar por auth_user_id
-      try {
-        final response = await _client
-            .from('grupofamiliar')
-            .select()
-            .eq('auth_user_id', authUserId)
-            .single();
-        
-        debugPrint('✅ Grupo familiar encontrado por auth_user_id');
-        return GrupoFamiliar.fromJson(response);
-      } catch (e) {
-        debugPrint('⚠️ No se encontró grupo familiar por auth_user_id: $e');
-        
-        // Si no se encuentra por auth_user_id, intentar buscar por email
-        final user = _client.auth.currentUser;
-        if (user?.email != null) {
-          debugPrint('🔍 Intentando buscar por email: ${user!.email}');
-          try {
-            final response = await _client
-                .from('grupofamiliar')
-                .select()
-                .eq('email', user.email!)
-                .single();
-            
-            debugPrint('✅ Grupo familiar encontrado por email');
-            
-            // Actualizar el registro con el auth_user_id para futuras consultas
-            await _client
-                .from('grupofamiliar')
-                .update({'auth_user_id': authUserId})
-                .eq('email', user.email!);
-            
-            debugPrint('✅ auth_user_id actualizado en el grupo familiar');
-            return GrupoFamiliar.fromJson(response);
-          } catch (e) {
-            debugPrint('⚠️ No se encontró grupo familiar por email: $e');
-          }
-        }
-      }
+      final response = await _client
+          .from('grupofamiliar')
+          .select()
+          .eq('email', email)
+          .single();
       
-      debugPrint('❌ No se encontró grupo familiar por ningún método');
-      return null;
+      debugPrint('✅ Grupo familiar encontrado por email');
+      return GrupoFamiliar.fromJson(response);
     } catch (e) {
-      debugPrint('❌ Error inesperado al obtener grupo familiar: $e');
+      debugPrint('⚠️ No se encontró grupo familiar por email: $e');
       return null;
     }
   }
@@ -273,10 +281,10 @@ class UnifiedAuthService {
       await _client
           .from('grupofamiliar')
           .update(updates)
-          .eq('auth_user_id', user.id);
+          .eq('email', user.email!);
 
       // Obtener datos actualizados
-      final grupoFamiliar = await _getGrupoFamiliarByAuthUserId(user.id);
+      final grupoFamiliar = await _getGrupoFamiliarByEmail(user.email!);
       
       return AuthResult.success(
         UserData(
@@ -331,6 +339,45 @@ class UnifiedAuthService {
     }
   }
 
+  /// Verificar si un email ya existe en la tabla grupofamiliar
+  Future<bool> _verificarEmailExistente(String email) async {
+    try {
+      debugPrint('🔍 Verificando si el email $email ya existe...');
+      
+      final response = await _client
+          .from('grupofamiliar')
+          .select('email')
+          .eq('email', email.trim())
+          .limit(1);
+      
+      final existe = response.isNotEmpty;
+      debugPrint('📊 Email $email existe: $existe');
+      
+      return existe;
+    } catch (e) {
+      debugPrint('❌ Error al verificar email $email: $e');
+      return false; // En caso de error, permitir continuar
+    }
+  }
+
+  /// Generar un ID único para grupo familiar dentro del rango de INTEGER
+  int _generarIdGrupofUnico() {
+    // Usar timestamp en segundos + microsegundos para mayor unicidad
+    final ahora = DateTime.now();
+    final timestampSegundos = ahora.millisecondsSinceEpoch ~/ 1000;
+    final microsegundos = ahora.microsecond;
+    
+    // Combinar timestamp y microsegundos, limitar a rango seguro de INTEGER
+    final idBase = timestampSegundos % 1000000; // Limitar a 6 dígitos
+    final idCompleto = idBase * 1000 + (microsegundos % 1000); // Agregar 3 dígitos más
+    
+    // Asegurar que esté dentro del rango de INTEGER positivo
+    final idFinal = idCompleto % 2147483647; // Máximo valor positivo de INTEGER
+    
+    debugPrint('🆔 ID generado: $idFinal (base: $idBase, micro: $microsegundos)');
+    return idFinal;
+  }
+
   /// Traducir errores comunes de Supabase al español
   String _translateAuthError(String error) {
     if (error.contains('Invalid login credentials')) {
@@ -347,6 +394,63 @@ class UnifiedAuthService {
       return 'Usuario no encontrado.';
     }
     return error;
+  }
+
+  /// Actualizar datos faltantes del grupo familiar para usuarios existentes
+  Future<void> _actualizarDatosGrupoFamiliar(
+    String email,
+    String nombreTitular,
+    String apellidoTitular,
+    String telefonoTitular,
+  ) async {
+    try {
+      debugPrint('🔄 Actualizando datos del grupo familiar para: $email');
+      
+      // Obtener el grupo familiar actual
+      final grupoActual = await _getGrupoFamiliarByEmail(email);
+      if (grupoActual == null) {
+        debugPrint('❌ No se encontró grupo familiar para actualizar');
+        return;
+      }
+      
+      // Preparar datos de actualización (solo campos que no estén vacíos)
+      final datosActualizacion = <String, dynamic>{};
+      
+      if (nombreTitular.isNotEmpty && grupoActual.nombTitular.isEmpty) {
+        datosActualizacion['nomb_titular'] = nombreTitular.trim();
+        debugPrint('📝 Actualizando nombre: $nombreTitular');
+      }
+      
+      if (apellidoTitular.isNotEmpty && grupoActual.apePTitular.isEmpty) {
+        datosActualizacion['ape_p_titular'] = apellidoTitular.trim();
+        debugPrint('📝 Actualizando apellido: $apellidoTitular');
+      }
+      
+      if (telefonoTitular.isNotEmpty && grupoActual.telefonoTitular.isEmpty) {
+        datosActualizacion['telefono_titular'] = telefonoTitular.trim();
+        debugPrint('📝 Actualizando teléfono: $telefonoTitular');
+      }
+      
+      // Solo actualizar si hay datos nuevos
+      if (datosActualizacion.isNotEmpty) {
+        debugPrint('📝 Datos a actualizar: $datosActualizacion');
+        
+        final response = await _client
+            .from('grupofamiliar')
+            .update(datosActualizacion)
+            .eq('email', email)
+            .select()
+            .single();
+        
+        debugPrint('✅ Datos del grupo familiar actualizados exitosamente');
+        debugPrint('📦 Respuesta: $response');
+      } else {
+        debugPrint('ℹ️ No hay datos nuevos para actualizar');
+      }
+    } catch (e) {
+      debugPrint('❌ Error al actualizar datos del grupo familiar: $e');
+      // No lanzar excepción para no interrumpir el flujo de login
+    }
   }
 }
 

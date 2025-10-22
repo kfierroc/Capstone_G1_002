@@ -10,7 +10,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _apellidoPaternoController = TextEditingController();
   final TextEditingController _rutController = TextEditingController();
   final TextEditingController _companyController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -25,7 +26,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _fullNameController.dispose();
+    _nombreController.dispose();
+    _apellidoPaternoController.dispose();
     _rutController.dispose();
     _companyController.dispose();
     _emailController.dispose();
@@ -34,12 +36,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  String? _validateFullName(String? value) {
+  String? _validateNombre(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Por favor ingresa tu nombre completo';
+      return 'Por favor ingresa tu nombre';
     }
-    if (value.trim().split(' ').length < 2) {
-      return 'Ingresa tu nombre y apellido';
+    if (value.trim().length < 2) {
+      return 'El nombre debe tener al menos 2 caracteres';
+    }
+    return null;
+  }
+
+  String? _validateApellidoPaterno(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor ingresa tu apellido paterno';
+    }
+    if (value.trim().length < 2) {
+      return 'El apellido paterno debe tener al menos 2 caracteres';
     }
     return null;
   }
@@ -173,14 +185,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
           rutCompleto: _rutController.text.trim(),
+          nombre: _nombreController.text.trim(),
+          apellidoPaterno: _apellidoPaternoController.text.trim(),
+          compania: _companyController.text.trim(),
         );
 
         if (mounted) {
           if (result.isSuccess) {
+            // Mostrar mensaje de bienvenida con nombre y apellido paterno del bombero
+            final bombero = result.user?.bombero;
+            final nombreCompleto = bombero != null 
+                ? '${bombero.nombBombero} ${bombero.apePBombero}'
+                : result.user!.email;
+            final cargo = 'Voluntario';
+            
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  '¡Registro exitoso! Bienvenido ${result.user!.email}',
+                  '¡Registro exitoso! Bienvenido, $cargo $nombreCompleto',
                 ),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 3),
@@ -329,13 +351,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Column(
                         children: [
                           TextFormField(
-                            controller: _fullNameController,
+                            controller: _nombreController,
                             keyboardType: TextInputType.name,
                             textCapitalization: TextCapitalization.words,
-                            validator: _validateFullName,
+                            validator: _validateNombre,
                             decoration: InputDecoration(
-                              labelText: 'Nombre Completo *',
-                              hintText: 'Carlos Neira Valenzuela',
+                              labelText: 'Nombre *',
+                              hintText: 'Carlos',
+                              prefixIcon: const Icon(Icons.person_outline),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          TextFormField(
+                            controller: _apellidoPaternoController,
+                            keyboardType: TextInputType.name,
+                            textCapitalization: TextCapitalization.words,
+                            validator: _validateApellidoPaterno,
+                            decoration: InputDecoration(
+                              labelText: 'Apellido Paterno *',
+                              hintText: 'Neira',
                               prefixIcon: const Icon(Icons.person_outline),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),

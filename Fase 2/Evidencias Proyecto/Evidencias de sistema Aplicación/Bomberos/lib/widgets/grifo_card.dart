@@ -1,24 +1,30 @@
 import 'package:flutter/material.dart';
 import '../models/grifo.dart';
+import '../models/info_grifo.dart';
 import '../constants/grifo_colors.dart';
 import '../constants/grifo_styles.dart';
 import '../utils/responsive.dart';
 
 class GrifoCard extends StatelessWidget {
   final Grifo grifo;
+  final InfoGrifo? infoGrifo; // Información adicional del grifo
+  final String nombreComuna; // Nombre de la comuna
   final Function(int, String) onCambiarEstado;
 
   const GrifoCard({
     super.key,
     required this.grifo,
+    this.infoGrifo,
+    required this.nombreComuna,
     required this.onCambiarEstado,
   });
 
   @override
   Widget build(BuildContext context) {
     final isTablet = ResponsiveHelper.isTablet(context);
-    // Por ahora usamos un color por defecto ya que el estado está en info_grifo
-    final estadoColor = Colors.blue;
+    
+    // Obtener color basado en el estado del grifo
+    final estadoColor = _getEstadoColor();
 
     return Container(
       margin: EdgeInsets.symmetric(
@@ -77,7 +83,7 @@ class GrifoCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            grifo.cutCom,
+            grifo.cutCom.toString(), // Cambiado de outCom a cutCom
             style: TextStyle(
               color: GrifoColors.primary,
               fontWeight: FontWeight.w500,
@@ -99,7 +105,7 @@ class GrifoCard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Comuna: ${grifo.cutCom}',
+          'Comuna: $nombreComuna',
           style: GrifoStyles.bodyMedium.copyWith(
             color: GrifoColors.textSecondary,
           ),
@@ -192,7 +198,7 @@ class GrifoCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDetailRow('ID:', grifo.idGrifo.toString()),
-            _buildDetailRow('Comuna:', grifo.cutCom),
+            _buildDetailRow('Comuna:', nombreComuna),
             _buildDetailRow('Latitud:', grifo.lat.toStringAsFixed(6)),
             _buildDetailRow('Longitud:', grifo.lon.toStringAsFixed(6)),
           ],
@@ -231,5 +237,23 @@ class GrifoCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Obtener color basado en el estado del grifo
+  Color _getEstadoColor() {
+    if (infoGrifo == null) return GrifoColors.textTertiary;
+    
+    switch (infoGrifo!.estado.toLowerCase()) {
+      case 'operativo':
+        return Colors.green;
+      case 'dañado':
+        return Colors.red;
+      case 'mantenimiento':
+        return Colors.orange;
+      case 'sin verificar':
+        return Colors.grey;
+      default:
+        return GrifoColors.textTertiary;
+    }
   }
 }

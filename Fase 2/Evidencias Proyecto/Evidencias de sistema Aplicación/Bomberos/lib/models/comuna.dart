@@ -2,11 +2,17 @@
 /// 
 /// Representa una comuna con su información geográfica y administrativa
 class Comuna {
-  final String cutCom; // PK
+  final int cutCom; // PK (cambió de outCom a cutCom según estándar)
   final String comuna;
-  final String cutReg;
+  final int cutReg; // Cambió de outReg a cutReg según estándar
+  
+  /// Getter para el nombre de la comuna (alias para comuna)
+  String get nombre => comuna;
+  
+  /// Getter para el nombre de la comuna (alias para comuna)
+  String get nombreComuna => comuna;
   final String region;
-  final String cutProv;
+  final int cutProv; // Cambió de outProv a cutProv según estándar
   final String provincia;
   final double superficie;
   final String? geometry;
@@ -24,11 +30,11 @@ class Comuna {
 
   /// Crea una copia del modelo con campos actualizados
   Comuna copyWith({
-    String? cutCom,
+    int? cutCom,
     String? comuna,
-    String? cutReg,
+    int? cutReg,
     String? region,
-    String? cutProv,
+    int? cutProv,
     String? provincia,
     double? superficie,
     String? geometry,
@@ -62,15 +68,42 @@ class Comuna {
   /// Crea un Comuna desde JSON de Supabase
   factory Comuna.fromJson(Map<String, dynamic> json) {
     return Comuna(
-      cutCom: json['cut_com'] as String,
+      cutCom: json['cut_com'] as int,
       comuna: json['comuna'] as String,
-      cutReg: json['cut_reg'] as String,
+      cutReg: json['cut_reg'] as int,
       region: json['region'] as String,
-      cutProv: json['cut_prov'] as String,
+      cutProv: json['cut_prov'] as int,
       provincia: json['provincia'] as String,
       superficie: (json['superficie'] as num).toDouble(),
       geometry: json['geometry'] as String?,
     );
+  }
+
+  /// Convierte el modelo a JSON para insertar en Supabase
+  Map<String, dynamic> toInsertData() {
+    return {
+      'cut_com': cutCom,
+      'comuna': comuna,
+      'cut_reg': cutReg,
+      'region': region,
+      'cut_prov': cutProv,
+      'provincia': provincia,
+      'superficie': superficie,
+      'geometry': geometry,
+    };
+  }
+
+  /// Convierte el modelo a JSON para actualizar en Supabase
+  Map<String, dynamic> toUpdateData() {
+    return {
+      'comuna': comuna,
+      'cut_reg': cutReg,
+      'region': region,
+      'cut_prov': cutProv,
+      'provincia': provincia,
+      'superficie': superficie,
+      'geometry': geometry,
+    };
   }
 
   @override

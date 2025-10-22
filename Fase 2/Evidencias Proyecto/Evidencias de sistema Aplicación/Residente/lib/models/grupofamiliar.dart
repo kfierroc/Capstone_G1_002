@@ -1,36 +1,43 @@
 /// Modelo para la tabla grupofamiliar
 /// 
-/// Representa un grupo familiar con autenticación de Supabase
-/// IMPORTANTE: No maneja contraseñas, usa Supabase Auth
+/// Representa un grupo familiar con solo id estándar
 class GrupoFamiliar {
   final int idGrupof; // PK
   final String rutTitular;
+  final String nombTitular; // NUEVO CAMPO según esquema actualizado
+  final String apePTitular; // NUEVO CAMPO según esquema actualizado
+  final String telefonoTitular; // NUEVO CAMPO según esquema actualizado
   final String email;
   final DateTime fechaCreacion;
-  final String? authUserId; // UUID UNIQUE para conectar con Supabase Auth
 
   GrupoFamiliar({
     required this.idGrupof,
     required this.rutTitular,
+    required this.nombTitular,
+    required this.apePTitular,
+    required this.telefonoTitular,
     required this.email,
     required this.fechaCreacion,
-    this.authUserId,
   });
 
   /// Crea una copia del modelo con campos actualizados
   GrupoFamiliar copyWith({
     int? idGrupof,
     String? rutTitular,
+    String? nombTitular,
+    String? apePTitular,
+    String? telefonoTitular,
     String? email,
     DateTime? fechaCreacion,
-    String? authUserId,
   }) {
     return GrupoFamiliar(
       idGrupof: idGrupof ?? this.idGrupof,
       rutTitular: rutTitular ?? this.rutTitular,
+      nombTitular: nombTitular ?? this.nombTitular,
+      apePTitular: apePTitular ?? this.apePTitular,
+      telefonoTitular: telefonoTitular ?? this.telefonoTitular,
       email: email ?? this.email,
       fechaCreacion: fechaCreacion ?? this.fechaCreacion,
-      authUserId: authUserId ?? this.authUserId,
     );
   }
 
@@ -39,9 +46,11 @@ class GrupoFamiliar {
     return {
       'id_grupof': idGrupof,
       'rut_titular': rutTitular,
+      'nomb_titular': nombTitular,
+      'ape_p_titular': apePTitular,
+      'telefono_titular': telefonoTitular,
       'email': email,
       'fecha_creacion': fechaCreacion.toIso8601String(),
-      'auth_user_id': authUserId,
     };
   }
 
@@ -50,9 +59,11 @@ class GrupoFamiliar {
     return GrupoFamiliar(
       idGrupof: json['id_grupof'] as int,
       rutTitular: json['rut_titular'] as String,
+      nombTitular: json['nomb_titular'] as String? ?? '',
+      apePTitular: json['ape_p_titular'] as String? ?? '',
+      telefonoTitular: json['telefono_titular'] as String? ?? '',
       email: json['email'] as String,
       fechaCreacion: DateTime.parse(json['fecha_creacion'] as String),
-      authUserId: json['auth_user_id'] as String?,
     );
   }
 
@@ -60,9 +71,11 @@ class GrupoFamiliar {
   Map<String, dynamic> toInsertData() {
     return {
       'rut_titular': rutTitular,
+      'nomb_titular': nombTitular,
+      'ape_p_titular': apePTitular,
+      'telefono_titular': telefonoTitular,
       'email': email,
       'fecha_creacion': fechaCreacion.toIso8601String(),
-      'auth_user_id': authUserId,
     };
   }
 
@@ -70,14 +83,16 @@ class GrupoFamiliar {
   Map<String, dynamic> toUpdateData() {
     return {
       'rut_titular': rutTitular,
+      'nomb_titular': nombTitular,
+      'ape_p_titular': apePTitular,
+      'telefono_titular': telefonoTitular,
       'email': email,
-      'auth_user_id': authUserId,
     };
   }
 
   @override
   String toString() {
-    return 'GrupoFamiliar(idGrupof: $idGrupof, rutTitular: $rutTitular, email: $email, authUserId: $authUserId)';
+    return 'GrupoFamiliar(idGrupof: $idGrupof, rutTitular: $rutTitular, email: $email)';
   }
 
   @override

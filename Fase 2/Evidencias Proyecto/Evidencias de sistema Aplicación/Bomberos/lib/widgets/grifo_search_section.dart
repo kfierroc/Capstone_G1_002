@@ -62,7 +62,10 @@ class _GrifoSearchSectionState extends State<GrifoSearchSection> {
   Widget _buildSearchField() {
     return TextField(
       controller: _searchController,
-      onChanged: widget.onBusquedaChanged,
+      onChanged: (value) {
+        widget.onBusquedaChanged(value);
+        setState(() {}); // Actualizar el UI para mostrar/ocultar el botón de limpiar
+      },
       decoration: InputDecoration(
         hintText: 'Buscar por dirección o comuna...',
         prefixIcon: const Icon(Icons.search),
@@ -72,6 +75,7 @@ class _GrifoSearchSectionState extends State<GrifoSearchSection> {
                 onPressed: () {
                   _searchController.clear();
                   widget.onBusquedaChanged('');
+                  setState(() {}); // Actualizar el UI
                 },
               )
             : null,

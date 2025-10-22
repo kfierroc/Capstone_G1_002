@@ -28,7 +28,7 @@ void main() {
         address: 'Calle Test 123',
         latitude: -33.4489,
         longitude: -70.6483,
-        mainPhone: '+56912345678',
+        phoneNumber: '+56912345678', // Updated to use phoneNumber from step 2
         housingType: 'Casa',
         numberOfFloors: 2,
         constructionMaterial: 'Hormigón',
@@ -56,7 +56,7 @@ void main() {
         address: 'Calle Test 456',
         latitude: -33.4489,
         longitude: -70.6483,
-        mainPhone: '+56987654321',
+        phoneNumber: '+56987654321', // Updated to use phoneNumber from step 2
         housingType: 'Departamento',
         numberOfFloors: 1,
         constructionMaterial: 'Ladrillo',

@@ -7,6 +7,7 @@ class RegistroV {
   final String estado;
   final String material;
   final String tipo;
+  final int pisos; // NUEVO CAMPO según esquema actualizado
   final DateTime fechaIniR;
   final DateTime? fechaFinR;
   final int idResidencia; // FK -> residencia
@@ -18,6 +19,7 @@ class RegistroV {
     required this.estado,
     required this.material,
     required this.tipo,
+    required this.pisos,
     required this.fechaIniR,
     this.fechaFinR,
     required this.idResidencia,
@@ -31,6 +33,7 @@ class RegistroV {
     String? estado,
     String? material,
     String? tipo,
+    int? pisos,
     DateTime? fechaIniR,
     DateTime? fechaFinR,
     int? idResidencia,
@@ -42,6 +45,7 @@ class RegistroV {
       estado: estado ?? this.estado,
       material: material ?? this.material,
       tipo: tipo ?? this.tipo,
+      pisos: pisos ?? this.pisos,
       fechaIniR: fechaIniR ?? this.fechaIniR,
       fechaFinR: fechaFinR ?? this.fechaFinR,
       idResidencia: idResidencia ?? this.idResidencia,
@@ -57,6 +61,7 @@ class RegistroV {
       'estado': estado,
       'material': material,
       'tipo': tipo,
+      'pisos': pisos,
       'fecha_ini_r': fechaIniR.toIso8601String(),
       'fecha_fin_r': fechaFinR?.toIso8601String(),
       'id_residencia': idResidencia,
@@ -72,6 +77,7 @@ class RegistroV {
       estado: json['estado'] as String,
       material: json['material'] as String,
       tipo: json['tipo'] as String,
+      pisos: json['pisos'] as int,
       fechaIniR: DateTime.parse(json['fecha_ini_r'] as String),
       fechaFinR: json['fecha_fin_r'] != null 
           ? DateTime.parse(json['fecha_fin_r'] as String)
@@ -88,6 +94,7 @@ class RegistroV {
       'estado': estado,
       'material': material,
       'tipo': tipo,
+      'pisos': pisos,
       'fecha_ini_r': fechaIniR.toIso8601String(),
       'fecha_fin_r': fechaFinR?.toIso8601String(),
       'id_residencia': idResidencia,
@@ -102,6 +109,7 @@ class RegistroV {
       'estado': estado,
       'material': material,
       'tipo': tipo,
+      'pisos': pisos,
       'fecha_ini_r': fechaIniR.toIso8601String(),
       'fecha_fin_r': fechaFinR?.toIso8601String(),
       'id_residencia': idResidencia,

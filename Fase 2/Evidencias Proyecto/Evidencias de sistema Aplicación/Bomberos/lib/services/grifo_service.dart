@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../config/supabase_config.dart';
 import '../models/models.dart';
 
@@ -15,6 +16,28 @@ class GrifoService {
   /// Insertar un nuevo grifo
   Future<ServiceResult<Grifo>> insertGrifo(Grifo grifo) async {
     try {
+      debugPrint('🔧 Insertando grifo con cutCom: ${grifo.cutCom}');
+      
+      // Verificar estado de comunas primero
+      await _verificarEstadoComunas();
+      
+      // Intentar insertar comunas básicas primero
+      await _insertarComunasBasicas();
+      
+      // Verificar que la comuna existe antes de insertar
+      final comunaExiste = await _verificarComunaExiste(grifo.cutCom);
+      if (!comunaExiste) {
+        debugPrint('❌ La comuna ${grifo.cutCom} no existe en la base de datos');
+        
+        // Intentar crear la comuna específica
+        final comunaCreada = await _crearComunaEspecifica(grifo.cutCom);
+        if (!comunaCreada) {
+          return ServiceResult.error('La comuna con código ${grifo.cutCom} no existe y no se pudo crear');
+        }
+      }
+      
+      debugPrint('✅ Comuna ${grifo.cutCom} existe, procediendo con la inserción');
+      
       final response = await _client
           .from('grifo')
           .insert(grifo.toInsertData())
@@ -22,10 +45,13 @@ class GrifoService {
           .single();
 
       final nuevoGrifo = Grifo.fromJson(response);
+      debugPrint('✅ Grifo insertado exitosamente: ${nuevoGrifo.idGrifo}');
       return ServiceResult.success(nuevoGrifo);
     } on PostgrestException catch (e) {
+      debugPrint('❌ Error PostgrestException al insertar grifo: ${e.message}');
       return ServiceResult.error('Error al insertar grifo: ${e.message}');
     } catch (e) {
+      debugPrint('❌ Error inesperado al insertar grifo: $e');
       return ServiceResult.error('Error inesperado al insertar grifo: ${e.toString()}');
     }
   }
@@ -48,6 +74,26 @@ class GrifoService {
       return ServiceResult.error('Error al obtener grifo: ${e.message}');
     } catch (e) {
       return ServiceResult.error('Error inesperado al obtener grifo: ${e.toString()}');
+    }
+  }
+
+  /// Obtener todos los grifos
+  Future<ServiceResult<List<Grifo>>> getAllGrifos() async {
+    try {
+      final response = await _client
+          .from('grifo')
+          .select('*')
+          .order('id_grifo', ascending: true);
+
+      final grifos = (response as List)
+          .map((json) => Grifo.fromJson(json))
+          .toList();
+
+      return ServiceResult.success(grifos);
+    } on PostgrestException catch (e) {
+      return ServiceResult.error('Error al obtener grifos: ${e.message}');
+    } catch (e) {
+      return ServiceResult.error('Error inesperado al obtener grifos: ${e.toString()}');
     }
   }
 
@@ -197,6 +243,338 @@ class GrifoService {
       return ServiceResult.error('Error inesperado al verificar grifo: ${e.toString()}');
     }
   }
+
+  /// Obtener nombre de comuna por código CUT
+  Future<ServiceResult<String>> obtenerNombreComunaPorCutCom(int cutCom) async {
+    try {
+      debugPrint('🔍 Buscando nombre de comuna para código: $cutCom');
+      
+      final response = await _client
+          .from('comunas')
+          .select('comuna')
+          .eq('cut_com', cutCom)
+          .limit(1);
+      
+      if (response.isNotEmpty) {
+        final nombreComuna = response.first['comuna'] as String;
+        debugPrint('✅ Comuna encontrada: $nombreComuna');
+        return ServiceResult.success(nombreComuna);
+      } else {
+        debugPrint('⚠️ No se encontró comuna para código: $cutCom');
+        return ServiceResult.success('Comuna $cutCom'); // Fallback
+      }
+    } catch (e) {
+      debugPrint('❌ Error al obtener nombre de comuna: $e');
+      return ServiceResult.error('Error al obtener nombre de comuna: ${e.toString()}');
+    }
+  }
+
+  /// Obtener código CUT de una comuna por nombre
+  Future<ServiceResult<int>> obtenerCutComPorNombre(String nombreComuna) async {
+    try {
+      final nombreLimpio = nombreComuna.trim();
+      
+      debugPrint('🔍 Buscando comuna: "$nombreLimpio"');
+      
+      // Primero verificar qué comunas existen en la base de datos
+      final comunasExistentes = await _client
+          .from('comunas')
+          .select('cut_com, comuna')
+          .limit(10);
+      
+      debugPrint('📋 Comunas existentes en BD: $comunasExistentes');
+      
+      // Si no hay comunas, insertar comunas básicas
+      if (comunasExistentes.isEmpty) {
+        debugPrint('⚠️ No hay comunas en la BD, insertando comunas básicas...');
+        await _insertarComunasBasicas();
+      }
+      
+      // Primero buscar coincidencia exacta (case insensitive)
+      var response = await _client
+          .from('comunas')
+          .select('cut_com')
+          .ilike('comuna', nombreLimpio)
+          .limit(1);
+      
+      debugPrint('🎯 Búsqueda exacta para "$nombreLimpio": $response');
+      
+      if (response.isNotEmpty) {
+        final cutCom = response.first['cut_com'] as int;
+        debugPrint('✅ Comuna encontrada (exacta): $cutCom');
+        return ServiceResult.success(cutCom);
+      }
+      
+      // Si no hay coincidencia exacta, buscar coincidencia parcial
+      response = await _client
+          .from('comunas')
+          .select('cut_com')
+          .ilike('comuna', '%$nombreLimpio%')
+          .limit(1);
+      
+      debugPrint('🔍 Búsqueda parcial para "$nombreLimpio": $response');
+      
+      if (response.isNotEmpty) {
+        final cutCom = response.first['cut_com'] as int;
+        debugPrint('✅ Comuna encontrada (parcial): $cutCom');
+        return ServiceResult.success(cutCom);
+      }
+      
+      // Si no se encuentra, usar Santiago por defecto
+      const cutComDefault = 13101; // Santiago
+      debugPrint('⚠️ No se encontró comuna, usando Santiago por defecto: $cutComDefault');
+      
+      // Intentar crear la comuna si no existe
+      try {
+        await _client.from('comunas').insert({
+          'cut_com': cutComDefault,
+          'comuna': 'Santiago',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 641.4,
+          'geometry': 'POINT(-70.6693 -33.4489)',
+        });
+        debugPrint('✅ Comuna Santiago creada exitosamente');
+      } catch (e) {
+        debugPrint('⚠️ Error al crear comuna Santiago: $e');
+        // Si ya existe, no hay problema
+      }
+      
+      return ServiceResult.success(cutComDefault);
+    } on PostgrestException catch (e) {
+      debugPrint('❌ Error PostgrestException: ${e.message}');
+      return ServiceResult.error('Error al obtener código de comuna: ${e.message}');
+    } catch (e) {
+      debugPrint('❌ Error inesperado: $e');
+      return ServiceResult.error('Error inesperado al obtener código de comuna: ${e.toString()}');
+    }
+  }
+
+  /// Verificar si una comuna existe en la base de datos
+  Future<bool> _verificarComunaExiste(int cutCom) async {
+    try {
+      debugPrint('🔍 Verificando si existe comuna con cutCom: $cutCom');
+      
+      final response = await _client
+          .from('comunas')
+          .select('cut_com')
+          .eq('cut_com', cutCom)
+          .limit(1);
+      
+      final existe = response.isNotEmpty;
+      debugPrint('📊 Resultado verificación comuna $cutCom: $existe');
+      
+      return existe;
+    } catch (e) {
+      debugPrint('❌ Error al verificar comuna $cutCom: $e');
+      return false;
+    }
+  }
+
+  /// Crear una comuna específica si no existe
+  Future<bool> _crearComunaEspecifica(int cutCom) async {
+    try {
+      debugPrint('🏗️ Intentando crear comuna específica: $cutCom');
+      
+      // Mapeo de comunas comunes con sus datos
+      final comunasComunes = {
+        13101: {
+          'comuna': 'Santiago',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 641.4,
+          'geometry': 'MULTIPOLYGON(((-70.6693 -33.4489, -70.6693 -33.4489, -70.6693 -33.4489, -70.6693 -33.4489)))',
+        },
+        13102: {
+          'comuna': 'Providencia',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 14.4,
+          'geometry': 'MULTIPOLYGON(((-70.6167 -33.4255, -70.6167 -33.4255, -70.6167 -33.4255, -70.6167 -33.4255)))',
+        },
+        13103: {
+          'comuna': 'Las Condes',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 99.4,
+          'geometry': 'MULTIPOLYGON(((-70.5500 -33.4000, -70.5500 -33.4000, -70.5500 -33.4000, -70.5500 -33.4000)))',
+        },
+        13104: {
+          'comuna': 'Ñuñoa',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 16.9,
+          'geometry': 'MULTIPOLYGON(((-70.6000 -33.4500, -70.6000 -33.4500, -70.6000 -33.4500, -70.6000 -33.4500)))',
+        },
+        13105: {
+          'comuna': 'Maipú',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 133.0,
+          'geometry': 'MULTIPOLYGON(((-70.7500 -33.5000, -70.7500 -33.5000, -70.7500 -33.5000, -70.7500 -33.5000)))',
+        },
+      };
+      
+      // Si tenemos datos para esta comuna, crearla
+      if (comunasComunes.containsKey(cutCom)) {
+        final datosComuna = comunasComunes[cutCom]!;
+        final comunaData = {
+          'cut_com': cutCom,
+          ...datosComuna,
+        };
+        
+        await _client.from('comunas').insert(comunaData);
+        debugPrint('✅ Comuna $cutCom creada exitosamente');
+        return true;
+      } else {
+        // Si no tenemos datos específicos, crear una comuna genérica
+        final comunaGenerica = {
+          'cut_com': cutCom,
+          'comuna': 'Comuna $cutCom',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 100.0,
+          'geometry': 'MULTIPOLYGON(((-70.6693 -33.4489, -70.6693 -33.4489, -70.6693 -33.4489, -70.6693 -33.4489)))',
+        };
+        
+        await _client.from('comunas').insert(comunaGenerica);
+        debugPrint('✅ Comuna genérica $cutCom creada exitosamente');
+        return true;
+      }
+    } catch (e) {
+      debugPrint('❌ Error al crear comuna $cutCom: $e');
+      return false;
+    }
+  }
+
+  /// Verificar estado de la base de datos de comunas
+  Future<void> _verificarEstadoComunas() async {
+    try {
+      debugPrint('🔍 Verificando estado de comunas en la base de datos...');
+      
+      // Contar total de comunas
+      final totalComunas = await _client
+          .from('comunas')
+          .select('cut_com');
+      
+      debugPrint('📊 Total de comunas en BD: ${totalComunas.length}');
+      
+      // Listar las primeras 10 comunas
+      final comunas = await _client
+          .from('comunas')
+          .select('cut_com, comuna')
+          .limit(10);
+      
+      debugPrint('📋 Primeras comunas:');
+      for (final comuna in comunas) {
+        debugPrint('  - ${comuna['comuna']} (${comuna['cut_com']})');
+      }
+      
+      // Verificar específicamente Santiago
+      final santiago = await _client
+          .from('comunas')
+          .select('cut_com, comuna')
+          .eq('cut_com', 13101)
+          .limit(1);
+      
+      if (santiago.isNotEmpty) {
+        debugPrint('✅ Santiago (13101) existe en la BD');
+      } else {
+        debugPrint('❌ Santiago (13101) NO existe en la BD');
+      }
+      
+    } catch (e) {
+      debugPrint('❌ Error al verificar estado de comunas: $e');
+    }
+  }
+  /// Insertar comunas básicas si no existen
+  Future<void> _insertarComunasBasicas() async {
+    try {
+      debugPrint('🏙️ Insertando comunas básicas...');
+      
+      final comunasBasicas = [
+        {
+          'cut_com': 13101,
+          'comuna': 'Santiago',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 641.4,
+          'geometry': 'MULTIPOLYGON(((-70.6693 -33.4489, -70.6693 -33.4489, -70.6693 -33.4489, -70.6693 -33.4489)))',
+        },
+        {
+          'cut_com': 13102,
+          'comuna': 'Providencia',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 14.4,
+          'geometry': 'MULTIPOLYGON(((-70.6167 -33.4255, -70.6167 -33.4255, -70.6167 -33.4255, -70.6167 -33.4255)))',
+        },
+        {
+          'cut_com': 13103,
+          'comuna': 'Las Condes',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 99.4,
+          'geometry': 'MULTIPOLYGON(((-70.5500 -33.4000, -70.5500 -33.4000, -70.5500 -33.4000, -70.5500 -33.4000)))',
+        },
+        {
+          'cut_com': 13104,
+          'comuna': 'Ñuñoa',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 16.9,
+          'geometry': 'MULTIPOLYGON(((-70.6000 -33.4500, -70.6000 -33.4500, -70.6000 -33.4500, -70.6000 -33.4500)))',
+        },
+        {
+          'cut_com': 13105,
+          'comuna': 'Maipú',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 133.0,
+          'geometry': 'MULTIPOLYGON(((-70.7500 -33.5000, -70.7500 -33.5000, -70.7500 -33.5000, -70.7500 -33.5000)))',
+        },
+      ];
+
+      int insertadas = 0;
+      for (final comuna in comunasBasicas) {
+        try {
+          await _client.from('comunas').insert(comuna);
+          debugPrint('✅ Comuna insertada: ${comuna['comuna']} (${comuna['cut_com']})');
+          insertadas++;
+        } catch (e) {
+          debugPrint('⚠️ Comuna ${comuna['comuna']} ya existe o error: $e');
+        }
+      }
+      
+      debugPrint('🏙️ Comunas básicas procesadas: $insertadas insertadas');
+    } catch (e) {
+      debugPrint('❌ Error al insertar comunas básicas: $e');
+    }
+  }
 }
 
 /// Servicio para manejar operaciones CRUD de info_grifo
@@ -223,6 +601,26 @@ class InfoGrifoService {
       return ServiceResult.error('Error al insertar información de grifo: ${e.message}');
     } catch (e) {
       return ServiceResult.error('Error inesperado al insertar información de grifo: ${e.toString()}');
+    }
+  }
+
+  /// Obtener toda la información de grifos
+  Future<ServiceResult<List<InfoGrifo>>> getAllInfoGrifos() async {
+    try {
+      final response = await _client
+          .from('info_grifo')
+          .select('*')
+          .order('fecha_registro', ascending: false);
+
+      final infoGrifos = (response as List)
+          .map((json) => InfoGrifo.fromJson(json))
+          .toList();
+
+      return ServiceResult.success(infoGrifos);
+    } on PostgrestException catch (e) {
+      return ServiceResult.error('Error al obtener información de grifos: ${e.message}');
+    } catch (e) {
+      return ServiceResult.error('Error inesperado al obtener información de grifos: ${e.toString()}');
     }
   }
 

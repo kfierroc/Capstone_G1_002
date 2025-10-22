@@ -75,6 +75,13 @@ class InfoGrifo {
     };
   }
 
+  /// Getters para compatibilidad con nombres anteriores
+  int get grifoIdGrifo => idGrifo;
+  int get idInfoGrifo => idRegGrifo;
+  DateTime get fechaInspeccion => fechaRegistro;
+  String get estadoFuncionamiento => estado;
+  String get tipoGrifo => estado; // Alias para estado
+
   @override
   String toString() {
     return 'InfoGrifo(idRegGrifo: $idRegGrifo, idGrifo: $idGrifo, estado: $estado, rutNum: $rutNum)';

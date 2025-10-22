@@ -86,8 +86,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (mounted) {
           if (result.isSuccess) {
-            // Mostrar mensaje de bienvenida con nombre y cargo
-            final nombreCompleto = _extractNameFromEmail(result.user?.email ?? '');
+            // Mostrar mensaje de bienvenida con nombre y apellido paterno del bombero
+            final bombero = result.user?.bombero;
+            final nombreCompleto = bombero != null 
+                ? '${bombero.nombBombero} ${bombero.apePBombero}'
+                : _extractNameFromEmail(result.user?.email ?? '');
             final cargo = 'Voluntario';
             
             ScaffoldMessenger.of(context).showSnackBar(
