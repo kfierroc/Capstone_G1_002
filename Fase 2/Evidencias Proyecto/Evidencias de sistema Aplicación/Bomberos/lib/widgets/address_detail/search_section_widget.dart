@@ -4,12 +4,14 @@ import '../../constants/address_detail_styles.dart';
 /// Widget reutilizable para la sección de búsqueda
 /// Aplicando principio de responsabilidad única (SRP)
 class SearchSectionWidget extends StatelessWidget {
+  final TextEditingController? searchController;
   final VoidCallback onSearch;
   final VoidCallback onClear;
   final VoidCallback onViewGrifos;
 
   const SearchSectionWidget({
     super.key,
+    this.searchController,
     required this.onSearch,
     required this.onClear,
     required this.onViewGrifos,
@@ -31,6 +33,20 @@ class SearchSectionWidget extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: AddressDetailStyles.darkGray,
             ),
+          ),
+          const SizedBox(height: AddressDetailStyles.paddingLarge),
+          TextField(
+            controller: searchController,
+            decoration: InputDecoration(
+              hintText: 'Ingrese dirección para buscar...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AddressDetailStyles.radiusSmall),
+              ),
+              filled: true,
+              fillColor: AddressDetailStyles.lightGray.withValues(alpha: 0.3),
+            ),
+            onSubmitted: (_) => onSearch(),
           ),
           const SizedBox(height: AddressDetailStyles.paddingLarge),
           Row(

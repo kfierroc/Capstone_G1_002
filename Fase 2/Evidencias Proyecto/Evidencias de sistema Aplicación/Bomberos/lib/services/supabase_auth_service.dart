@@ -38,10 +38,18 @@ class SupabaseAuthService {
         return AuthResult.error('Ya existe un bombero registrado con este RUT: $rutCompleto');
       }
 
-      // Paso 0.5: Validar que el email no esté ya registrado
+      // Paso 0.5: Validar que el email no esté ya registrado como bombero
       final bomberoConEmail = await _getBomberoByEmail(email.trim());
       if (bomberoConEmail != null) {
         return AuthResult.error('Ya existe un bombero registrado con este email: ${email.trim()}');
+      }
+
+      // Paso 0.6: Verificar que el usuario no esté registrado como residente
+      debugPrint('🔍 Verificando que el usuario no esté registrado como residente: $email');
+      final esResidente = await _verificarSiEsResidente(email.trim());
+      if (esResidente) {
+        debugPrint('❌ El email $email está registrado como residente');
+        return AuthResult.error('Este correo electrónico ya está registrado como residente. Por favor, usa la aplicación de residentes o usa otro email.');
       }
 
       // Paso 1: Registrar usuario en Supabase Auth
@@ -114,27 +122,39 @@ class SupabaseAuthService {
     required String password,
   }) async {
     try {
+      // PASO 1: Verificar que el usuario existe en bombero ANTES de autenticar
+      debugPrint('🔍 Verificando que el usuario existe en bombero: $email');
+      final bombero = await _getBomberoByEmail(email.trim());
+      
+      if (bombero == null) {
+        debugPrint('❌ Usuario no encontrado en bombero: $email');
+        return AuthResult.error('Este correo electrónico no está registrado como bombero. Por favor, regístrate primero o usa la aplicación correcta.');
+      }
+      
+      debugPrint('✅ Usuario encontrado en bombero, procediendo con autenticación');
+      
+      // PASO 2: Autenticar con Supabase Auth
       final response = await _client.auth.signInWithPassword(
         email: email.trim(),
         password: password,
       );
 
       if (response.user != null) {
-        // Obtener datos del bombero
-        final bombero = await _getBomberoByEmail(email.trim());
+        // PASO 3: Verificar nuevamente que el bombero existe (doble verificación)
+        final bomberoVerificado = await _getBomberoByEmail(response.user!.email!);
         
-        if (bombero != null) {
+        if (bomberoVerificado != null) {
           return AuthResult.success(
             UserData(
               id: response.user!.id,
               email: response.user!.email ?? email,
-              rutCompleto: bombero.rutCompleto,
-              bombero: bombero,
+              rutCompleto: bomberoVerificado.rutCompleto,
+              bombero: bomberoVerificado,
             ),
           );
         } else {
           await _client.auth.signOut();
-          return AuthResult.error('No se encontró información del bombero');
+          return AuthResult.error('Error al cargar información del bombero');
         }
       } else {
         return AuthResult.error('No se pudo iniciar sesión');
@@ -222,6 +242,22 @@ class SupabaseAuthService {
       return Bombero.fromJson(response);
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Verificar si un email está registrado como residente
+  Future<bool> _verificarSiEsResidente(String email) async {
+    try {
+      final response = await _client
+          .from('grupofamiliar')
+          .select('email')
+          .eq('email', email.trim())
+          .limit(1);
+      
+      return response.isNotEmpty;
+    } catch (e) {
+      debugPrint('⚠️ Error al verificar si es residente: $e');
+      return false; // En caso de error, permitir continuar
     }
   }
 

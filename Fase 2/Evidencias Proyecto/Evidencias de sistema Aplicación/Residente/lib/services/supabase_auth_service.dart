@@ -29,7 +29,15 @@ class SupabaseAuthService {
     required String telefonoTitular,
   }) async {
     try {
-      // Verificar si el email ya existe en grupofamiliar
+      // PASO 0: Verificar que el usuario no esté registrado como bombero
+      debugPrint('🔍 Verificando que el usuario no esté registrado como bombero: $email');
+      final esBombero = await _verificarSiEsBombero(email.trim());
+      if (esBombero) {
+        debugPrint('❌ El email $email está registrado como bombero');
+        return AuthResult.error('Este correo electrónico ya está registrado como bombero. Por favor, usa la aplicación de bomberos o usa otro email.');
+      }
+      
+      // PASO 1: Verificar si el email ya existe en grupofamiliar
       final emailExiste = await _verificarEmailExistente(email);
       if (emailExiste) {
         debugPrint('⚠️ El email $email ya existe en grupofamiliar');
@@ -118,27 +126,39 @@ class SupabaseAuthService {
     required String password,
   }) async {
     try {
+      // PASO 1: Verificar que el usuario existe en grupofamiliar ANTES de autenticar
+      debugPrint('🔍 Verificando que el usuario existe en grupofamiliar: $email');
+      final grupoFamiliar = await _getGrupoFamiliarByEmail(email.trim());
+      
+      if (grupoFamiliar == null) {
+        debugPrint('❌ Usuario no encontrado en grupofamiliar: $email');
+        return AuthResult.error('Este correo electrónico no está registrado como residente. Por favor, regístrate primero o usa la aplicación correcta.');
+      }
+      
+      debugPrint('✅ Usuario encontrado en grupofamiliar, procediendo con autenticación');
+      
+      // PASO 2: Autenticar con Supabase Auth
       final response = await _client.auth.signInWithPassword(
         email: email.trim(),
         password: password,
       );
 
       if (response.user != null) {
-        // Obtener datos del grupo familiar
-        final grupoFamiliar = await _getGrupoFamiliarByEmail(response.user!.email!);
+        // PASO 3: Verificar nuevamente que el grupo familiar existe (doble verificación)
+        final grupoFamiliarVerificado = await _getGrupoFamiliarByEmail(response.user!.email!);
         
-        if (grupoFamiliar != null) {
+        if (grupoFamiliarVerificado != null) {
           return AuthResult.success(
             UserData(
               id: response.user!.id,
               email: response.user!.email ?? email,
-              rutTitular: grupoFamiliar.rutTitular,
-              grupoFamiliar: grupoFamiliar,
+              rutTitular: grupoFamiliarVerificado.rutTitular,
+              grupoFamiliar: grupoFamiliarVerificado,
             ),
           );
         } else {
           await _client.auth.signOut();
-          return AuthResult.error('No se encontró información del grupo familiar');
+          return AuthResult.error('Error al cargar información del grupo familiar');
         }
       } else {
         return AuthResult.error('No se pudo iniciar sesión');
@@ -249,6 +269,22 @@ class SupabaseAuthService {
       
       return response.isNotEmpty;
     } catch (e) {
+      return false; // En caso de error, permitir continuar
+    }
+  }
+
+  /// Verificar si un email está registrado como bombero
+  Future<bool> _verificarSiEsBombero(String email) async {
+    try {
+      final response = await _client
+          .from('bombero')
+          .select('email_b')
+          .eq('email_b', email.trim())
+          .limit(1);
+      
+      return response.isNotEmpty;
+    } catch (e) {
+      debugPrint('⚠️ Error al verificar si es bombero: $e');
       return false; // En caso de error, permitir continuar
     }
   }

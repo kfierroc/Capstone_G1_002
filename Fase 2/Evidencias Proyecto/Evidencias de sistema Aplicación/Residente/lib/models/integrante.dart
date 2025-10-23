@@ -150,7 +150,9 @@ class Integrante {
         rut: rut.isNotEmpty ? rut : 'Sin RUT', // Usar RUT real del integrante
         age: edad > 0 ? edad : DateTime.now().year - fechaIniI.year,
         birthYear: anioNac > 0 ? anioNac : fechaIniI.year,
-        conditions: padecimiento?.isNotEmpty == true ? [padecimiento!] : [],
+        conditions: padecimiento?.isNotEmpty == true 
+            ? padecimiento!.split(',').map((c) => c.trim()).where((c) => c.isNotEmpty).toList()
+            : [],
         createdAt: fechaIniI,
         updatedAt: fechaFinI ?? DateTime.now(),
       );

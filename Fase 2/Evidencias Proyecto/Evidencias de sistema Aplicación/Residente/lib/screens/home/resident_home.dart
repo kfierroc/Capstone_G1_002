@@ -131,7 +131,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         debugPrint('✅ Datos del usuario cargados exitosamente');
         debugPrint('   - RUT: ${_registrationData.rut}');
         debugPrint('   - Dirección: ${_registrationData.address}');
-        debugPrint('   - Teléfono: ${_registrationData.phoneNumber}');
+        debugPrint('   - Teléfono: ${_registrationData.mainPhone ?? _registrationData.phoneNumber}');
         debugPrint('   - Integrantes: ${_familyMembers.length}');
         debugPrint('   - Mascotas: ${_pets.length}');
       } else {
@@ -201,6 +201,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
 
   Future<void> _editFamilyMember(int index, FamilyMember member) async {
     try {
+      debugPrint('🔧 Iniciando edición de miembro de familia en índice: $index');
+      debugPrint('🔧 Datos del miembro: ${member.toString()}');
+      
       final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
@@ -213,22 +216,31 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
-        debugPrint('❌ No se pudo obtener el grupo familiar');
+        debugPrint('❌ No se pudo obtener el grupo familiar: ${grupoResult.error}');
         return;
       }
+      
+      debugPrint('✅ Grupo familiar obtenido: ${grupoResult.data!.idGrupoF}');
       
       final integrantesResult = await databaseService.obtenerIntegrantes(grupoId: grupoResult.data!.idGrupoF.toString());
       if (!integrantesResult.isSuccess || integrantesResult.data == null || index >= integrantesResult.data!.length) {
         debugPrint('❌ No se pudo obtener el integrante a editar');
+        debugPrint('   - Resultado exitoso: ${integrantesResult.isSuccess}');
+        debugPrint('   - Datos nulos: ${integrantesResult.data == null}');
+        debugPrint('   - Índice: $index, Total integrantes: ${integrantesResult.data?.length ?? 0}');
         return;
       }
       
       final integrante = integrantesResult.data![index];
+      debugPrint('✅ Integrante encontrado: ${integrante.idIntegrante}');
+      
       final updates = {
         // Solo campos que existen en las tablas reales
         'anio_nac': member.birthYear, // Tabla info_integrante
         'padecimiento': member.conditions.isNotEmpty ? member.conditions.join(', ') : null, // Tabla info_integrante
       };
+      
+      debugPrint('🔧 Datos a actualizar: $updates');
       
       final result = await databaseService.actualizarIntegrante(
         integranteId: integrante.idIntegrante.toString(),
@@ -459,6 +471,12 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         debugPrint('📝 Teléfono cambió: ${_registrationData.phoneNumber} -> ${newData.phoneNumber}');
       }
       
+      // También actualizar mainPhone si cambió (ambos representan el mismo teléfono)
+      if (newData.mainPhone != null && newData.mainPhone != _registrationData.mainPhone) {
+        grupoUpdates['telefono_titular'] = newData.mainPhone;
+        debugPrint('📝 Teléfono principal cambió: ${_registrationData.mainPhone} -> ${newData.mainPhone}');
+      }
+      
       if (grupoUpdates.isNotEmpty) {
         debugPrint('📝 Actualizando grupo familiar con: $grupoUpdates');
         await databaseService.actualizarGrupoFamiliar(
@@ -521,19 +539,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
           residenciaUpdates['lon'] = double.parse(newData.longitude!.toStringAsFixed(6));
         }
         
-        // Campos adicionales de residencia
-        if (newData.mainPhone != null && newData.mainPhone != residenciaResult.data!.telefonoPrincipal) {
-          residenciaUpdates['telefono_principal'] = newData.mainPhone;
-          debugPrint('📝 Teléfono principal cambió: ${residenciaResult.data!.telefonoPrincipal} -> ${newData.mainPhone}');
-        }
-        if (newData.specialInstructions != null && newData.specialInstructions != residenciaResult.data!.instruccionesEspeciales) {
-          residenciaUpdates['instrucciones_especiales'] = newData.specialInstructions;
-          debugPrint('📝 Instrucciones especiales cambiaron: ${residenciaResult.data!.instruccionesEspeciales} -> ${newData.specialInstructions}');
-        }
-        
-        debugPrint('🔍 Verificando cambios en instrucciones especiales:');
-        debugPrint('   - Instrucciones actuales: ${residenciaResult.data!.instruccionesEspeciales}');
-        debugPrint('   - Instrucciones nuevas: ${newData.specialInstructions}');
+        // Los campos telefonoPrincipal e instruccionesEspeciales se manejan en otras tablas
+        // telefonoPrincipal -> grupofamiliar.telefono_titular
+        // instruccionesEspeciales -> registro_v.instrucciones_especiales
         
         if (residenciaUpdates.isNotEmpty) {
           await databaseService.actualizarResidencia(
@@ -542,20 +550,36 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
           );
         }
         
-        // Actualizar también el registro_v si hay cambios en material, tipo, estado o pisos
-        if (newData.constructionMaterial != null || newData.housingType != null || newData.housingCondition != null || newData.numberOfFloors != null) {
+        // Actualizar también el registro_v si hay cambios en material, tipo, estado, pisos
+        if (newData.constructionMaterial != _registrationData.constructionMaterial || 
+            newData.housingType != _registrationData.housingType || 
+            newData.housingCondition != _registrationData.housingCondition || 
+            newData.numberOfFloors != _registrationData.numberOfFloors) {
+          
           final registroVUpdates = <String, dynamic>{};
-          if (newData.constructionMaterial != null) {
-            registroVUpdates['material'] = newData.constructionMaterial;
+          
+          // Actualizar material si cambió
+          if (newData.constructionMaterial != _registrationData.constructionMaterial) {
+            registroVUpdates['constructionMaterial'] = newData.constructionMaterial;
+            debugPrint('📝 Material cambió: ${_registrationData.constructionMaterial} -> ${newData.constructionMaterial}');
           }
-          if (newData.housingType != null) {
-            registroVUpdates['tipo'] = newData.housingType;
+          
+          // Actualizar tipo si cambió
+          if (newData.housingType != _registrationData.housingType) {
+            registroVUpdates['housingType'] = newData.housingType;
+            debugPrint('📝 Tipo vivienda cambió: ${_registrationData.housingType} -> ${newData.housingType}');
           }
-          if (newData.housingCondition != null) {
-            registroVUpdates['estado'] = newData.housingCondition;
+          
+          // Actualizar estado si cambió
+          if (newData.housingCondition != _registrationData.housingCondition) {
+            registroVUpdates['housingCondition'] = newData.housingCondition;
+            debugPrint('📝 Estado cambió: ${_registrationData.housingCondition} -> ${newData.housingCondition}');
           }
-          if (newData.numberOfFloors != null) {
-            registroVUpdates['pisos'] = newData.numberOfFloors;
+          
+          // Actualizar pisos si cambió
+          if (newData.numberOfFloors != _registrationData.numberOfFloors) {
+            registroVUpdates['numberOfFloors'] = newData.numberOfFloors;
+            debugPrint('📝 Pisos cambiaron: ${_registrationData.numberOfFloors} -> ${newData.numberOfFloors}');
           }
           
           if (registroVUpdates.isNotEmpty) {
@@ -566,6 +590,22 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
             );
             debugPrint('✅ Registro_v actualizado exitosamente');
           }
+        }
+        
+        // Actualizar instrucciones especiales en residencia si cambió
+        if (newData.specialInstructions != _registrationData.specialInstructions) {
+          debugPrint('📝 Instrucciones especiales cambiaron: ${_registrationData.specialInstructions} -> ${newData.specialInstructions}');
+          
+          final residenciaInstruccionesUpdates = <String, dynamic>{
+            'specialInstructions': newData.specialInstructions,
+          };
+          
+          debugPrint('📝 Actualizando instrucciones especiales en residencia con: $residenciaInstruccionesUpdates');
+          await databaseService.actualizarResidencia(
+            grupoId: grupo.idGrupoF.toString(),
+            updates: residenciaInstruccionesUpdates,
+          );
+          debugPrint('✅ Instrucciones especiales actualizadas en residencia');
         }
       } else {
         // Residencia no existe, crear una nueva

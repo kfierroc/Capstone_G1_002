@@ -19,6 +19,7 @@ class AddressDetailScreen extends StatefulWidget {
 class _AddressDetailScreenState extends State<AddressDetailScreen> {
   final SearchService _searchService = SearchService();
   final SupabaseAuthService _authService = SupabaseAuthService();
+  final TextEditingController _searchController = TextEditingController();
   
   Map<String, dynamic>? _detailedData;
   bool _isLoading = true;
@@ -30,6 +31,12 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     super.initState();
     _loadDetailedData();
     _loadUserName();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _loadUserName() {
@@ -48,6 +55,22 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     return words.map((word) => word.isNotEmpty 
         ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
         : '').join(' ');
+  }
+
+  void _performSearch() {
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      // Navegar a la pantalla de búsqueda con el término de búsqueda
+      Navigator.pushNamed(
+        context, 
+        '/resident-search',
+        arguments: query,
+      );
+    }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
   }
 
   Future<void> _loadDetailedData() async {
@@ -100,11 +123,12 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                 padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
                 child: Column(
                   children: [
-                    SearchSectionWidget(
-                      onSearch: () {},
-                      onClear: () {},
-                      onViewGrifos: () => Navigator.pushNamed(context, '/grifos'),
-                    ),
+                     SearchSectionWidget(
+                       searchController: _searchController,
+                       onSearch: _performSearch,
+                       onClear: _clearSearch,
+                       onViewGrifos: () => Navigator.pushNamed(context, '/grifos'),
+                     ),
                     const SizedBox(height: AddressDetailStyles.paddingLarge),
                     _buildCriticalSummary(integrantes, mascotas),
                     const SizedBox(height: AddressDetailStyles.paddingLarge),
@@ -113,7 +137,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                     _buildHousingInfo(data),
                     const SizedBox(height: AddressDetailStyles.paddingLarge),
                     SpecialInstructionsWidget(
-                      instructions: data['instrucciones_especiales'] as String?,
+                      instructions: (data['registro_v'] as Map<String, dynamic>?)?['instrucciones_especiales'] as String?,
                     ),
                     const SizedBox(height: AddressDetailStyles.paddingLarge),
                     _buildContactInfo(data),
@@ -208,7 +232,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
           const SizedBox(height: AddressDetailStyles.paddingLarge),
           InfoRow(
             label: 'Dirección',
-            value: data['direccion'] as String? ?? 'No especificada',
+            value: data['address'] as String? ?? 'No especificada',
           ),
           InfoRow(
             label: 'Coordenadas',
@@ -245,14 +269,16 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   }
 
   Widget _buildHousingInfo(Map<String, dynamic> data) {
+    final registroV = data['registro_v'] as Map<String, dynamic>? ?? {};
     return Container(
       padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
       decoration: AddressDetailStyles.cardDecoration,
-      child: HousingInfoWidget(housingData: data),
+      child: HousingInfoWidget(housingData: registroV),
     );
   }
 
   Widget _buildContactInfo(Map<String, dynamic> data) {
+    final grupoFamiliar = data['grupo_familiar'] as Map<String, dynamic>? ?? {};
     return Container(
       padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
       decoration: AddressDetailStyles.cardDecoration,
@@ -260,12 +286,12 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ContactInfoWidget(
-            phoneNumber: data['telefono_principal'] as String?,
+            phoneNumber: grupoFamiliar['telefono_titular'] as String?,
           ),
           const SizedBox(height: AddressDetailStyles.paddingLarge),
           InfoRow(
             label: 'Teléfono Principal',
-            value: data['telefono_principal'] as String? ?? 'No especificado',
+            value: grupoFamiliar['telefono_titular'] as String? ?? 'No especificado',
           ),
         ],
       ),

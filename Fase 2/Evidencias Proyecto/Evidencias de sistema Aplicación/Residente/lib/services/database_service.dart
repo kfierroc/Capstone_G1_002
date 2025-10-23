@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -226,9 +227,47 @@ class DatabaseService {
     required Map<String, dynamic> updates,
   }) async {
     try {
+      debugPrint('🔧 Actualizando grupo familiar: $grupoId');
+      debugPrint('🔧 Datos a actualizar: $updates');
+      
       final response = await _client
           .from('grupofamiliar')
           .update(updates)
+          .eq('id_grupof', int.parse(grupoId))
+          .select()
+          .single();
+
+      debugPrint('✅ Respuesta de actualización: $response');
+      
+      final grupo = GrupoFamiliar.fromJson(response);
+      
+      debugPrint('✅ Grupo familiar actualizado exitosamente');
+      debugPrint('   - Nuevo teléfono: ${grupo.telefonoTitular}');
+      
+      return DatabaseResult.success(
+        data: grupo,
+        message: 'Grupo familiar actualizado exitosamente',
+      );
+    } on PostgrestException catch (e) {
+      debugPrint('❌ Error de Supabase al actualizar grupo familiar: ${e.message}');
+      return DatabaseResult.error(_getPostgrestErrorMessage(e));
+    } catch (e) {
+      debugPrint('❌ Error inesperado al actualizar grupo familiar: $e');
+      return DatabaseResult.error('Error al actualizar grupo familiar: ${e.toString()}');
+    }
+  }
+
+  /// Actualizar teléfono principal del grupo familiar
+  Future<DatabaseResult<GrupoFamiliar>> actualizarTelefonoPrincipal({
+    required String grupoId,
+    required String telefono,
+  }) async {
+    try {
+      debugPrint('📝 Actualizando teléfono principal para grupo: $grupoId');
+      
+      final response = await _client
+          .from('grupofamiliar')
+          .update({'telefono_titular': telefono})
           .eq('id_grupof', int.parse(grupoId))
           .select()
           .single();
@@ -237,12 +276,12 @@ class DatabaseService {
       
       return DatabaseResult.success(
         data: grupo,
-        message: 'Grupo familiar actualizado exitosamente',
+        message: 'Teléfono principal actualizado exitosamente',
       );
     } on PostgrestException catch (e) {
       return DatabaseResult.error(_getPostgrestErrorMessage(e));
     } catch (e) {
-      return DatabaseResult.error('Error al actualizar grupo familiar: ${e.toString()}');
+      return DatabaseResult.error('Error al actualizar teléfono principal: ${e.toString()}');
     }
   }
 
@@ -397,8 +436,10 @@ class DatabaseService {
         'lat': lat,
         'lon': lon,
         'cut_com': cutCom, // Cambiado de out_com a cut_com
-        // Solo campos que existen en la tabla residencia según esquema real
-        // Los campos de teléfono, pisos e instrucciones se agregarán después de ejecutar el script SQL
+        'numero_pisos': data.numberOfFloors, // Agregar número de pisos
+        'instrucciones_especiales': data.specialInstructions != null && data.specialInstructions!.isNotEmpty
+            ? jsonEncode({'general': data.specialInstructions})
+            : null, // Usar campo JSONB existente en residencia
       };
       
       debugPrint('📝 Datos de residencia: $residenciaData');
@@ -428,6 +469,7 @@ class DatabaseService {
         'material': data.constructionMaterial,
         'tipo': data.housingType,
         'pisos': data.numberOfFloors ?? 1, // NUEVO CAMPO según esquema actualizado
+        // NOTA: Las instrucciones especiales ahora se manejan en residencia.instrucciones_especiales (JSONB)
         'fecha_ini_r': DateTime.now().toIso8601String().split('T')[0],
       };
       
@@ -517,6 +559,7 @@ class DatabaseService {
   }) async {
     try {
       debugPrint('📝 Actualizando residencia para grupo: $grupoId');
+      debugPrint('📝 Datos a actualizar: $updates');
       
       // 1. Obtener el registro_v vigente para encontrar la residencia
       final registroResponse = await _client
@@ -541,10 +584,38 @@ class DatabaseService {
         return DatabaseResult.error('ID de residencia no encontrado');
       }
       
-      // 2. Actualizar la residencia
+      // 2. Preparar datos de actualización con mapeo correcto
+      final residenciaUpdates = <String, dynamic>{};
+      
+      // Mapear campos de RegistrationData a campos de la tabla residencia
+      if (updates.containsKey('address')) {
+        residenciaUpdates['direccion'] = updates['address'];
+      }
+      if (updates.containsKey('latitude')) {
+        residenciaUpdates['lat'] = updates['latitude'];
+      }
+      if (updates.containsKey('longitude')) {
+        residenciaUpdates['lon'] = updates['longitude'];
+      }
+      if (updates.containsKey('numberOfFloors')) {
+        residenciaUpdates['numero_pisos'] = updates['numberOfFloors'];
+      }
+      // Manejar instrucciones especiales usando el campo JSONB existente en residencia
+      if (updates.containsKey('specialInstructions')) {
+        final instrucciones = updates['specialInstructions'] as String?;
+        if (instrucciones != null && instrucciones.isNotEmpty) {
+          residenciaUpdates['instrucciones_especiales'] = jsonEncode({'general': instrucciones});
+        } else {
+          residenciaUpdates['instrucciones_especiales'] = null;
+        }
+      }
+      
+      debugPrint('📝 Datos de residencia a actualizar: $residenciaUpdates');
+      
+      // 3. Actualizar la residencia
       final response = await _client
           .from('residencia')
-          .update(updates)
+          .update(residenciaUpdates)
           .eq('id_residencia', int.parse(idResidencia.toString()))
           .select()
           .single();
@@ -571,12 +642,36 @@ class DatabaseService {
   }) async {
     try {
       debugPrint('📝 Actualizando registro_v para grupo: $grupoId');
+      debugPrint('📝 Datos a actualizar en registro_v: $updates');
       
-      await _client
-          .from('registro_v')
-          .update(updates)
-          .eq('id_grupof', int.parse(grupoId))
-          .eq('vigente', true);
+      // Mapear campos de RegistrationData a campos de registro_v
+      final registroVUpdates = <String, dynamic>{};
+      
+      if (updates.containsKey('housingType')) {
+        registroVUpdates['tipo'] = updates['housingType'];
+      }
+      if (updates.containsKey('constructionMaterial')) {
+        registroVUpdates['material'] = updates['constructionMaterial'];
+      }
+      if (updates.containsKey('housingCondition')) {
+        registroVUpdates['estado'] = updates['housingCondition'];
+      }
+      if (updates.containsKey('numberOfFloors')) {
+        registroVUpdates['pisos'] = updates['numberOfFloors'];
+      }
+      debugPrint('📝 Datos de registro_v a actualizar: $registroVUpdates');
+      
+      // Actualizar campos básicos
+      if (registroVUpdates.isNotEmpty) {
+        await _client
+            .from('registro_v')
+            .update(registroVUpdates)
+            .eq('id_grupof', int.parse(grupoId))
+            .eq('vigente', true);
+        debugPrint('✅ Campos de registro_v actualizados');
+      }
+      
+      // NOTA: Las instrucciones especiales ahora se manejan en residencia.instrucciones_especiales (JSONB)
 
       debugPrint('✅ Registro_v actualizado exitosamente');
       
@@ -636,7 +731,7 @@ class DatabaseService {
           : null,
       idGrupof: json['id_grupof'] as int,
       // Datos de info_integrante
-      rut: '', // Campo no existe en ninguna tabla según esquema real
+      rut: json['rut'] as String? ?? '', // RUT del integrante
       edad: infoIntegrante != null ? _calcularEdad(infoIntegrante['anio_nac'] as int?) : 0,
       anioNac: infoIntegrante?['anio_nac'] as int? ?? 0,
       padecimiento: infoIntegrante?['padecimiento'] as String?,
@@ -1056,14 +1151,15 @@ class DatabaseService {
       // Obtener datos del integrante titular (primer integrante)
       final integranteTitular = integrantes.isNotEmpty ? integrantes.first : null;
       
-      // Obtener datos del registro_v para material, tipo, estado y pisos
+      // Obtener datos del registro_v para material, tipo, estado, pisos
       String? materialVivienda;
       String? tipoVivienda;
       String? estadoVivienda;
       int? pisosVivienda;
+      String? instruccionesEspeciales;
       
       if (integrantes.isNotEmpty) {
-        // Buscar registro_v vigente para obtener material, tipo, estado y pisos
+        // Buscar registro_v vigente para obtener material, tipo, estado, pisos
         try {
           final registroVResponse = await _client
               .from('registro_v')
@@ -1079,10 +1175,48 @@ class DatabaseService {
             tipoVivienda = registroVResponse['tipo'] as String?;
             estadoVivienda = registroVResponse['estado'] as String?;
             pisosVivienda = registroVResponse['pisos'] as int?;
-            debugPrint('📋 Datos de registro_v cargados: material=$materialVivienda, tipo=$tipoVivienda, estado=$estadoVivienda, pisos=$pisosVivienda');
+            debugPrint('📋 Datos básicos de registro_v cargados: material=$materialVivienda, tipo=$tipoVivienda, estado=$estadoVivienda, pisos=$pisosVivienda');
           }
         } catch (e) {
           debugPrint('⚠️ Error al cargar registro_v: $e');
+        }
+      }
+      
+      // Cargar instrucciones especiales desde el campo JSONB de residencia
+      if (residencia != null) {
+        try {
+          final residenciaResponse = await _client
+              .from('residencia')
+              .select('instrucciones_especiales')
+              .eq('id_residencia', residencia.idResidencia)
+              .maybeSingle();
+          
+          if (residenciaResponse != null) {
+            final instruccionesJson = residenciaResponse['instrucciones_especiales'];
+            if (instruccionesJson != null) {
+              try {
+                // Si es un JSONB, extraer el valor 'general'
+                if (instruccionesJson is Map<String, dynamic>) {
+                  instruccionesEspeciales = instruccionesJson['general'] as String?;
+                } else if (instruccionesJson is String) {
+                  // Si es un string JSON, parsearlo
+                  final jsonData = jsonDecode(instruccionesJson);
+                  if (jsonData is Map<String, dynamic> && jsonData.containsKey('general')) {
+                    instruccionesEspeciales = jsonData['general'] as String?;
+                  } else {
+                    instruccionesEspeciales = instruccionesJson;
+                  }
+                }
+                debugPrint('📋 Instrucciones especiales cargadas desde residencia: $instruccionesEspeciales');
+              } catch (e) {
+                debugPrint('⚠️ Error al parsear instrucciones_especiales: $e');
+                instruccionesEspeciales = null;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error al cargar instrucciones_especiales desde residencia: $e');
+          instruccionesEspeciales = null;
         }
       }
 
@@ -1102,6 +1236,7 @@ class DatabaseService {
         rut: grupo.rutTitular,
         fullName: nombreCompleto, // Usar nombre completo construido
         phoneNumber: telefonoTitular.isNotEmpty ? telefonoTitular : 'No especificado', // Usar teléfono del grupo familiar
+        mainPhone: telefonoTitular.isNotEmpty ? telefonoTitular : 'No especificado', // También asignar mainPhone
         address: residencia?.direccion,
         latitude: residencia?.lat,
         longitude: residencia?.lon,
@@ -1110,10 +1245,9 @@ class DatabaseService {
         numberOfFloors: residencia?.numeroPisos ?? pisosVivienda, // Priorizar residencia.numero_pisos
         constructionMaterial: materialVivienda, // Cargar desde registro_v
         housingCondition: estadoVivienda, // Cargar desde registro_v.estado
-        specialInstructions: residencia?.instruccionesEspeciales, // Cargar desde residencia
+        specialInstructions: instruccionesEspeciales, // Cargar instrucciones especiales desde registro_v
         age: integranteTitular?.edad, // ✅ Agregar edad del integrante titular
         birthYear: integranteTitular?.anioNac, // ✅ Agregar año de nacimiento
-        mainPhone: residencia?.telefonoPrincipal, // Cargar teléfono principal de residencia
         medicalConditions: _parseMedicalConditions(integranteTitular?.padecimiento), // Cargar condiciones médicas del integrante titular
       );
       
@@ -1121,6 +1255,7 @@ class DatabaseService {
       debugPrint('   - Grupo ID: ${grupo.idGrupoF}');
       debugPrint('   - Email: ${grupo.email}');
       debugPrint('   - RUT: ${grupo.rutTitular}');
+      debugPrint('   - Teléfono del grupo: $telefonoTitular');
       debugPrint('   - Fecha creación: ${grupo.fechaCreacion}');
       debugPrint('   - Dirección: ${residencia?.direccion}');
       debugPrint('   - Coordenadas: ${residencia?.lat}, ${residencia?.lon}');
@@ -1128,9 +1263,12 @@ class DatabaseService {
       debugPrint('   - Integrante titular año nacimiento: ${integranteTitular?.anioNac}');
       debugPrint('   - Padecimiento: ${integranteTitular?.padecimiento}');
       debugPrint('   - Condiciones médicas cargadas: ${_parseMedicalConditions(integranteTitular?.padecimiento)}');
-      debugPrint('   - Instrucciones especiales: ${residencia?.instruccionesEspeciales}');
+      debugPrint('   - Instrucciones especiales: $instruccionesEspeciales');
       debugPrint('   - Integrantes: ${integrantes.length}');
       debugPrint('   - Mascotas: ${mascotas.length}');
+      debugPrint('   - RegistrationData.rut: ${registrationData.rut}');
+      debugPrint('   - RegistrationData.phoneNumber: ${registrationData.phoneNumber}');
+      debugPrint('   - RegistrationData.mainPhone: ${registrationData.mainPhone}');
       
       // Verificar si los datos parecen ser de migración
       if (grupo.rutTitular == 'Sin RUT') {
@@ -1231,6 +1369,9 @@ class DatabaseService {
 class GrupoFamiliar {
   final int idGrupoF;           // INTEGER como en el esquema real
   final String rutTitular;
+  final String nombTitular;     // NUEVO CAMPO según esquema actualizado
+  final String apePTitular;     // NUEVO CAMPO según esquema actualizado
+  final String telefonoTitular; // NUEVO CAMPO según esquema actualizado
   final String email;           // Email como en el esquema real
   final DateTime fechaCreacion;
   final DateTime createdAt;
@@ -1239,6 +1380,9 @@ class GrupoFamiliar {
   GrupoFamiliar({
     required this.idGrupoF,
     required this.rutTitular,
+    required this.nombTitular,
+    required this.apePTitular,
+    required this.telefonoTitular,
     required this.email,
     required this.fechaCreacion,
     required this.createdAt,
@@ -1249,6 +1393,9 @@ class GrupoFamiliar {
     return GrupoFamiliar(
       idGrupoF: json['id_grupof'] as int, // Usar int directamente
       rutTitular: json['rut_titular'] as String,
+      nombTitular: json['nomb_titular'] as String? ?? '',
+      apePTitular: json['ape_p_titular'] as String? ?? '',
+      telefonoTitular: json['telefono_titular'] as String? ?? '',
       email: json['email'] as String,
       fechaCreacion: DateTime.parse(json['fecha_creacion'] as String),
       createdAt: json['created_at'] != null 
@@ -1264,6 +1411,9 @@ class GrupoFamiliar {
     return {
       'id_grupof': idGrupoF,
       'rut_titular': rutTitular,
+      'nomb_titular': nombTitular,
+      'ape_p_titular': apePTitular,
+      'telefono_titular': telefonoTitular,
       'email': email,
       'fecha_creacion': fechaCreacion.toIso8601String().split('T')[0],
       'created_at': createdAt.toIso8601String(),

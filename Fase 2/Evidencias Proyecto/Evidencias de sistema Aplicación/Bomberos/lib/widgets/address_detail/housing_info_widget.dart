@@ -35,11 +35,11 @@ class HousingInfoWidget extends StatelessWidget {
           children: [
             _buildHousingInfoItem(
               'Tipo',
-              housingData['tipo_vivienda'] as String? ?? 'No especificado',
+              housingData['tipo'] as String? ?? 'No especificado',
             ),
             _buildHousingInfoItem(
               'Pisos',
-              housingData['numero_pisos']?.toString() ?? 'No especificado',
+              housingData['pisos']?.toString() ?? 'No especificado',
             ),
             _buildHousingInfoItem(
               'Material',
@@ -47,7 +47,7 @@ class HousingInfoWidget extends StatelessWidget {
             ),
             _buildHousingInfoItem(
               'Estado',
-              housingData['estado_vivienda'] as String? ?? 'No especificado',
+              housingData['estado'] as String? ?? 'No especificado',
             ),
           ],
         ),

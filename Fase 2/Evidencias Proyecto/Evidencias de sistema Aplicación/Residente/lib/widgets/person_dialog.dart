@@ -4,6 +4,7 @@ import '../models/family_member.dart';
 import '../utils/app_styles.dart';
 import '../utils/validators.dart';
 import '../utils/input_formatters.dart';
+import '../utils/format_utils.dart' as format_utils;
 import 'medical_conditions_selector.dart';
 
 /// Diálogo optimizado para agregar/editar persona
@@ -32,7 +33,8 @@ class _PersonDialogState extends State<PersonDialog> {
     super.initState();
 
     if (widget.initialData != null) {
-      _rutController.text = widget.initialData!.rut;
+      // Formatear RUT para mostrar en modo edición
+      _rutController.text = format_utils.FormatUtils.formatRut(widget.initialData!.rut);
       _birthYearController.text = widget.initialData!.birthYear.toString();
       _selectedConditions = List.from(widget.initialData!.conditions);
     }
@@ -52,7 +54,7 @@ class _PersonDialogState extends State<PersonDialog> {
 
       final member = FamilyMember(
         id: widget.initialData?.id ?? DateTime.now().toString(),
-        rut: _rutController.text.trim(),
+        rut: format_utils.FormatUtils.cleanRut(_rutController.text), // Limpiar RUT para almacenamiento
         age: age,
         birthYear: birthYear,
         conditions: _selectedConditions.toList(),
@@ -118,16 +120,16 @@ class _PersonDialogState extends State<PersonDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // RUT (no editable si ya existe)
+            // RUT (solo lectura si ya existe)
             TextFormField(
               controller: _rutController,
-              enabled: !isEditing, // ← No editable en modo edición
-              inputFormatters: [
-                RutInputFormatter(), // ← Formateo automático
+              readOnly: isEditing, // ← Solo lectura en modo edición (pero visible)
+              inputFormatters: isEditing ? null : [
+                RutInputFormatter(), // ← Formateo automático solo al crear
                 LengthLimitingTextInputFormatter(12),
               ],
               decoration: InputDecoration(
-                labelText: isEditing ? 'RUT (no editable)' : 'RUT',
+                labelText: isEditing ? 'RUT (solo lectura)' : 'RUT',
                 hintText: '12.345.678-9',
                 prefixIcon: const Icon(Icons.badge_outlined),
                 border: OutlineInputBorder(
@@ -135,13 +137,16 @@ class _PersonDialogState extends State<PersonDialog> {
                 ),
                 filled: true,
                 fillColor: isEditing 
-                    ? const Color(0xFFE0E0E0) // Gris si no editable
+                    ? const Color(0xFFF5F5F5) // Gris claro para solo lectura
                     : const Color(0xFFFAFAFA),
                 helperText: isEditing 
-                    ? 'El RUT no se puede modificar' 
+                    ? 'El RUT no se puede modificar una vez creado' 
                     : 'Ingresa sin puntos ni guión',
+                suffixIcon: isEditing 
+                    ? Icon(Icons.lock, color: AppColors.textSecondary)
+                    : null,
               ),
-              validator: Validators.validateRut,
+              validator: isEditing ? null : Validators.validateRut, // No validar si es solo lectura
             ),
             const SizedBox(height: AppSpacing.lg),
             

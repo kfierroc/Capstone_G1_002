@@ -22,6 +22,7 @@ class OccupantsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min, // Cambiar a min para evitar problemas de layout
       children: [
         const Text(
           'Ocupantes del Domicilio',
@@ -34,7 +35,9 @@ class OccupantsWidget extends StatelessWidget {
         const SizedBox(height: AddressDetailStyles.paddingLarge),
         _buildTabBar(),
         const SizedBox(height: AddressDetailStyles.paddingLarge),
-        Expanded(
+        // Usar SizedBox con altura fija en lugar de Expanded
+        SizedBox(
+          height: 400, // Aumentar altura para mejor visualización
           child: selectedTab == 0
               ? _buildPersonasList()
               : _buildMascotasList(),
@@ -115,13 +118,23 @@ class OccupantsWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Persona ${index + 1}',
-                style: const TextStyle(
-                  fontSize: AddressDetailStyles.fontSizeLarge,
-                  fontWeight: FontWeight.bold,
-                  color: AddressDetailStyles.darkGray,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.person,
+                    color: AddressDetailStyles.blue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Persona ${index + 1}',
+                    style: const TextStyle(
+                      fontSize: AddressDetailStyles.fontSizeLarge,
+                      fontWeight: FontWeight.bold,
+                      color: AddressDetailStyles.darkGray,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AddressDetailStyles.paddingSmall),
               Text(
@@ -155,13 +168,23 @@ class OccupantsWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                mascota['nombre_m'] ?? 'Sin nombre',
-                style: const TextStyle(
-                  fontSize: AddressDetailStyles.fontSizeLarge,
-                  fontWeight: FontWeight.bold,
-                  color: AddressDetailStyles.darkGray,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.pets,
+                    color: AddressDetailStyles.blue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    mascota['nombre_m'] ?? 'Sin nombre',
+                    style: const TextStyle(
+                      fontSize: AddressDetailStyles.fontSizeLarge,
+                      fontWeight: FontWeight.bold,
+                      color: AddressDetailStyles.darkGray,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AddressDetailStyles.paddingSmall),
               Text(

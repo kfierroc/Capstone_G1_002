@@ -1,0 +1,18 @@
+{
+  "ejemplo_instrucciones_especiales": {
+    "descripcion": "Ejemplo de cómo se guardan las instrucciones especiales en registro_v.instrucciones_especiales",
+    "formato": "VARCHAR(1000) que contiene JSON string",
+    "ejemplos": {
+      "instruccion_simple": "{\"general\": \"Ventanas blindadas\"}",
+      "instruccion_multiple": "{\"general\": \"Ventanas blindadas, Puerta de seguridad, Sistema de alarma\"}",
+      "instruccion_vacia": null,
+      "instruccion_json_complejo": "{\"general\": \"Ventanas blindadas\", \"emergencia\": \"Contactar a Juan Pérez al +56912345678\", \"acceso\": \"Usar llave bajo la maceta\"}"
+    },
+    "notas": [
+      "El campo se guarda como VARCHAR(1000) en la tabla registro_v",
+      "Contiene un JSON string con la estructura: {\"general\": \"texto de instrucciones\"}",
+      "Si está vacío, se guarda como NULL",
+      "El código maneja tanto JSON válido como texto simple"
+    ]
+  }
+}
