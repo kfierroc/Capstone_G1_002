@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/registration_data.dart';
-import '../../../services/auth_service.dart';
+import '../../../services/unified_auth_service.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/format_utils.dart';
 import '../../../widgets/common_widgets.dart';
@@ -21,9 +21,8 @@ class SettingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    final supabaseUser = authService.currentUser;
-    final user = supabaseUser != null ? AppUser.fromSupabaseUser(supabaseUser) : null;
+    final authService = UnifiedAuthService();
+    final userEmail = authService.userEmail;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -37,7 +36,7 @@ class SettingsTab extends StatelessWidget {
             gradientColors: [AppColors.settingsPrimary, AppColors.settingsSecondary],
           ),
           const SizedBox(height: AppSpacing.xl),
-          _buildPersonalInfoCard(user),
+          _buildPersonalInfoCard(userEmail),
           const SizedBox(height: AppSpacing.xl),
           ActionButton(
             onPressed: () => _editProfile(context),
@@ -67,7 +66,7 @@ class SettingsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonalInfoCard(AppUser? user) {
+  Widget _buildPersonalInfoCard(String? userEmail) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: AppDecorations.card,
@@ -85,7 +84,7 @@ class SettingsTab extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           DetailRow(
             label: 'Email:',
-            value: user?.email ?? 'No especificado',
+            value: userEmail ?? 'No especificado',
           ),
           const SizedBox(height: AppSpacing.lg),
           DetailRow(

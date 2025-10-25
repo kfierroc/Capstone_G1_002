@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../constants/grifo_colors.dart';
-import '../constants/grifo_styles.dart';
 
 /// Widget para mostrar información detallada de un residente
 class ResidentInfoCard extends StatelessWidget {
@@ -20,142 +18,147 @@ class ResidentInfoCard extends StatelessWidget {
     final mascotas = residentData['mascotas'] as List<dynamic>? ?? [];
     final registroV = residentData['registro_v'] as Map<String, dynamic>? ?? {};
 
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header con botón de cerrar
-            Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header moderno con gradiente
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Información del Residente',
-                  style: GrifoStyles.titleLarge.copyWith(
-                    color: GrifoColors.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.home_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Información del Residente',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
                 if (onClose != null)
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: onClose,
-                    color: GrifoColors.error,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white),
+                      onPressed: onClose,
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Información de contacto
-            _buildSection(
-              'Contacto',
-              Icons.contact_phone,
-              [
-                _buildInfoRow('Dirección', residentData['address'] ?? 'No especificada'),
-                _buildInfoRow('Teléfono', grupoFamiliar['telefono_titular'] ?? 'No especificado'),
-                _buildInfoRow('RUT Titular', grupoFamiliar['rut_titular'] ?? 'No especificado'),
-                _buildInfoRow('Email', grupoFamiliar['email'] ?? 'No especificado'),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Información de la vivienda
-            _buildSection(
-              'Vivienda',
-              Icons.home,
-              [
-                _buildInfoRow('Tipo', registroV['tipo'] ?? 'No especificado'),
-                _buildInfoRow('Material', registroV['material'] ?? 'No especificado'),
-                _buildInfoRow('Estado', registroV['estado'] ?? 'No especificado'),
-                _buildInfoRow('Pisos', registroV['pisos']?.toString() ?? 'No especificado'),
-                if (registroV['instrucciones_especiales'] != null)
-                  _buildInfoRow('Instrucciones Especiales', _parseInstruccionesEspeciales(registroV['instrucciones_especiales'])),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Integrantes del hogar
-            if (integrantes.isNotEmpty) ...[
-              _buildSection(
-                'Integrantes del Hogar (${integrantes.length})',
-                Icons.people,
-                integrantes.map((integrante) => _buildIntegranteInfo(integrante)).toList(),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Mascotas
-            if (mascotas.isNotEmpty) ...[
-              _buildSection(
-                'Mascotas (${mascotas.length})',
-                Icons.pets,
-                mascotas.map((mascota) => _buildMascotaInfo(mascota)).toList(),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Información de actualización
-            _buildSection(
-              'Información del Sistema',
-              Icons.info_outline,
-              [
-                _buildInfoRow('Última actualización', _formatLastUpdated(residentData['last_updated'])),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSection(String title, IconData icon, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 20, color: GrifoColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: GrifoStyles.titleMedium.copyWith(
-                color: GrifoColors.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: GrifoStyles.bodyMedium.copyWith(
-                fontWeight: FontWeight.w500,
-                color: GrifoColors.textSecondary,
-              ),
-            ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: GrifoStyles.bodyMedium,
+          // Contenido con padding moderno
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                // Información de contacto
+                _buildModernSection(
+                  'Contacto',
+                  Icons.contact_phone_rounded,
+                  const Color(0xFF3B82F6),
+                  [
+                    _buildModernInfoRow('Dirección', residentData['address'] ?? 'No especificada', Icons.location_on_rounded),
+                    _buildModernInfoRow('Teléfono', grupoFamiliar['telefono_titular'] ?? 'No especificado', Icons.phone_rounded),
+                    _buildModernInfoRow('RUT Titular', grupoFamiliar['rut_titular'] ?? 'No especificado', Icons.badge_rounded),
+                    _buildModernInfoRow('Email', grupoFamiliar['email'] ?? 'No especificado', Icons.email_rounded),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Información de la vivienda
+                _buildModernSection(
+                  'Vivienda',
+                  Icons.home_rounded,
+                  const Color(0xFF10B981),
+                  [
+                    _buildModernInfoRow('Tipo', registroV['tipo'] ?? 'No especificado', Icons.category_rounded),
+                    _buildModernInfoRow('Material', registroV['material'] ?? 'No especificado', Icons.construction_rounded),
+                    _buildModernInfoRow('Estado', registroV['estado'] ?? 'No especificado', Icons.check_circle_rounded),
+                    _buildModernInfoRow('Pisos', registroV['pisos']?.toString() ?? 'No especificado', Icons.stairs_rounded),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Integrantes del hogar
+                if (integrantes.isNotEmpty) ...[
+                  _buildModernSection(
+                    'Integrantes del Hogar (${integrantes.length})',
+                    Icons.people_rounded,
+                    const Color(0xFF8B5CF6),
+                    integrantes.map((integrante) => _buildModernIntegranteInfo(integrante)).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Mascotas
+                if (mascotas.isNotEmpty) ...[
+                  _buildModernSection(
+                    'Mascotas (${mascotas.length})',
+                    Icons.pets_rounded,
+                    const Color(0xFFF59E0B),
+                    mascotas.map((mascota) => _buildModernMascotaInfo(mascota)).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Información de actualización
+                _buildModernSection(
+                  'Información del Sistema',
+                  Icons.info_rounded,
+                  const Color(0xFF6B7280),
+                  [
+                    _buildModernInfoRow('Última actualización', _formatLastUpdated(residentData['last_updated']), Icons.update_rounded),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -163,49 +166,190 @@ class ResidentInfoCard extends StatelessWidget {
     );
   }
 
-  Widget _buildIntegranteInfo(Map<String, dynamic> integrante) {
+  Widget _buildModernSection(String title, IconData icon, Color color, List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 20, color: color),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernInfoRow(String label, String value, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: Colors.grey[600]),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildModernIntegranteInfo(Map<String, dynamic> integrante) {
     final padecimientos = integrante['padecimientos'] as List<dynamic>? ?? [];
     
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: GrifoColors.surfaceVariant.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: GrifoColors.grey.withValues(alpha: 0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF8B5CF6).withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Integrante #${integrante['id_integrante']}',
-            style: GrifoStyles.bodyMedium.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  size: 16,
+                  color: Color(0xFF8B5CF6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Integrante #${integrante['id_integrante']}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+            ],
           ),
-          if (integrante['edad'] != null)
-            Text('Edad: ${integrante['edad']} años'),
-          if (padecimientos.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Condiciones médicas:',
-              style: GrifoStyles.bodySmall.copyWith(
-                fontWeight: FontWeight.w500,
-                color: GrifoColors.error,
+          if (integrante['edad'] != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Edad: ${integrante['edad']} años',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF6B7280),
+                ),
               ),
             ),
+          ],
+          if (padecimientos.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Condiciones médicas:',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFDC2626),
+              ),
+            ),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 4,
-              runSpacing: 2,
-              children: padecimientos.map((padecimiento) => Chip(
-                label: Text(
-                  padecimiento.toString(),
-                  style: GrifoStyles.bodySmall,
+              spacing: 6,
+              runSpacing: 6,
+              children: padecimientos.map((padecimiento) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.2)),
                 ),
-                backgroundColor: GrifoColors.error.withValues(alpha: 0.1),
-                labelStyle: TextStyle(
-                  color: GrifoColors.error,
-                  fontSize: 10,
+                child: Text(
+                  padecimiento.toString(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFFDC2626),
+                  ),
                 ),
               )).toList(),
             ),
@@ -215,36 +359,57 @@ class ResidentInfoCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMascotaInfo(Map<String, dynamic> mascota) {
+
+  Widget _buildModernMascotaInfo(Map<String, dynamic> mascota) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: GrifoColors.surfaceVariant.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: GrifoColors.grey.withValues(alpha: 0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.pets,
-            size: 16,
-            color: GrifoColors.primary,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.pets_rounded,
+              size: 16,
+              color: Color(0xFFF59E0B),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   mascota['nombre_m'] ?? 'Sin nombre',
-                  style: GrifoStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.bold,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1F2937),
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   '${mascota['especie'] ?? 'Especie no especificada'} - ${mascota['tamanio'] ?? 'Tamaño no especificado'}',
-                  style: GrifoStyles.bodySmall,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF6B7280),
+                  ),
                 ),
               ],
             ),
@@ -254,25 +419,12 @@ class ResidentInfoCard extends StatelessWidget {
     );
   }
 
-  String _parseInstruccionesEspeciales(dynamic instrucciones) {
-    if (instrucciones == null) return 'No especificadas';
-    
-    try {
-      // Si es un JSON string, extraer el valor
-      if (instrucciones is String && instrucciones.startsWith('{')) {
-        final jsonData = Map<String, dynamic>.from(
-          Uri.splitQueryString(instrucciones.replaceAll('{', '').replaceAll('}', ''))
-        );
-        return jsonData['general'] ?? instrucciones;
-      }
-      return instrucciones.toString();
-    } catch (e) {
-      return instrucciones.toString();
-    }
-  }
+
 
   String _formatLastUpdated(dynamic lastUpdated) {
-    if (lastUpdated == null) return 'No disponible';
+    if (lastUpdated == null || lastUpdated.toString().toLowerCase() == 'null') {
+      return 'Hoy';
+    }
     
     try {
       final dateTime = DateTime.parse(lastUpdated.toString());
@@ -285,11 +437,17 @@ class ResidentInfoCard extends StatelessWidget {
         return 'Hace ${difference.inMinutes} minutos';
       } else if (difference.inHours < 24) {
         return 'Hace ${difference.inHours} horas';
-      } else {
+      } else if (difference.inDays == 0) {
+        return 'Hoy';
+      } else if (difference.inDays == 1) {
+        return 'Ayer';
+      } else if (difference.inDays < 7) {
         return 'Hace ${difference.inDays} días';
+      } else {
+        return 'Hace ${(difference.inDays / 7).floor()} semanas';
       }
     } catch (e) {
-      return 'Formato inválido';
+      return 'Hoy';
     }
   }
 }

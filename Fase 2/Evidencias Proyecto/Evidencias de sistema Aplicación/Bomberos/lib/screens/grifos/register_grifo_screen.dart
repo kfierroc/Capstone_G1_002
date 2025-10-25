@@ -45,17 +45,40 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     final isTablet = ResponsiveHelper.isTablet(context);
     
     return Scaffold(
-      backgroundColor: GrifoColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: GrifoColors.primary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         title: const Text(
           'Registrar Grifo',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: ResponsiveContainer(
@@ -83,44 +106,69 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(isTablet ? 24 : 20),
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: GrifoColors.primary,
-        borderRadius: GrifoStyles.borderRadiusMedium,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.water_drop,
-            color: Colors.white,
-            size: isTablet ? 48 : 40,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
-          SizedBox(height: isTablet ? 12 : 8),
-          Text(
-            'Registrar Nuevo Grifo',
-            style: TextStyle(
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.water_drop_rounded,
               color: Colors.white,
-              fontSize: ResponsiveHelper.getResponsiveFontSize(
-                context,
-                mobile: 20,
-                tablet: 24,
-                desktop: 28,
-              ),
-              fontWeight: FontWeight.bold,
+              size: isTablet ? 32 : 28,
             ),
           ),
-          SizedBox(height: isTablet ? 8 : 6),
-          Text(
-            'Complete la información del grifo de agua',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: ResponsiveHelper.getResponsiveFontSize(
-                context,
-                mobile: 14,
-                tablet: 16,
-                desktop: 18,
-              ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Registrar Nuevo Grifo',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: ResponsiveHelper.getResponsiveFontSize(
+                      context,
+                      mobile: 20,
+                      tablet: 24,
+                      desktop: 28,
+                    ),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Complete la información del grifo de agua',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: ResponsiveHelper.getResponsiveFontSize(
+                      context,
+                      mobile: 14,
+                      tablet: 16,
+                      desktop: 18,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -132,20 +180,52 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     final isTablet = ResponsiveHelper.isTablet(context);
     
     return Container(
-      padding: EdgeInsets.all(isTablet ? 24 : 20),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: GrifoColors.surface,
-        borderRadius: GrifoStyles.borderRadiusMedium,
-        boxShadow: GrifoStyles.shadowLight,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Información del Grifo',
-            style: GrifoStyles.titleLarge,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.info_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Información del Grifo',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: isTablet ? 20 : 16),
+          const SizedBox(height: 24),
           _buildTextField(
             controller: _direccionController,
             label: 'Dirección',
@@ -338,29 +418,39 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
   Widget _buildSubmitButton() {
     final isTablet = ResponsiveHelper.isTablet(context);
     
-    return SizedBox(
-      width: double.infinity,
-      height: isTablet ? 64 : 56,
-      child: ElevatedButton.icon(
-        onPressed: _isLoading ? null : _submitForm,
-        icon: _isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Icon(Icons.save),
-        label: Text(_isLoading ? 'Registrando...' : 'Registrar Grifo'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: GrifoColors.secondary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: SizedBox(
+        width: double.infinity,
+        height: isTablet ? 64 : 56,
+        child: ElevatedButton.icon(
+          onPressed: _isLoading ? null : _submitForm,
+          icon: _isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : const Icon(Icons.save_rounded, size: 20),
+          label: Text(
+            _isLoading ? 'Registrando...' : 'Registrar Grifo',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          elevation: 2,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF10B981),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
         ),
       ),
     );

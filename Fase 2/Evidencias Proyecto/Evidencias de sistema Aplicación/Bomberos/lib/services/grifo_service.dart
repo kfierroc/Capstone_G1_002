@@ -139,6 +139,28 @@ class GrifoService {
     }
   }
 
+  /// Obtener todos los grifos con información completa incluyendo bombero que reportó
+  Future<ServiceResult<List<Map<String, dynamic>>>> getGrifosConInfoCompleta() async {
+    try {
+      final response = await _client
+          .from('grifo')
+          .select('''
+            *,
+            comunas!inner(*),
+            info_grifo(
+              *,
+              bombero!inner(*)
+            )
+          ''');
+
+      return ServiceResult.success(response);
+    } on PostgrestException catch (e) {
+      return ServiceResult.error('Error al obtener grifos con información completa: ${e.message}');
+    } catch (e) {
+      return ServiceResult.error('Error inesperado al obtener grifos con información completa: ${e.toString()}');
+    }
+  }
+
   /// Buscar grifos cercanos a coordenadas (radio aproximado)
   Future<ServiceResult<List<Grifo>>> getGrifosNearby({
     required double lat,

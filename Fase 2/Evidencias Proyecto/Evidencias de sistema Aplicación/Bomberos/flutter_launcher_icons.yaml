@@ -1,0 +1,13 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon_bomberos.png"
+  adaptive_icon_background: "#D32F2F"
+  adaptive_icon_foreground: "assets/icon_bomberos.png"
+  min_sdk_android: 21
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false

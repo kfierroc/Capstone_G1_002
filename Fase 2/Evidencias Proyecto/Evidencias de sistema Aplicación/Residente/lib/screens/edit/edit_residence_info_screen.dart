@@ -30,7 +30,7 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
   final _addressController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
-  final _specialInstructionsController = TextEditingController();
+  // final _specialInstructionsController = TextEditingController(); // Campo eliminado
 
   // Variables de vivienda
   String? _selectedHousingType;
@@ -52,7 +52,7 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
         widget.registrationData.latitude?.toString() ?? '';
     _longitudeController.text =
         widget.registrationData.longitude?.toString() ?? '';
-    _specialInstructionsController.text = widget.registrationData.specialInstructions ?? '';
+    // _specialInstructionsController.text = widget.registrationData.specialInstructions ?? ''; // Campo eliminado
 
     if (_latitudeController.text.isNotEmpty) {
       _showManualCoordinates = true;
@@ -71,7 +71,7 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
-    _specialInstructionsController.dispose();
+    // _specialInstructionsController.dispose(); // Campo eliminado
     super.dispose();
   }
 
@@ -90,7 +90,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
               : null,
           constructionMaterial: _selectedMaterial,
           housingCondition: _selectedCondition,
-          specialInstructions: _specialInstructionsController.text.trim().isNotEmpty ? _specialInstructionsController.text.trim() : null,
         );
 
         await Future.delayed(const Duration(milliseconds: 500));
@@ -179,8 +178,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
               );
             },
           ),
-          const SizedBox(height: AppSpacing.xl),
-          _buildSpecialInstructionsField(),
         ],
       ),
     );
@@ -266,29 +263,4 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
   }
 
 
-  Widget _buildSpecialInstructionsField() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: AppDecorations.card,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Instrucciones Especiales', style: AppTextStyles.heading4),
-          const SizedBox(height: AppSpacing.md),
-          TextFormField(
-            controller: _specialInstructionsController,
-            decoration: InputDecoration(
-              hintText: 'Ingresa instrucciones especiales para la residencia',
-              prefixIcon: const Icon(Icons.info_outline),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-            ),
-            maxLines: 3,
-            keyboardType: TextInputType.multiline,
-          ),
-        ],
-      ),
-    );
-  }
 }

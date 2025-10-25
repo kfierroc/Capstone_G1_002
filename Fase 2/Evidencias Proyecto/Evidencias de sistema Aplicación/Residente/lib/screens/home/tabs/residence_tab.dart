@@ -84,11 +84,6 @@ class ResidenceTab extends StatelessWidget {
             label: 'Estado',
             value: registrationData.housingCondition ?? 'No especificado',
           ),
-          const SizedBox(height: AppSpacing.lg),
-          DetailRow(
-            label: 'Instrucciones especiales',
-            value: registrationData.specialInstructions ?? 'No especificado',
-          ),
         ],
       ),
     );

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -437,9 +436,6 @@ class DatabaseService {
         'lon': lon,
         'cut_com': cutCom, // Cambiado de out_com a cut_com
         'numero_pisos': data.numberOfFloors, // Agregar número de pisos
-        'instrucciones_especiales': data.specialInstructions != null && data.specialInstructions!.isNotEmpty
-            ? jsonEncode({'general': data.specialInstructions})
-            : null, // Usar campo JSONB existente en residencia
       };
       
       debugPrint('📝 Datos de residencia: $residenciaData');
@@ -469,7 +465,6 @@ class DatabaseService {
         'material': data.constructionMaterial,
         'tipo': data.housingType,
         'pisos': data.numberOfFloors ?? 1, // NUEVO CAMPO según esquema actualizado
-        // NOTA: Las instrucciones especiales ahora se manejan en residencia.instrucciones_especiales (JSONB)
         'fecha_ini_r': DateTime.now().toIso8601String().split('T')[0],
       };
       
@@ -600,14 +595,9 @@ class DatabaseService {
       if (updates.containsKey('numberOfFloors')) {
         residenciaUpdates['numero_pisos'] = updates['numberOfFloors'];
       }
-      // Manejar instrucciones especiales usando el campo JSONB existente en residencia
+      // Campo eliminado - no hacer nada
       if (updates.containsKey('specialInstructions')) {
-        final instrucciones = updates['specialInstructions'] as String?;
-        if (instrucciones != null && instrucciones.isNotEmpty) {
-          residenciaUpdates['instrucciones_especiales'] = jsonEncode({'general': instrucciones});
-        } else {
-          residenciaUpdates['instrucciones_especiales'] = null;
-        }
+        updates.remove('specialInstructions');
       }
       
       debugPrint('📝 Datos de residencia a actualizar: $residenciaUpdates');
@@ -671,8 +661,6 @@ class DatabaseService {
         debugPrint('✅ Campos de registro_v actualizados');
       }
       
-      // NOTA: Las instrucciones especiales ahora se manejan en residencia.instrucciones_especiales (JSONB)
-
       debugPrint('✅ Registro_v actualizado exitosamente');
       
       return DatabaseResult.success(
@@ -1117,7 +1105,6 @@ class DatabaseService {
               numberOfFloors: null,
               constructionMaterial: null,
               housingCondition: null,
-              specialInstructions: null,
             ),
           );
           
@@ -1182,43 +1169,7 @@ class DatabaseService {
         }
       }
       
-      // Cargar instrucciones especiales desde el campo JSONB de residencia
-      if (residencia != null) {
-        try {
-          final residenciaResponse = await _client
-              .from('residencia')
-              .select('instrucciones_especiales')
-              .eq('id_residencia', residencia.idResidencia)
-              .maybeSingle();
-          
-          if (residenciaResponse != null) {
-            final instruccionesJson = residenciaResponse['instrucciones_especiales'];
-            if (instruccionesJson != null) {
-              try {
-                // Si es un JSONB, extraer el valor 'general'
-                if (instruccionesJson is Map<String, dynamic>) {
-                  instruccionesEspeciales = instruccionesJson['general'] as String?;
-                } else if (instruccionesJson is String) {
-                  // Si es un string JSON, parsearlo
-                  final jsonData = jsonDecode(instruccionesJson);
-                  if (jsonData is Map<String, dynamic> && jsonData.containsKey('general')) {
-                    instruccionesEspeciales = jsonData['general'] as String?;
-                  } else {
-                    instruccionesEspeciales = instruccionesJson;
-                  }
-                }
-                debugPrint('📋 Instrucciones especiales cargadas desde residencia: $instruccionesEspeciales');
-              } catch (e) {
-                debugPrint('⚠️ Error al parsear instrucciones_especiales: $e');
-                instruccionesEspeciales = null;
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('⚠️ Error al cargar instrucciones_especiales desde residencia: $e');
-          instruccionesEspeciales = null;
-        }
-      }
+      // Campo instrucciones_especiales eliminado del sistema
 
       // Extraer datos del grupo familiar usando toJson para evitar problemas de reconocimiento
       final grupoJson = grupo.toJson();
@@ -1245,7 +1196,6 @@ class DatabaseService {
         numberOfFloors: residencia?.numeroPisos ?? pisosVivienda, // Priorizar residencia.numero_pisos
         constructionMaterial: materialVivienda, // Cargar desde registro_v
         housingCondition: estadoVivienda, // Cargar desde registro_v.estado
-        specialInstructions: instruccionesEspeciales, // Cargar instrucciones especiales desde registro_v
         age: integranteTitular?.edad, // ✅ Agregar edad del integrante titular
         birthYear: integranteTitular?.anioNac, // ✅ Agregar año de nacimiento
         medicalConditions: _parseMedicalConditions(integranteTitular?.padecimiento), // Cargar condiciones médicas del integrante titular
@@ -1469,7 +1419,6 @@ class Residencia {
       materialConstruccion: json['material'] as String?, // Corregido nombre de columna
       estadoVivienda: json['estado_vivienda'] as String?, // Puede no existir en la BD real
       telefonoPrincipal: json['telefono_principal'] as String?, // Ahora existe
-      instruccionesEspeciales: json['instrucciones_especiales'] as String?, // Ahora existe
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
@@ -1492,7 +1441,6 @@ class Residencia {
       // 'material': materialConstruccion, // Corregido nombre de columna
       // 'estado_vivienda': estadoVivienda, // Columna no existe en la BD
       // 'telefono_principal': telefonoPrincipal, // Columna no existe en la BD
-      // 'instrucciones_especiales': instruccionesEspeciales, // Columna no existe en la BD
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };

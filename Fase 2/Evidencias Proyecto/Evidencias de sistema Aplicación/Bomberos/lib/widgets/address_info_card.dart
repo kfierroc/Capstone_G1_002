@@ -69,7 +69,7 @@ class AddressInfoCard extends StatelessWidget {
               ),
               const SizedBox(width: AppTheme.space),
               Text(
-                'Última actualización: ${addressData['last_update']}',
+                'Última actualización: ${_formatLastUpdated(addressData['last_update'])}',
                 style: AppTextStyles.caption,
               ),
             ],
@@ -94,6 +94,36 @@ class AddressInfoCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatLastUpdated(dynamic lastUpdated) {
+    if (lastUpdated == null || lastUpdated.toString().toLowerCase() == 'null') {
+      return 'Hoy';
+    }
+    
+    try {
+      final dateTime = DateTime.parse(lastUpdated.toString());
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+      
+      if (difference.inMinutes < 1) {
+        return 'Hace menos de 1 minuto';
+      } else if (difference.inMinutes < 60) {
+        return 'Hace ${difference.inMinutes} minutos';
+      } else if (difference.inHours < 24) {
+        return 'Hace ${difference.inHours} horas';
+      } else if (difference.inDays == 0) {
+        return 'Hoy';
+      } else if (difference.inDays == 1) {
+        return 'Ayer';
+      } else if (difference.inDays < 7) {
+        return 'Hace ${difference.inDays} días';
+      } else {
+        return 'Hace ${(difference.inDays / 7).floor()} semanas';
+      }
+    } catch (e) {
+      return 'Hoy';
+    }
   }
 }
 

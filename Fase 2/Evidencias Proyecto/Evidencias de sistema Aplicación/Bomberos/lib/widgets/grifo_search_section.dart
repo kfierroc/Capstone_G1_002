@@ -90,8 +90,78 @@ class _GrifoSearchSectionState extends State<GrifoSearchSection> {
 
   Widget _buildFilterDropdown() {
     final isTablet = ResponsiveHelper.isTablet(context);
+    final isMobile = ResponsiveHelper.isMobile(context);
     final estados = ['Todos', 'Operativo', 'Dañado', 'Mantenimiento', 'Sin verificar'];
     
+    // En móviles, usar layout vertical para evitar overflow
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.filter_list,
+                color: GrifoColors.textSecondary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Filtrar por estado:',
+                style: GrifoStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: widget.filtroEstado,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: GrifoColors.surfaceVariant,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+            ),
+            items: estados.map((estado) {
+              return DropdownMenuItem<String>(
+                value: estado,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: estado == 'Todos' 
+                            ? GrifoColors.grey 
+                            : GrifoColors.getEstadoColor(estado),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        estado,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: widget.onFiltroChanged,
+          ),
+        ],
+      );
+    }
+    
+    // En tablets y desktop, usar layout horizontal
     return Row(
       children: [
         Icon(
@@ -100,14 +170,18 @@ class _GrifoSearchSectionState extends State<GrifoSearchSection> {
           size: isTablet ? 24 : 20,
         ),
         SizedBox(width: isTablet ? 12 : 8),
-        Text(
-          'Filtrar por estado:',
-          style: GrifoStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.w500,
+        Flexible(
+          child: Text(
+            'Filtrar por estado:',
+            style: GrifoStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         SizedBox(width: isTablet ? 16 : 12),
         Expanded(
+          flex: 2,
           child: DropdownButtonFormField<String>(
             initialValue: widget.filtroEstado,
             decoration: InputDecoration(
@@ -125,6 +199,7 @@ class _GrifoSearchSectionState extends State<GrifoSearchSection> {
               return DropdownMenuItem<String>(
                 value: estado,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 12,
@@ -137,7 +212,12 @@ class _GrifoSearchSectionState extends State<GrifoSearchSection> {
                       ),
                     ),
                     SizedBox(width: isTablet ? 12 : 8),
-                    Text(estado),
+                    Flexible(
+                      child: Text(
+                        estado,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               );

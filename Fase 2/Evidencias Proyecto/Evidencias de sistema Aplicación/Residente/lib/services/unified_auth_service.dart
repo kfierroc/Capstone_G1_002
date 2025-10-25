@@ -30,6 +30,106 @@ class UnifiedAuthService {
   // Stream de cambios en el estado de autenticación
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
+  /// Registrar usuario con email y contraseña (para verificación)
+  Future<AuthResult> registerWithEmail(
+    String email,
+    String password, {
+    bool sendEmailVerification = false,
+  }) async {
+    try {
+      debugPrint('🔐 UnifiedAuthService.registerWithEmail - Iniciando...');
+      debugPrint('📧 Email: $email');
+      debugPrint('📧 Enviar verificación: $sendEmailVerification');
+
+      final response = await _client.auth.signUp(
+        email: email,
+        password: password,
+        emailRedirectTo: sendEmailVerification ? 'https://tu-app.com/verify' : null,
+      );
+
+      if (response.user != null) {
+        debugPrint('✅ Usuario registrado exitosamente');
+        return AuthResult.success(
+          UserData(
+            id: response.user!.id,
+            email: response.user!.email ?? email,
+            rutTitular: '', // Se llenará después del registro completo
+            grupoFamiliar: null,
+          ),
+          message: 'Usuario registrado exitosamente',
+        );
+      } else {
+        debugPrint('❌ Error: Usuario no creado');
+        return AuthResult.error('No se pudo crear el usuario');
+      }
+    } catch (e) {
+      debugPrint('❌ Error en registerWithEmail: $e');
+      return AuthResult.error('Error al registrar usuario: $e');
+    }
+  }
+
+  /// Reenviar correo de verificación
+  Future<void> resendEmailVerification({String? email}) async {
+    try {
+      debugPrint('📧 Reenviando correo de verificación...');
+      
+      // Usar el email proporcionado o el del usuario actual
+      final emailToUse = email ?? currentUser?.email;
+      
+      if (emailToUse == null || emailToUse.isEmpty) {
+        throw Exception('No se puede reenviar el correo: email no disponible');
+      }
+      
+      debugPrint('📧 Reenviando a: $emailToUse');
+      
+      await _client.auth.resend(
+        type: OtpType.signup,
+        email: emailToUse,
+      );
+      debugPrint('✅ Correo de verificación reenviado');
+    } catch (e) {
+      debugPrint('❌ Error al reenviar correo: $e');
+      rethrow;
+    }
+  }
+
+  /// Verificar código de verificación
+  Future<AuthResult> verifyEmailCode(String code) async {
+    try {
+      debugPrint('🔐 Verificando código de verificación: $code');
+      
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null) {
+        return AuthResult.error('No hay usuario para verificar');
+      }
+      
+      // Verificar el código con Supabase usando OTP
+      final response = await _client.auth.verifyOTP(
+        type: OtpType.signup,
+        token: code,
+        email: currentUser.email!,
+      );
+      
+      if (response.user != null) {
+        debugPrint('✅ Correo verificado exitosamente');
+        return AuthResult.success(
+          UserData(
+            id: response.user!.id,
+            email: response.user!.email ?? '',
+            rutTitular: '', // Se llenará después del registro completo
+            grupoFamiliar: null,
+          ),
+          message: 'Correo verificado exitosamente',
+        );
+      } else {
+        return AuthResult.error('Código de verificación inválido');
+      }
+    } catch (e) {
+      debugPrint('❌ Error al verificar código: $e');
+      return AuthResult.error('Código de verificación inválido o expirado');
+    }
+  }
+
   /// Registrar nuevo grupo familiar con Supabase Auth
   Future<AuthResult> signUpGrupoFamiliar({
     required String email,
@@ -220,6 +320,31 @@ class UnifiedAuthService {
     } catch (e) {
       debugPrint('❌ Error inesperado en resetPassword: $e');
       return AuthResult.error('Error al enviar email: ${e.toString()}');
+    }
+  }
+
+  /// Actualizar contraseña del usuario actual
+  Future<AuthResult> updatePassword(String newPassword) async {
+    try {
+      debugPrint('🔐 UnifiedAuthService.updatePassword - Actualizando contraseña...');
+      
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        return AuthResult.error('No hay usuario autenticado');
+      }
+      
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      
+      debugPrint('✅ Contraseña actualizada exitosamente');
+      return AuthResult.success(null);
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en updatePassword: ${e.message}');
+      return AuthResult.error(_translateAuthError(e.message));
+    } catch (e) {
+      debugPrint('❌ Error inesperado en updatePassword: $e');
+      return AuthResult.error('Error al actualizar contraseña: ${e.toString()}');
     }
   }
 

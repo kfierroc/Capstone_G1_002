@@ -21,7 +21,6 @@ class RegistrationData {
   int? numberOfFloors;
   String? constructionMaterial;
   String? housingCondition;
-  String? specialInstructions;
   String? mainPhone; // Teléfono principal de la residencia
 
   RegistrationData({
@@ -40,7 +39,6 @@ class RegistrationData {
     this.numberOfFloors,
     this.constructionMaterial,
     this.housingCondition,
-    this.specialInstructions,
     this.mainPhone,
   }) : medicalConditions = medicalConditions ?? [];
 
@@ -61,7 +59,6 @@ class RegistrationData {
     int? numberOfFloors,
     String? constructionMaterial,
     String? housingCondition,
-    String? specialInstructions,
     String? mainPhone,
   }) {
     return RegistrationData(
@@ -80,7 +77,6 @@ class RegistrationData {
       numberOfFloors: numberOfFloors ?? this.numberOfFloors,
       constructionMaterial: constructionMaterial ?? this.constructionMaterial,
       housingCondition: housingCondition ?? this.housingCondition,
-      specialInstructions: specialInstructions ?? this.specialInstructions,
       mainPhone: mainPhone ?? this.mainPhone,
     );
   }
@@ -102,7 +98,6 @@ class RegistrationData {
       'number_of_floors': numberOfFloors,
       'construction_material': constructionMaterial,
       'housing_condition': housingCondition,
-      'special_instructions': specialInstructions,
     };
   }
 
@@ -125,7 +120,6 @@ class RegistrationData {
       numberOfFloors: json['number_of_floors'] as int?,
       constructionMaterial: json['construction_material'] as String?,
       housingCondition: json['housing_condition'] as String?,
-      specialInstructions: json['special_instructions'] as String?,
       mainPhone: json['main_phone'] as String?,
     );
   }
