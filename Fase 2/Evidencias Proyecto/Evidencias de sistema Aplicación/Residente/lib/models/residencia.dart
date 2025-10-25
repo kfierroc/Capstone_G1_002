@@ -7,9 +7,9 @@ class Residencia {
   final double lat;
   final double lon;
   final int cutCom; // FK -> comunas (cambiado de outCom a cutCom para coincidir con BD)
-  final String? telefonoPrincipal; // Campo agregado
+  // telefonoPrincipal se maneja en grupofamiliar.telefono_titular
   final int? numeroPisos; // Campo agregado
-  final Map<String, dynamic>? instruccionesEspeciales; // Campo JSON
+  // instruccionesEspeciales se maneja en registro_v, no en residencia
   final DateTime? createdAt; // Campo agregado
   final DateTime? updatedAt; // Campo agregado
 
@@ -19,9 +19,7 @@ class Residencia {
     required this.lat,
     required this.lon,
     required this.cutCom, // Cambiado de outCom a cutCom
-    this.telefonoPrincipal,
     this.numeroPisos,
-    this.instruccionesEspeciales,
     this.createdAt,
     this.updatedAt,
   });
@@ -33,9 +31,7 @@ class Residencia {
     double? lat,
     double? lon,
     int? cutCom, // Cambiado de outCom a cutCom
-    String? telefonoPrincipal,
     int? numeroPisos,
-    Map<String, dynamic>? instruccionesEspeciales,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -45,9 +41,7 @@ class Residencia {
       lat: lat ?? this.lat,
       lon: lon ?? this.lon,
       cutCom: cutCom ?? this.cutCom, // Cambiado de outCom a cutCom
-      telefonoPrincipal: telefonoPrincipal ?? this.telefonoPrincipal,
       numeroPisos: numeroPisos ?? this.numeroPisos,
-      instruccionesEspeciales: instruccionesEspeciales ?? this.instruccionesEspeciales,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -61,9 +55,7 @@ class Residencia {
       'lat': lat,
       'lon': lon,
       'cut_com': cutCom, // Cambiado de out_com a cut_com
-      'telefono_principal': telefonoPrincipal,
       'numero_pisos': numeroPisos,
-      'instrucciones_especiales': instruccionesEspeciales,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -77,11 +69,7 @@ class Residencia {
       lat: (json['lat'] as num).toDouble(),
       lon: (json['lon'] as num).toDouble(),
       cutCom: json['cut_com'] as int, // Cambiado de out_com a cut_com
-      telefonoPrincipal: json['telefono_principal'] as String?,
       numeroPisos: json['numero_pisos'] as int?,
-      instruccionesEspeciales: json['instrucciones_especiales'] != null 
-          ? Map<String, dynamic>.from(json['instrucciones_especiales'] as Map)
-          : null,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -98,15 +86,13 @@ class Residencia {
       'lat': lat,
       'lon': lon,
       'cut_com': cutCom, // Cambiado de out_com a cut_com
-      'telefono_principal': telefonoPrincipal,
       'numero_pisos': numeroPisos,
-      'instrucciones_especiales': instruccionesEspeciales,
     };
   }
 
   @override
   String toString() {
-    return 'Residencia(idResidencia: $idResidencia, direccion: $direccion, lat: $lat, lon: $lon, telefonoPrincipal: $telefonoPrincipal, numeroPisos: $numeroPisos)';
+    return 'Residencia(idResidencia: $idResidencia, direccion: $direccion, lat: $lat, lon: $lon, numeroPisos: $numeroPisos)';
   }
 
   @override
@@ -119,73 +105,6 @@ class Residencia {
   int get hashCode => idResidencia.hashCode;
 
   // =============================================
-  // MÉTODOS PARA MANEJO DE INSTRUCCIONES ESPECIALES
+  // NOTA: Los métodos de instrucciones especiales se movieron a registro_v
   // =============================================
-
-  /// Obtiene una instrucción específica por tipo
-  String? obtenerInstruccion(String tipo) {
-    return instruccionesEspeciales?[tipo] as String?;
-  }
-
-  /// Agrega o actualiza una instrucción específica
-  Residencia agregarInstruccion(String tipo, String instruccion) {
-    final nuevasInstrucciones = Map<String, dynamic>.from(instruccionesEspeciales ?? {});
-    nuevasInstrucciones[tipo] = instruccion;
-    
-    return copyWith(instruccionesEspeciales: nuevasInstrucciones);
-  }
-
-  /// Elimina una instrucción específica
-  Residencia eliminarInstruccion(String tipo) {
-    if (instruccionesEspeciales == null) return this;
-    
-    final nuevasInstrucciones = Map<String, dynamic>.from(instruccionesEspeciales!);
-    nuevasInstrucciones.remove(tipo);
-    
-    return copyWith(instruccionesEspeciales: nuevasInstrucciones.isEmpty ? null : nuevasInstrucciones);
-  }
-
-  /// Obtiene todas las instrucciones como texto formateado
-  String obtenerInstruccionesFormateadas() {
-    if (instruccionesEspeciales == null || instruccionesEspeciales!.isEmpty) {
-      return 'Sin instrucciones especiales';
-    }
-
-    final buffer = StringBuffer();
-    instruccionesEspeciales!.forEach((tipo, instruccion) {
-      buffer.writeln('${_capitalizarPrimeraLetra(tipo)}: $instruccion');
-    });
-    
-    return buffer.toString().trim();
-  }
-
-  /// Verifica si tiene instrucciones de un tipo específico
-  bool tieneInstruccion(String tipo) {
-    return instruccionesEspeciales?.containsKey(tipo) ?? false;
-  }
-
-  /// Obtiene todos los tipos de instrucciones disponibles
-  List<String> obtenerTiposInstrucciones() {
-    return instruccionesEspeciales?.keys.toList() ?? [];
-  }
-
-  /// Método auxiliar para capitalizar la primera letra
-  String _capitalizarPrimeraLetra(String texto) {
-    if (texto.isEmpty) return texto;
-    return texto[0].toUpperCase() + texto.substring(1).toLowerCase();
-  }
-
-  // =============================================
-  // CONSTANTES PARA TIPOS DE INSTRUCCIONES
-  // =============================================
-
-  static const String tipoGeneral = 'general';
-  static const String tipoAcceso = 'acceso';
-  static const String tipoEmergencia = 'emergencia';
-  static const String tipoContacto = 'contacto';
-  static const String tipoObservaciones = 'observaciones';
-  static const String tipoAccesoEmergencia = 'acceso_emergencia';
-  static const String tipoHidrantes = 'hidrantes';
-  static const String tipoEscaleras = 'escaleras';
-  static const String tipoContactoEmergencia = 'contacto_emergencia';
 }

@@ -30,6 +30,7 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
   final _addressController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
+  // final _specialInstructionsController = TextEditingController(); // Campo eliminado
 
   // Variables de vivienda
   String? _selectedHousingType;
@@ -51,6 +52,7 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
         widget.registrationData.latitude?.toString() ?? '';
     _longitudeController.text =
         widget.registrationData.longitude?.toString() ?? '';
+    // _specialInstructionsController.text = widget.registrationData.specialInstructions ?? ''; // Campo eliminado
 
     if (_latitudeController.text.isNotEmpty) {
       _showManualCoordinates = true;
@@ -69,6 +71,7 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    // _specialInstructionsController.dispose(); // Campo eliminado
     super.dispose();
   }
 
@@ -76,32 +79,43 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      final updatedData = widget.registrationData.copyWith(
-        address: _addressController.text.trim(),
-        latitude: double.tryParse(_latitudeController.text),
-        longitude: double.tryParse(_longitudeController.text),
-        mainPhone: null, // No se guarda teléfono principal
-        housingType: _selectedHousingType,
-        numberOfFloors: _numberOfFloors != null
-            ? int.parse(_numberOfFloors!)
-            : null,
-        constructionMaterial: _selectedMaterial,
-        housingCondition: _selectedCondition,
-      );
-
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        widget.onSave(updatedData);
-        Navigator.pop(context);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Información actualizada correctamente'),
-            backgroundColor: AppColors.success,
-          ),
+      try {
+        final updatedData = widget.registrationData.copyWith(
+          address: _addressController.text.trim(),
+          latitude: double.tryParse(_latitudeController.text),
+          longitude: double.tryParse(_longitudeController.text),
+          housingType: _selectedHousingType,
+          numberOfFloors: _numberOfFloors != null
+              ? int.parse(_numberOfFloors!)
+              : null,
+          constructionMaterial: _selectedMaterial,
+          housingCondition: _selectedCondition,
         );
+
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+          widget.onSave(updatedData);
+          Navigator.pop(context);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Información actualizada correctamente'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al actualizar: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
       }
     }
   }
@@ -247,4 +261,6 @@ class _EditResidenceInfoScreenState extends State<EditResidenceInfoScreen>
       ),
     );
   }
+
+
 }

@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.bomberos"
+    namespace = "com.sistemaemergencias.residente"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

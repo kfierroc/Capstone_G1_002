@@ -1,11 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Exportar widgets personalizados
-export 'welcome_banner.dart';
-export 'logout_dialog.dart';
-export 'welcome_snackbar.dart';
-export 'farewell_dialog.dart';
-
 // Widget optimizado para headers de secciones
 class SectionHeader extends StatelessWidget {
   final IconData icon;
@@ -24,22 +18,37 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradientColors),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
-            child: Icon(icon, color: Colors.white, size: 32),
+            child: Icon(icon, color: Colors.white, size: 36),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,14 +57,19 @@ class SectionHeader extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  style: const TextStyle(
+                    color: Colors.white70, 
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),
@@ -87,15 +101,24 @@ class ActionButton extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
+        icon: Icon(icon, size: 20),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
+          elevation: 4,
+          shadowColor: backgroundColor.withValues(alpha: 0.4),
         ),
       ),
     );
@@ -120,23 +143,38 @@ class InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: border ?? Border.all(color: const Color(0xFFEEEEEE)),
+        borderRadius: BorderRadius.circular(16),
+        border: border ?? Border.all(color: const Color(0xFFE0E0E0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: 16, 
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF212121),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+            style: const TextStyle(
+              fontSize: 15, 
+              color: Color(0xFF757575),
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -159,25 +197,36 @@ class DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: labelWidth ?? 100,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF616161)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: labelWidth ?? 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14, 
+                color: Color(0xFF616161),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            textAlign: TextAlign.end,
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14, 
+                color: Color(0xFF212121),
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.end,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import '../../services/unified_auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -11,7 +11,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final AuthService _authService = AuthService();
+  final UnifiedAuthService _authService = UnifiedAuthService();
   bool _isLoading = false;
   bool _emailSent = false;
 
@@ -41,7 +41,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       try {
         // Enviar email de recuperación real usando Supabase
         final result = await _authService.resetPassword(
-          email: _emailController.text.trim(),
+          _emailController.text.trim(),
         );
 
         setState(() {

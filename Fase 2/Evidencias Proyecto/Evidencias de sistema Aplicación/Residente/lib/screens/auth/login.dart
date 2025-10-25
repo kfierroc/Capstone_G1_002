@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/unified_auth_service.dart';
 import '../../utils/responsive.dart';
 import '../../utils/validators.dart';
-import 'register.dart';
+import 'initial_registration_screen.dart';
 import 'password.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -365,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      const RegisterWizardScreen(),
+                                      const InitialRegistrationScreen(),
                                 ),
                               );
                             },

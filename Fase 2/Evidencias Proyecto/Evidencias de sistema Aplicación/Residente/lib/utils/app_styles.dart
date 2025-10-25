@@ -37,18 +37,26 @@ class AppColors {
   static final Color warning = Colors.orange.shade700;
   static final Color info = Colors.blue.shade700;
   
-  // Colores de secciones
-  static final Color familyPrimary = Colors.green.shade600;
-  static final Color familySecondary = Colors.green.shade800;
+  // Colores de secciones - Paleta moderna y distintiva
+  // Familia - Verde moderno
+  static const Color familyPrimary = Color(0xFF4CAF50);      // Verde vibrante
+  static const Color familySecondary = Color(0xFF2E7D32);    // Verde oscuro
+  static const Color familyAccent = Color(0xFF81C784);        // Verde claro
   
-  static final Color petsPrimary = Colors.orange.shade600;
-  static final Color petsSecondary = Colors.orange.shade800;
+  // Mascotas - Naranja cálido
+  static const Color petsPrimary = Color(0xFFFF9800);        // Naranja vibrante
+  static const Color petsSecondary = Color(0xFFE65100);      // Naranja oscuro
+  static const Color petsAccent = Color(0xFFFFB74D);         // Naranja claro
   
-  static final Color residencePrimary = Colors.green.shade600;
-  static final Color residenceSecondary = Colors.green.shade800;
+  // Domicilio - Azul profesional
+  static const Color residencePrimary = Color(0xFF2196F3);   // Azul vibrante
+  static const Color residenceSecondary = Color(0xFF1565C0); // Azul oscuro
+  static const Color residenceAccent = Color(0xFF64B5F6);    // Azul claro
   
-  static final Color settingsPrimary = Colors.purple.shade600;
-  static final Color settingsSecondary = Colors.purple.shade800;
+  // Configuración - Morado elegante
+  static const Color settingsPrimary = Color(0xFF9C27B0);   // Morado vibrante
+  static const Color settingsSecondary = Color(0xFF6A1B9A);  // Morado oscuro
+  static const Color settingsAccent = Color(0xFFBA68C8);    // Morado claro
   
   // Colores de bordes y sombras
   static final Color border = Colors.grey.shade200;

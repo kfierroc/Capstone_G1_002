@@ -4,6 +4,7 @@ import '../../services/supabase_auth_service.dart';
 import '../../utils/responsive.dart';
 import '../../constants/address_detail_styles.dart';
 import '../../widgets/address_detail/address_detail_widgets.dart';
+import '../grifos/grifos_home_screen.dart';
 
 /// Pantalla de detalles de una dirección específica para bomberos
 /// Refactorizada aplicando principios SOLID y Clean Code
@@ -19,6 +20,7 @@ class AddressDetailScreen extends StatefulWidget {
 class _AddressDetailScreenState extends State<AddressDetailScreen> {
   final SearchService _searchService = SearchService();
   final SupabaseAuthService _authService = SupabaseAuthService();
+  final TextEditingController _searchController = TextEditingController();
   
   Map<String, dynamic>? _detailedData;
   bool _isLoading = true;
@@ -32,12 +34,37 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     _loadUserName();
   }
 
-  void _loadUserName() {
-    final currentUser = _authService.currentUser;
-    if (currentUser != null && currentUser.email != null) {
-      setState(() {
-        _userName = _extractNameFromEmail(currentUser.email!);
-      });
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _loadUserName() async {
+    try {
+      final bombero = await _authService.getCurrentUserBombero();
+      if (bombero != null) {
+        setState(() {
+          _userName = '${bombero.nombBombero} ${bombero.apePBombero}';
+        });
+      } else {
+        // Fallback al email si no se puede obtener el bombero
+        final currentUser = _authService.currentUser;
+        if (currentUser != null && currentUser.email != null) {
+          setState(() {
+            _userName = _extractNameFromEmail(currentUser.email!);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error al cargar nombre del bombero: $e');
+      // Fallback al email si hay error
+      final currentUser = _authService.currentUser;
+      if (currentUser != null && currentUser.email != null) {
+        setState(() {
+          _userName = _extractNameFromEmail(currentUser.email!);
+        });
+      }
     }
   }
 
@@ -48,6 +75,22 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     return words.map((word) => word.isNotEmpty 
         ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
         : '').join(' ');
+  }
+
+  void _performSearch() {
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      // Navegar a la pantalla de búsqueda con el término de búsqueda
+      Navigator.pushNamed(
+        context, 
+        '/resident-search',
+        arguments: query,
+      );
+    }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
   }
 
   Future<void> _loadDetailedData() async {
@@ -88,37 +131,48 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
         ?.cast<Map<String, dynamic>>() ?? [];
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       body: ResponsiveContainer(
         child: Column(
           children: [
-            AddressDetailHeader(
-              userName: _userName,
-              onClose: () => Navigator.pop(context),
-            ),
+            _buildSimpleHeader(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
+                padding: ResponsiveHelper.getResponsivePadding(context),
                 child: Column(
                   children: [
-                    SearchSectionWidget(
-                      onSearch: () {},
-                      onClear: () {},
-                      onViewGrifos: () => Navigator.pushNamed(context, '/grifos'),
-                    ),
-                    const SizedBox(height: AddressDetailStyles.paddingLarge),
+                     SearchSectionWidget(
+                       searchController: _searchController,
+                       onSearch: _performSearch,
+                       onClear: _clearSearch,
+                       onViewGrifos: () {
+                         debugPrint('🔍 Navegando a grifos...');
+                         try {
+                           Navigator.pushNamed(context, '/grifos');
+                         } catch (error) {
+                           debugPrint('❌ Error navegando a grifos: $error');
+                           // Fallback: navegar directamente a la pantalla
+                           Navigator.push(
+                             context,
+                             MaterialPageRoute(
+                               builder: (context) => const GrifosHomeScreen(),
+                             ),
+                           );
+                         }
+                       },
+                     ),
+                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
                     _buildCriticalSummary(integrantes, mascotas),
-                    const SizedBox(height: AddressDetailStyles.paddingLarge),
+                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
                     _buildAddressInfo(data),
-                    const SizedBox(height: AddressDetailStyles.paddingLarge),
+                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
                     _buildHousingInfo(data),
-                    const SizedBox(height: AddressDetailStyles.paddingLarge),
-                    SpecialInstructionsWidget(
-                      instructions: data['instrucciones_especiales'] as String?,
-                    ),
-                    const SizedBox(height: AddressDetailStyles.paddingLarge),
+                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
+                    // Instrucciones especiales eliminadas temporalmente
+                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
                     _buildContactInfo(data),
-                    const SizedBox(height: AddressDetailStyles.paddingLarge),
-                    OccupantsWidget(
+                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
+                    ModernOccupantsWidget(
                       integrantes: integrantes,
                       mascotas: mascotas,
                       selectedTab: _selectedTab,
@@ -134,6 +188,51 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     );
   }
 
+  Widget _buildSimpleHeader() {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.isTablet(context) ? 24 : 20,
+        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_ios_rounded),
+            color: const Color(0xFF3B82F6),
+          ),
+          Expanded(
+            child: Text(
+              'Detalles de Dirección',
+              style: TextStyle(
+                fontSize: ResponsiveHelper.isTablet(context) ? 20 : 18,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1E293B),
+              ),
+            ),
+          ),
+          Text(
+            _userName,
+            style: TextStyle(
+              fontSize: ResponsiveHelper.isTablet(context) ? 14 : 12,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCriticalSummary(List<Map<String, dynamic>> integrantes, List<Map<String, dynamic>> mascotas) {
     final integrantesConCondiciones = integrantes.where((i) {
       final padecimiento = i['padecimiento'] as String?;
@@ -141,43 +240,154 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     }).length;
 
     return Container(
-      padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
-      decoration: AddressDetailStyles.cardDecoration,
+      margin: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+      ),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Resumen Crítico',
-            style: AddressDetailStyles.titleStyle,
-          ),
-          const SizedBox(height: AddressDetailStyles.paddingXLarge),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 2.8,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+          Row(
             children: [
-              SummaryCard(
-                number: '${integrantes.length}',
-                label: 'Personas',
-                icon: Icons.people,
-                iconColor: AddressDetailStyles.blue,
+              Container(
+                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.analytics_rounded,
+                  color: Colors.white,
+                  size: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                ),
               ),
-              SummaryCard(
-                number: '${mascotas.length}',
-                label: 'Mascotas',
-                icon: Icons.pets,
-                iconColor: AddressDetailStyles.orange,
-              ),
-              SummaryCard(
-                number: '$integrantesConCondiciones',
-                label: 'Con condiciones',
-                icon: Icons.medical_services,
-                iconColor: AddressDetailStyles.primaryRed,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  'Resumen Crítico',
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
+          ),
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = ResponsiveHelper.isTablet(context);
+              final crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
+              final childAspectRatio = isTablet ? 1.2 : 1.1;
+              
+              return GridView.count(
+                crossAxisCount: crossAxisCount,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: childAspectRatio,
+                crossAxisSpacing: isTablet ? 16 : 12,
+                mainAxisSpacing: isTablet ? 16 : 12,
+                children: [
+                  _buildModernSummaryCard(
+                    number: '${integrantes.length}',
+                    label: 'Personas',
+                    icon: Icons.people_rounded,
+                    color: const Color(0xFF3B82F6),
+                  ),
+                  _buildModernSummaryCard(
+                    number: '${mascotas.length}',
+                    label: 'Mascotas',
+                    icon: Icons.pets_rounded,
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  if (crossAxisCount == 3)
+                    _buildModernSummaryCard(
+                      number: '$integrantesConCondiciones',
+                      label: 'Con condiciones',
+                      icon: Icons.medical_services_rounded,
+                      color: const Color(0xFFDC2626),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernSummaryCard({
+    required String number,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 20 : 16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: ResponsiveHelper.isTablet(context) ? 24 : 20,
+            ),
+          ),
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 12 : 8),
+          Flexible(
+            child: Text(
+              number,
+              style: TextStyle(
+                fontSize: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 4 : 2),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: ResponsiveHelper.isTablet(context) ? 12 : 11,
+                fontWeight: FontWeight.w500,
+                color: color.withValues(alpha: 0.8),
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
           ),
         ],
       ),
@@ -186,86 +396,395 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
 
   Widget _buildAddressInfo(Map<String, dynamic> data) {
     return Container(
-      padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
-      decoration: AddressDetailStyles.cardDecoration,
+      margin: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+      ),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.location_on,
-                size: AddressDetailStyles.iconSizeSmall,
-                color: AddressDetailStyles.primaryRed,
+              Container(
+                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.location_on_rounded,
+                  color: Colors.white,
+                  size: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                ),
               ),
-              const SizedBox(width: AddressDetailStyles.paddingSmall),
-              const Text(
-                'Información del Domicilio',
-                style: AddressDetailStyles.subtitleStyle,
+              SizedBox(width: ResponsiveHelper.isTablet(context) ? 16 : 12),
+              Expanded(
+                child: Text(
+                  'Información del Domicilio',
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: AddressDetailStyles.paddingLarge),
-          InfoRow(
+          const SizedBox(height: 24),
+          _buildModernInfoRow(
             label: 'Dirección',
-            value: data['direccion'] as String? ?? 'No especificada',
+            value: data['address'] as String? ?? 'No especificada',
+            icon: Icons.home_rounded,
+            color: const Color(0xFF3B82F6),
           ),
-          InfoRow(
+          _buildModernInfoRow(
             label: 'Coordenadas',
             value: '${data['lat']}, ${data['lon']}',
+            icon: Icons.my_location_rounded,
+            color: const Color(0xFF10B981),
           ),
-          InfoRow(
+          _buildModernInfoRow(
             label: 'Comuna',
             value: data['comuna'] as String? ?? 'No especificada',
+            icon: Icons.location_city_rounded,
+            color: const Color(0xFF8B5CF6),
           ),
-          const SizedBox(height: AddressDetailStyles.paddingXLarge),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Última actualización: Hoy',
-                style: TextStyle(
-                  fontSize: AddressDetailStyles.fontSizeMedium,
-                  color: AddressDetailStyles.mediumGray,
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 8 : 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6B7280).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.update_rounded,
+                          color: const Color(0xFF6B7280),
+                          size: ResponsiveHelper.isTablet(context) ? 16 : 14,
+                        ),
+                      ),
+                      SizedBox(width: ResponsiveHelper.isTablet(context) ? 12 : 10),
+                      Expanded(
+                        child: Text(
+                          'Última actualización: ${_formatLastUpdated(data['last_update'])}',
+                          style: TextStyle(
+                            fontSize: ResponsiveHelper.isTablet(context) ? 14 : 12,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AddressDetailStyles.blue,
-                  side: const BorderSide(color: AddressDetailStyles.blue),
+                SizedBox(
+                  height: 40,
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.map_rounded, size: 16),
+                    label: const Text(
+                      'Ver en Mapa',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF3B82F6),
+                      side: const BorderSide(color: Color(0xFF3B82F6)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Text('Ver en Mapa'),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHousingInfo(Map<String, dynamic> data) {
+  Widget _buildModernInfoRow({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
-      decoration: AddressDetailStyles.cardDecoration,
-      child: HousingInfoWidget(housingData: data),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 8 : 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: ResponsiveHelper.isTablet(context) ? 20 : 18,
+            ),
+          ),
+          SizedBox(width: ResponsiveHelper.isTablet(context) ? 12 : 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.isTablet(context) ? 12 : 11,
+                    fontWeight: FontWeight.w500,
+                    color: color.withValues(alpha: 0.8),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: ResponsiveHelper.isTablet(context) ? 4 : 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.isTablet(context) ? 16 : 14,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatLastUpdated(dynamic lastUpdated) {
+    if (lastUpdated == null || lastUpdated.toString().toLowerCase() == 'null') {
+      return 'No registrada';
+    }
+    
+    try {
+      final dateTime = DateTime.parse(lastUpdated.toString());
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+      
+      if (difference.inMinutes < 1) {
+        return 'Hace menos de 1 minuto';
+      } else if (difference.inMinutes < 60) {
+        return 'Hace ${difference.inMinutes} minutos';
+      } else if (difference.inHours < 24) {
+        return 'Hace ${difference.inHours} horas';
+      } else if (difference.inDays == 0) {
+        return 'Hoy';
+      } else if (difference.inDays == 1) {
+        return 'Ayer';
+      } else if (difference.inDays < 7) {
+        return 'Hace ${difference.inDays} días';
+      } else {
+        return 'Hace ${(difference.inDays / 7).floor()} semanas';
+      }
+    } catch (e) {
+      return 'No registrada';
+    }
+  }
+
+  Widget _buildHousingInfo(Map<String, dynamic> data) {
+    final registroV = data['registro_v'] as Map<String, dynamic>? ?? {};
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+      ),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.home_work_rounded,
+                  color: Colors.white,
+                  size: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                ),
+              ),
+              SizedBox(width: ResponsiveHelper.isTablet(context) ? 16 : 12),
+              Expanded(
+                child: Text(
+                  'Información de la Vivienda',
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Detalles de la Vivienda
+          _buildHousingDetailRow('Tipo de vivienda', registroV['tipo'] as String? ?? 'No especificado'),
+          const SizedBox(height: 12),
+          _buildHousingDetailRow('Piso del departamento', registroV['pisos']?.toString() ?? 'No especificado'),
+          const SizedBox(height: 12),
+          _buildHousingDetailRow('Material de construcción', registroV['material'] as String? ?? 'No especificado'),
+          const SizedBox(height: 12),
+          _buildHousingDetailRow('Estado de la vivienda', registroV['estado'] as String? ?? 'No especificado'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHousingDetailRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min, // Agregado para evitar overflow
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: ResponsiveHelper.isTablet(context) ? 14 : 13,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF374151),
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+        SizedBox(height: ResponsiveHelper.isTablet(context) ? 4 : 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: ResponsiveHelper.isTablet(context) ? 14 : 13,
+            color: const Color(0xFF64748B),
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+        ),
+      ],
     );
   }
 
   Widget _buildContactInfo(Map<String, dynamic> data) {
+    final grupoFamiliar = data['grupo_familiar'] as Map<String, dynamic>? ?? {};
     return Container(
-      padding: const EdgeInsets.all(AddressDetailStyles.paddingLarge),
-      decoration: AddressDetailStyles.cardDecoration,
+      margin: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+      ),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ContactInfoWidget(
-            phoneNumber: data['telefono_principal'] as String?,
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.contact_phone_rounded,
+                  color: Colors.white,
+                  size: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                ),
+              ),
+              SizedBox(width: ResponsiveHelper.isTablet(context) ? 16 : 12),
+              Expanded(
+                child: Text(
+                  'Información de Contacto',
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AddressDetailStyles.paddingLarge),
-          InfoRow(
+          const SizedBox(height: 24),
+          // Información de contacto eliminada temporalmente
+          const SizedBox(height: 16),
+          _buildModernInfoRow(
             label: 'Teléfono Principal',
-            value: data['telefono_principal'] as String? ?? 'No especificado',
+            value: grupoFamiliar['telefono_titular'] as String? ?? 'No especificado',
+            icon: Icons.phone_rounded,
+            color: const Color(0xFF06B6D4),
           ),
         ],
       ),

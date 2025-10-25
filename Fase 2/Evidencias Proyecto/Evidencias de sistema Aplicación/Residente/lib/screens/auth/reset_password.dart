@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import '../../services/unified_auth_service.dart';
 import '../../utils/validators.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -13,7 +13,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final AuthService _authService = AuthService();
+  final UnifiedAuthService _authService = UnifiedAuthService();
   
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -42,7 +42,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
       try {
         final result = await _authService.updatePassword(
-          newPassword: _passwordController.text,
+          _passwordController.text,
         );
 
         setState(() {

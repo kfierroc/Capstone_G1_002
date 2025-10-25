@@ -79,14 +79,27 @@ class SearchService {
           'grupo_familiar': {
             'id_grupof': grupoFamiliar['id_grupof'],
             'rut_titular': grupoFamiliar['rut_titular'],
+            'nomb_titular': grupoFamiliar['nomb_titular'],
+            'ape_p_titular': grupoFamiliar['ape_p_titular'],
+            'telefono_titular': grupoFamiliar['telefono_titular'],
             'email': grupoFamiliar['email'],
             'fecha_creacion': grupoFamiliar['fecha_creacion'],
           },
-          'integrantes': integrantes.where((i) => i['activo_i'] == true).map((i) => {
-            'id_integrante': i['id_integrante'],
-            'activo_i': i['activo_i'],
-            'fecha_ini_i': i['fecha_ini_i'],
-            'info_integrante': i['info_integrante'],
+          'integrantes': integrantes.where((i) => i['activo_i'] == true).map((i) {
+            final infoIntegrante = i['info_integrante'] as Map<String, dynamic>?;
+            return {
+              'id_integrante': i['id_integrante'],
+              'activo_i': i['activo_i'],
+              'fecha_ini_i': i['fecha_ini_i'],
+              'rut': infoIntegrante?['rut'],
+              'edad': infoIntegrante?['anio_nac'] != null 
+                  ? DateTime.now().year - (infoIntegrante!['anio_nac'] as int)
+                  : null,
+              'anio_nacimiento': infoIntegrante?['anio_nac'],
+              'es_titular': grupoFamiliar?['rut_titular'] == infoIntegrante?['rut'],
+              'condiciones_medicas': infoIntegrante?['padecimiento'],
+              'padecimientos': infoIntegrante?['padecimiento']?.toString().split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList() ?? [],
+            };
           }).toList(),
           'mascotas': mascotas.map((m) => {
             'id_mascota': m['id_mascota'],
@@ -99,6 +112,8 @@ class SearchService {
             'material': registroV['material'],
             'tipo': registroV['tipo'],
             'estado': registroV['estado'],
+            'pisos': registroV['pisos'],
+            'instrucciones_especiales': null, // Campo eliminado
             'fecha_ini_r': registroV['fecha_ini_r'],
           },
           'last_updated': DateTime.now().toIso8601String(),
@@ -237,14 +252,27 @@ class SearchService {
         'grupo_familiar': {
           'id_grupof': grupoFamiliar['id_grupof'],
           'rut_titular': grupoFamiliar['rut_titular'],
+          'nomb_titular': grupoFamiliar['nomb_titular'],
+          'ape_p_titular': grupoFamiliar['ape_p_titular'],
+          'telefono_titular': grupoFamiliar['telefono_titular'],
           'email': grupoFamiliar['email'],
           'fecha_creacion': grupoFamiliar['fecha_creacion'],
         },
-        'integrantes': integrantes.where((i) => i['activo_i'] == true).map((i) => {
-          'id_integrante': i['id_integrante'],
-          'activo_i': i['activo_i'],
-          'fecha_ini_i': i['fecha_ini_i'],
-          'info_integrante': i['info_integrante'],
+        'integrantes': integrantes.where((i) => i['activo_i'] == true).map((i) {
+          final infoIntegrante = i['info_integrante'] as Map<String, dynamic>?;
+          return {
+            'id_integrante': i['id_integrante'],
+            'activo_i': i['activo_i'],
+            'fecha_ini_i': i['fecha_ini_i'],
+            'rut': infoIntegrante?['rut'],
+            'edad': infoIntegrante?['anio_nac'] != null 
+                ? DateTime.now().year - (infoIntegrante!['anio_nac'] as int)
+                : null,
+            'anio_nacimiento': infoIntegrante?['anio_nac'],
+            'es_titular': grupoFamiliar?['rut_titular'] == infoIntegrante?['rut'],
+            'condiciones_medicas': infoIntegrante?['padecimiento'],
+            'padecimientos': infoIntegrante?['padecimiento']?.toString().split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList() ?? [],
+          };
         }).toList(),
         'mascotas': mascotas.map((m) => {
           'id_mascota': m['id_mascota'],
@@ -257,6 +285,8 @@ class SearchService {
           'material': registroV['material'],
           'tipo': registroV['tipo'],
           'estado': registroV['estado'],
+          'pisos': registroV['pisos'],
+          'instrucciones_especiales': null, // Campo eliminado
           'fecha_ini_r': registroV['fecha_ini_r'],
         },
         'last_updated': DateTime.now().toIso8601String(),

@@ -62,6 +62,7 @@ CREATE TABLE registro_v (
   fecha_fin_r DATE,
   id_residencia INTEGER NOT NULL REFERENCES residencia(id_residencia),
   id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof),
+  instrucciones_especiales VARCHAR(1000), -- Campo agregado para instrucciones especiales
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

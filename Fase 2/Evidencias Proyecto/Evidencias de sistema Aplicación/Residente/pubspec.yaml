@@ -1,5 +1,5 @@
-name: fire_data
-description: "App Bomberos - Sistema de Emergencias Optimizado"
+name: sistema_emergencias_residente
+description: "Sistema de Emergencias - Aplicación para Residentes"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -21,13 +21,20 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icono.png"
-  adaptive_icon_foreground: "assets/icono.png"
-  adaptive_icon_background: "#ffffff"
+  image_path: "assets/icon_residente.png"
+  adaptive_icon_foreground: "assets/icon_residente.png"
+  adaptive_icon_background: "#4CAF50"
   remove_alpha_ios: true
+  min_sdk_android: 21
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
 
 flutter:
   uses-material-design: true

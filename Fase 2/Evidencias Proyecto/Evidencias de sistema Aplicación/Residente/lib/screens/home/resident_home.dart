@@ -131,7 +131,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         debugPrint('✅ Datos del usuario cargados exitosamente');
         debugPrint('   - RUT: ${_registrationData.rut}');
         debugPrint('   - Dirección: ${_registrationData.address}');
-        debugPrint('   - Teléfono: ${_registrationData.phoneNumber}');
+        debugPrint('   - Teléfono: ${_registrationData.mainPhone ?? _registrationData.phoneNumber}');
         debugPrint('   - Integrantes: ${_familyMembers.length}');
         debugPrint('   - Mascotas: ${_pets.length}');
       } else {
@@ -201,6 +201,9 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
 
   Future<void> _editFamilyMember(int index, FamilyMember member) async {
     try {
+      debugPrint('🔧 Iniciando edición de miembro de familia en índice: $index');
+      debugPrint('🔧 Datos del miembro: ${member.toString()}');
+      
       final authService = UnifiedAuthService();
       final userEmail = authService.userEmail;
       
@@ -213,22 +216,31 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       final grupoResult = await databaseService.obtenerGrupoFamiliar(email: userEmail);
       
       if (!grupoResult.isSuccess) {
-        debugPrint('❌ No se pudo obtener el grupo familiar');
+        debugPrint('❌ No se pudo obtener el grupo familiar: ${grupoResult.error}');
         return;
       }
+      
+      debugPrint('✅ Grupo familiar obtenido: ${grupoResult.data!.idGrupoF}');
       
       final integrantesResult = await databaseService.obtenerIntegrantes(grupoId: grupoResult.data!.idGrupoF.toString());
       if (!integrantesResult.isSuccess || integrantesResult.data == null || index >= integrantesResult.data!.length) {
         debugPrint('❌ No se pudo obtener el integrante a editar');
+        debugPrint('   - Resultado exitoso: ${integrantesResult.isSuccess}');
+        debugPrint('   - Datos nulos: ${integrantesResult.data == null}');
+        debugPrint('   - Índice: $index, Total integrantes: ${integrantesResult.data?.length ?? 0}');
         return;
       }
       
       final integrante = integrantesResult.data![index];
+      debugPrint('✅ Integrante encontrado: ${integrante.idIntegrante}');
+      
       final updates = {
         // Solo campos que existen en las tablas reales
         'anio_nac': member.birthYear, // Tabla info_integrante
         'padecimiento': member.conditions.isNotEmpty ? member.conditions.join(', ') : null, // Tabla info_integrante
       };
+      
+      debugPrint('🔧 Datos a actualizar: $updates');
       
       final result = await databaseService.actualizarIntegrante(
         integranteId: integrante.idIntegrante.toString(),
@@ -459,6 +471,12 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         debugPrint('📝 Teléfono cambió: ${_registrationData.phoneNumber} -> ${newData.phoneNumber}');
       }
       
+      // También actualizar mainPhone si cambió (ambos representan el mismo teléfono)
+      if (newData.mainPhone != null && newData.mainPhone != _registrationData.mainPhone) {
+        grupoUpdates['telefono_titular'] = newData.mainPhone;
+        debugPrint('📝 Teléfono principal cambió: ${_registrationData.mainPhone} -> ${newData.mainPhone}');
+      }
+      
       if (grupoUpdates.isNotEmpty) {
         debugPrint('📝 Actualizando grupo familiar con: $grupoUpdates');
         await databaseService.actualizarGrupoFamiliar(
@@ -521,19 +539,8 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
           residenciaUpdates['lon'] = double.parse(newData.longitude!.toStringAsFixed(6));
         }
         
-        // Campos adicionales de residencia
-        if (newData.mainPhone != null && newData.mainPhone != residenciaResult.data!.telefonoPrincipal) {
-          residenciaUpdates['telefono_principal'] = newData.mainPhone;
-          debugPrint('📝 Teléfono principal cambió: ${residenciaResult.data!.telefonoPrincipal} -> ${newData.mainPhone}');
-        }
-        if (newData.specialInstructions != null && newData.specialInstructions != residenciaResult.data!.instruccionesEspeciales) {
-          residenciaUpdates['instrucciones_especiales'] = newData.specialInstructions;
-          debugPrint('📝 Instrucciones especiales cambiaron: ${residenciaResult.data!.instruccionesEspeciales} -> ${newData.specialInstructions}');
-        }
-        
-        debugPrint('🔍 Verificando cambios en instrucciones especiales:');
-        debugPrint('   - Instrucciones actuales: ${residenciaResult.data!.instruccionesEspeciales}');
-        debugPrint('   - Instrucciones nuevas: ${newData.specialInstructions}');
+        // Los campos telefonoPrincipal se manejan en otras tablas
+        // telefonoPrincipal -> grupofamiliar.telefono_titular
         
         if (residenciaUpdates.isNotEmpty) {
           await databaseService.actualizarResidencia(
@@ -542,20 +549,36 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
           );
         }
         
-        // Actualizar también el registro_v si hay cambios en material, tipo, estado o pisos
-        if (newData.constructionMaterial != null || newData.housingType != null || newData.housingCondition != null || newData.numberOfFloors != null) {
+        // Actualizar también el registro_v si hay cambios en material, tipo, estado, pisos
+        if (newData.constructionMaterial != _registrationData.constructionMaterial || 
+            newData.housingType != _registrationData.housingType || 
+            newData.housingCondition != _registrationData.housingCondition || 
+            newData.numberOfFloors != _registrationData.numberOfFloors) {
+          
           final registroVUpdates = <String, dynamic>{};
-          if (newData.constructionMaterial != null) {
-            registroVUpdates['material'] = newData.constructionMaterial;
+          
+          // Actualizar material si cambió
+          if (newData.constructionMaterial != _registrationData.constructionMaterial) {
+            registroVUpdates['constructionMaterial'] = newData.constructionMaterial;
+            debugPrint('📝 Material cambió: ${_registrationData.constructionMaterial} -> ${newData.constructionMaterial}');
           }
-          if (newData.housingType != null) {
-            registroVUpdates['tipo'] = newData.housingType;
+          
+          // Actualizar tipo si cambió
+          if (newData.housingType != _registrationData.housingType) {
+            registroVUpdates['housingType'] = newData.housingType;
+            debugPrint('📝 Tipo vivienda cambió: ${_registrationData.housingType} -> ${newData.housingType}');
           }
-          if (newData.housingCondition != null) {
-            registroVUpdates['estado'] = newData.housingCondition;
+          
+          // Actualizar estado si cambió
+          if (newData.housingCondition != _registrationData.housingCondition) {
+            registroVUpdates['housingCondition'] = newData.housingCondition;
+            debugPrint('📝 Estado cambió: ${_registrationData.housingCondition} -> ${newData.housingCondition}');
           }
-          if (newData.numberOfFloors != null) {
-            registroVUpdates['pisos'] = newData.numberOfFloors;
+          
+          // Actualizar pisos si cambió
+          if (newData.numberOfFloors != _registrationData.numberOfFloors) {
+            registroVUpdates['numberOfFloors'] = newData.numberOfFloors;
+            debugPrint('📝 Pisos cambiaron: ${_registrationData.numberOfFloors} -> ${newData.numberOfFloors}');
           }
           
           if (registroVUpdates.isNotEmpty) {
@@ -567,6 +590,22 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
             debugPrint('✅ Registro_v actualizado exitosamente');
           }
         }
+        
+        // Campo eliminado - no hacer nada
+        // if (newData.specialInstructions != _registrationData.specialInstructions) {
+        //   debugPrint('📝 Instrucciones especiales cambiaron: ${_registrationData.specialInstructions} -> ${newData.specialInstructions}');
+        //   
+        //   final residenciaInstruccionesUpdates = <String, dynamic>{
+        //     'specialInstructions': newData.specialInstructions,
+        //   };
+        //   
+        //   debugPrint('📝 Actualizando instrucciones especiales en residencia con: $residenciaInstruccionesUpdates');
+        //   await databaseService.actualizarResidencia(
+        //     grupoId: grupo.idGrupoF.toString(),
+        //     updates: residenciaInstruccionesUpdates,
+        //   );
+        //   debugPrint('✅ Instrucciones especiales actualizadas en residencia');
+        // }
       } else {
         // Residencia no existe, crear una nueva
         debugPrint('🔍 Residencia no existe, creando nueva...');
@@ -600,7 +639,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         debugPrint('   - Teléfono principal: ${_registrationData.mainPhone ?? "No especificado"}');
         debugPrint('   - Tipo vivienda: ${_registrationData.housingType ?? "No especificado"}');
         debugPrint('   - Condiciones médicas: ${_registrationData.medicalConditions.length} condiciones');
-        debugPrint('   - Instrucciones especiales: ${_registrationData.specialInstructions ?? "No especificadas"}');
+        debugPrint('   - Instrucciones especiales: Campo eliminado');
       }
       debugPrint('✅ Datos de registro actualizados exitosamente');
     } catch (e) {
@@ -653,6 +692,7 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
     final isTablet = width >= 600;
 
     return Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: _buildAppBar(isTablet),
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNav(isTablet),
@@ -660,50 +700,134 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
   }
 
   PreferredSizeWidget _buildAppBar(bool isTablet) {
-    return AppBar(
-      backgroundColor: AppColors.primary,
-      foregroundColor: AppColors.textWhite,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Mi Información Familiar',
-            style: TextStyle(
-              fontSize: isTablet ? 20 : 18,
+    return PreferredSize(
+      preferredSize: Size.fromHeight(isTablet ? 120 : 100),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary,
+              AppColors.primaryDark,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
-          ),
-          Text(
-            'Gestiona la información de tu domicilio',
-            style: TextStyle(
-              fontSize: isTablet ? 14 : 12,
-              fontWeight: FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          onPressed: _logout,
-          icon: Icon(
-            Icons.logout,
-            size: isTablet ? 26 : 24,
-          ),
-          tooltip: 'Cerrar sesión',
+          ],
         ),
-      ],
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                // Icono de la app con fondo circular
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.home_work,
+                    color: Colors.white,
+                    size: isTablet ? 32 : 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                
+                // Información del usuario
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Mi Información Familiar',
+                        style: TextStyle(
+                          fontSize: isTablet ? 22 : 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Gestiona la información de tu domicilio',
+                        style: TextStyle(
+                          fontSize: isTablet ? 15 : 13,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Botón de logout modernizado
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: IconButton(
+                    onPressed: _logout,
+                    icon: Icon(
+                      Icons.logout_rounded,
+                      color: Colors.white,
+                      size: isTablet ? 26 : 24,
+                    ),
+                    tooltip: 'Cerrar sesión',
+                    padding: const EdgeInsets.all(12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildBody() {
     // Mostrar indicador de carga mientras se cargan los datos
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Cargando información del usuario...'),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Cargando información del usuario...',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       );
@@ -712,35 +836,58 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
     // Mostrar error si hubo problemas al cargar los datos
     if (_errorMessage != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red[300],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Error al cargar datos',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.red[700],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  size: 64,
+                  color: AppColors.error,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red[600]),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadUserData,
-              child: const Text('Reintentar'),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Text(
+                'Error al cargar datos',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.error,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: _loadUserData,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reintentar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -780,29 +927,78 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       currentIndex: _currentIndex,
       onTap: (index) => setState(() => _currentIndex = index),
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: AppColors.primary,
+      backgroundColor: Colors.white,
+      selectedItemColor: _getSelectedColor(),
       unselectedItemColor: AppColors.textTertiary,
       selectedFontSize: isTablet ? 14 : 12,
       unselectedFontSize: isTablet ? 12 : 10,
       iconSize: isTablet ? 28 : 24,
-      items: const [
+      elevation: 8,
+      items: [
         BottomNavigationBarItem(
           icon: Icon(Icons.people),
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.familyAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.people, color: AppColors.familyPrimary),
+          ),
           label: 'Familia',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.pets),
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.petsAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.pets, color: AppColors.petsPrimary),
+          ),
           label: 'Mascotas',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.residenceAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.home, color: AppColors.residencePrimary),
+          ),
           label: 'Domicilio',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.settings),
+          activeIcon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.settingsAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.settings, color: AppColors.settingsPrimary),
+          ),
           label: 'Configuración',
         ),
       ],
     );
+  }
+
+  Color _getSelectedColor() {
+    switch (_currentIndex) {
+      case 0:
+        return AppColors.familyPrimary;
+      case 1:
+        return AppColors.petsPrimary;
+      case 2:
+        return AppColors.residencePrimary;
+      case 3:
+        return AppColors.settingsPrimary;
+      default:
+        return AppColors.primary;
+    }
   }
 }

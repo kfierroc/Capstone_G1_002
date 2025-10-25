@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
-import 'address_detail.dart';
+import 'address_detail_refactored.dart';
 
 /// Pantalla de resultados de búsqueda - Refactorizada
 class SearchResultsScreen extends StatefulWidget {
@@ -102,9 +102,40 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
 
     return Scaffold(
-      appBar: EmergencyAppBar(
-        title: 'Resultados de Búsqueda',
-        onBackPressed: () => Navigator.pop(context),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        title: const Text(
+          'Resultados de Búsqueda',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: ResponsiveContainer(
         child: SingleChildScrollView(
@@ -168,20 +199,55 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   }
 
   Widget _buildSearchField() {
-    return TextField(
-      controller: _searchController,
-      style: AppTextStyles.bodyLarge,
-      decoration: InputDecoration(
-        hintText: 'Ej: Ricardo Rios, Colipi 231',
-        hintStyle: AppTextStyles.bodyMedium,
-        prefixIcon: const Icon(Icons.location_on),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade50,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      onSubmitted: (_) => _performSearch(),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Ej: Ricardo Rios, Colipi 231',
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontWeight: FontWeight.w400,
+          ),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.search_rounded,
+              color: Color(0xFF3B82F6),
+              size: 20,
+            ),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+        onSubmitted: (_) => _performSearch(),
+      ),
     );
   }
 
@@ -189,20 +255,52 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton(
-            onPressed: _performSearch,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
+          child: SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _performSearch,
+              icon: const Icon(Icons.search, size: 20),
+              label: const Text(
+                'Buscar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
             ),
-            child: const Text('Buscar'),
           ),
         ),
-        const SizedBox(width: AppTheme.spacingMd),
+        const SizedBox(width: 16),
         Expanded(
-          child: OutlinedButton(
-            onPressed: _clearSearch,
-            child: const Text('Limpiar'),
+          child: SizedBox(
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: _clearSearch,
+              icon: const Icon(Icons.clear, size: 20),
+              label: const Text(
+                'Limpiar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF3B82F6),
+                side: const BorderSide(color: Color(0xFF3B82F6)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
           ),
         ),
       ],
@@ -210,28 +308,48 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   }
 
   Widget _buildResultsCount() {
-    return Padding(
-      padding: ResponsiveHelper.getResponsiveMargin(context),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppTheme.spacingLg,
-            vertical: AppTheme.spacingSm,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-            border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
-          ),
-          child: Text(
-            'Resultados de Búsqueda (${_results.length})',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppTheme.primaryBlue,
-              fontWeight: FontWeight.bold,
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.search_rounded,
+              color: Colors.white,
+              size: 20,
             ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Text(
+            'Resultados de Búsqueda (${_results.length})',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -401,7 +519,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         ),
         const SizedBox(width: AppTheme.spacingXs),
         Text(
-          'Última actualización: ${result['last_update']}',
+          'Última actualización: ${_formatLastUpdated(result['last_update'])}',
           style: AppTextStyles.caption,
         ),
       ],
@@ -446,5 +564,35 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         ),
       ),
     );
+  }
+
+  String _formatLastUpdated(dynamic lastUpdated) {
+    if (lastUpdated == null || lastUpdated.toString().toLowerCase() == 'null') {
+      return 'No registrada';
+    }
+    
+    try {
+      final dateTime = DateTime.parse(lastUpdated.toString());
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+      
+      if (difference.inMinutes < 1) {
+        return 'Hace menos de 1 minuto';
+      } else if (difference.inMinutes < 60) {
+        return 'Hace ${difference.inMinutes} minutos';
+      } else if (difference.inHours < 24) {
+        return 'Hace ${difference.inHours} horas';
+      } else if (difference.inDays == 0) {
+        return 'Hoy';
+      } else if (difference.inDays == 1) {
+        return 'Ayer';
+      } else if (difference.inDays < 7) {
+        return 'Hace ${difference.inDays} días';
+      } else {
+        return 'Hace ${(difference.inDays / 7).floor()} semanas';
+      }
+    } catch (e) {
+      return 'No registrada';
+    }
   }
 }

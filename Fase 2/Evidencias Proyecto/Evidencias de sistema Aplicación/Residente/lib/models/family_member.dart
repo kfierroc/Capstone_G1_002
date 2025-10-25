@@ -125,5 +125,10 @@ class FamilyMember {
       'medical_conditions': conditions,
     };
   }
+
+  @override
+  String toString() {
+    return 'FamilyMember(id: $id, rut: $rut, age: $age, birthYear: $birthYear, conditions: $conditions)';
+  }
 }
 

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../models/registration_data.dart';
-import '../../../services/auth_service.dart';
+import '../../../services/unified_auth_service.dart';
 import '../../../utils/app_styles.dart';
+import '../../../utils/format_utils.dart';
 import '../../../widgets/common_widgets.dart';
 import '../../edit/edit_profile_screen.dart';
 
@@ -20,9 +21,8 @@ class SettingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    final supabaseUser = authService.currentUser;
-    final user = supabaseUser != null ? AppUser.fromSupabaseUser(supabaseUser) : null;
+    final authService = UnifiedAuthService();
+    final userEmail = authService.userEmail;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -36,7 +36,7 @@ class SettingsTab extends StatelessWidget {
             gradientColors: [AppColors.settingsPrimary, AppColors.settingsSecondary],
           ),
           const SizedBox(height: AppSpacing.xl),
-          _buildPersonalInfoCard(user),
+          _buildPersonalInfoCard(userEmail),
           const SizedBox(height: AppSpacing.xl),
           ActionButton(
             onPressed: () => _editProfile(context),
@@ -66,7 +66,7 @@ class SettingsTab extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonalInfoCard(AppUser? user) {
+  Widget _buildPersonalInfoCard(String? userEmail) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: AppDecorations.card,
@@ -77,17 +77,21 @@ class SettingsTab extends StatelessWidget {
           const Divider(height: AppSpacing.xxl),
           DetailRow(
             label: 'RUT:',
-            value: registrationData.rut ?? 'No especificado',
+            value: registrationData.rut != null 
+                ? FormatUtils.formatRut(registrationData.rut!)
+                : 'No especificado',
           ),
           const SizedBox(height: AppSpacing.lg),
           DetailRow(
             label: 'Email:',
-            value: user?.email ?? 'No especificado',
+            value: userEmail ?? 'No especificado',
           ),
           const SizedBox(height: AppSpacing.lg),
           DetailRow(
             label: 'Teléfono:',
-            value: registrationData.phoneNumber ?? 'No especificado',
+            value: registrationData.mainPhone != null 
+                ? FormatUtils.formatPhone(registrationData.mainPhone!)
+                : 'No especificado',
           ),
           const SizedBox(height: AppSpacing.lg),
           DetailRow(
@@ -109,13 +113,19 @@ class SettingsTab extends StatelessWidget {
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
               children: registrationData.medicalConditions
-                  .map((condition) => Chip(
-                        label: Text(condition, style: AppTextStyles.chipText),
-                        backgroundColor: Colors.red.shade50,
-                        labelStyle: TextStyle(color: Colors.red.shade900),
+                  .map((condition) => Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
+                          horizontal: AppSpacing.md,
                           vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Text(
+                          condition,
+                          style: AppTextStyles.chipText.copyWith(color: Colors.red.shade900),
                         ),
                       ))
                   .toList(),
