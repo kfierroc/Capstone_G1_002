@@ -21,10 +21,10 @@ class ModernOccupantsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final isTablet = ResponsiveHelper.isTablet(context);
     final isMobile = ResponsiveHelper.isMobile(context);
-    
+
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: isTablet ? 20 : 8,
+        horizontal: isTablet ? 20 : 4,
         vertical: isTablet ? 16 : 12,
       ),
       padding: EdgeInsets.all(isTablet ? 28 : 12),
@@ -105,10 +105,7 @@ class ModernOccupantsWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
       ),
       child: Row(
         children: [
@@ -136,10 +133,16 @@ class ModernOccupantsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildTabButton(String label, IconData icon, Color color, int tabIndex, bool isTablet) {
+  Widget _buildTabButton(
+    String label,
+    IconData icon,
+    Color color,
+    int tabIndex,
+    bool isTablet,
+  ) {
     final isSelected = selectedTab == tabIndex;
     final count = tabIndex == 0 ? integrantes.length : mascotas.length;
-    
+
     return GestureDetector(
       onTap: () => onTabChanged(tabIndex),
       child: Container(
@@ -158,7 +161,9 @@ class ModernOccupantsWidget extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+              color: isSelected
+                  ? const Color(0xFF1E293B)
+                  : const Color(0xFF64748B),
               size: isTablet ? 18 : 16,
             ),
             SizedBox(width: isTablet ? 6 : 4),
@@ -167,7 +172,9 @@ class ModernOccupantsWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: isTablet ? 14 : 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                color: isSelected
+                    ? const Color(0xFF1E293B)
+                    : const Color(0xFF64748B),
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -207,15 +214,17 @@ class ModernOccupantsWidget extends StatelessWidget {
 
     // Separar titular de integrantes
     final titular = integrantesConDatos.firstWhere(
-      (i) => i['es_titular'] == true || 
-             i['titular'] == true ||
-             i['es_titular_domicilio'] == true,
-      orElse: () => integrantesConDatos.first, // Si no hay titular marcado, usar el primero
+      (i) =>
+          i['es_titular'] == true ||
+          i['titular'] == true ||
+          i['es_titular_domicilio'] == true,
+      orElse: () => integrantesConDatos
+          .first, // Si no hay titular marcado, usar el primero
     );
-    
-    final otrosIntegrantes = integrantesConDatos.where(
-      (i) => i != titular,
-    ).toList();
+
+    final otrosIntegrantes = integrantesConDatos
+        .where((i) => i != titular)
+        .toList();
 
     // Debug: Imprimir información del titular
     debugPrint('🏠 Titular encontrado: $titular');
@@ -225,15 +234,29 @@ class ModernOccupantsWidget extends StatelessWidget {
       child: Column(
         children: [
           // Mostrar titular primero
-          _buildModernPersonCard(titular, -1, _extractConditions(titular), isTablet, isMobile, isTitular: true),
-          
+          _buildModernPersonCard(
+            titular,
+            -1,
+            _extractConditions(titular),
+            isTablet,
+            isMobile,
+            isTitular: true,
+          ),
+
           // Mostrar otros integrantes
           ...otrosIntegrantes.asMap().entries.map((entry) {
             final index = entry.key;
             final integrante = entry.value;
             final conditions = _extractConditions(integrante);
-            
-            return _buildModernPersonCard(integrante, index, conditions, isTablet, isMobile, isTitular: false);
+
+            return _buildModernPersonCard(
+              integrante,
+              index,
+              conditions,
+              isTablet,
+              isMobile,
+              isTitular: false,
+            );
           }),
         ],
       ),
@@ -256,7 +279,7 @@ class ModernOccupantsWidget extends StatelessWidget {
           final index = entry.key;
           final mascota = entry.value;
           return Padding(
-            padding: EdgeInsets.only(bottom: isTablet ? 16 : 12),
+            padding: EdgeInsets.only(bottom: isTablet ? 22 : 12),
             child: _buildModernPetCard(mascota, index, isTablet, isMobile),
           );
         }).toList(),
@@ -265,116 +288,120 @@ class ModernOccupantsWidget extends StatelessWidget {
   }
 
   Widget _buildModernPersonCard(
-      Map<String, dynamic> integrante,
-      int index,
-      List<String> conditions,
-      bool isTablet,
-      bool isMobile, {
-      required bool isTitular,
-    }) {
-      return Container(
-        margin: EdgeInsets.only(bottom: isTablet ? 16 : 12),
-        decoration: BoxDecoration(
-          color: isTitular 
-              ? const Color(0xFFE0F2FE) // Azul cálido claro para titular
-              : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isTitular 
-                ? const Color(0xFF0EA5E9) // Azul cálido para titular
-                : const Color(0xFFE2E8F0),
-            width: isTitular ? 2 : 1,
-          ),
+    Map<String, dynamic> integrante,
+    int index,
+    List<String> conditions,
+    bool isTablet,
+    bool isMobile, {
+    required bool isTitular,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: isTablet ? 16 : 12),
+      decoration: BoxDecoration(
+        color: isTitular
+            ? const Color(0xFFE0F2FE) // Azul cálido claro para titular
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isTitular
+              ? const Color(0xFF0EA5E9) // Azul cálido para titular
+              : const Color(0xFFE2E8F0),
+          width: isTitular ? 2 : 1,
         ),
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 16 : 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Título principal
-              Text(
-                isTitular ? 'Titular del domicilio' : 'Persona ${index + 1}',
-                style: TextStyle(
-                  fontSize: isTablet ? 16 : 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1E293B),
-                ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isTablet ? 16 : 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Título principal
+            Text(
+              isTitular ? 'Titular del domicilio' : 'Persona ${index + 1}',
+              style: TextStyle(
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1E293B),
               ),
-              const SizedBox(height: 8),
-              
-              // RUT en línea separada (solo para titular)
-              if (isTitular && integrante['rut'] != null) ...[
-                Text(
-                  'RUT: ${integrante['rut']}',
-                  style: TextStyle(
-                    fontSize: isTablet ? 14 : 12,
-                    color: const Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-              ],
-              
-              // Edad en línea separada
+            ),
+            const SizedBox(height: 8),
+
+            // RUT en línea separada (solo para titular)
+            if (isTitular && integrante['rut'] != null) ...[
               Text(
-                '${integrante['edad'] ?? 'No especificada'} años',
+                'RUT: ${integrante['rut']}',
                 style: TextStyle(
                   fontSize: isTablet ? 14 : 12,
                   color: const Color(0xFF64748B),
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              
-              // Condiciones médicas si existen
-              if (conditions.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text(
-                          '🚨 ',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        Text(
-                          'Condiciones Médicas/Especiales:',
-                          style: TextStyle(
-                            fontSize: isTablet ? 12 : 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFDC2626),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: conditions.map((condition) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDC2626),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          condition,
-                          style: TextStyle(
-                            fontSize: isTablet ? 11 : 10,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      )).toList(),
-                    ),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 4),
             ],
-          ),
+
+            // Edad en línea separada
+            Text(
+              '${integrante['edad'] ?? 'No especificada'} años',
+              style: TextStyle(
+                fontSize: isTablet ? 14 : 12,
+                color: const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+
+            // Condiciones médicas si existen
+            if (conditions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text('🚨 ', style: TextStyle(fontSize: 14)),
+                      Text(
+                        'Condiciones Médicas/Especiales:',
+                        style: TextStyle(
+                          fontSize: isTablet ? 12 : 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFDC2626),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: conditions
+                        .map(
+                          (condition) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDC2626),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              condition,
+                              style: TextStyle(
+                                fontSize: isTablet ? 11 : 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
   Widget _buildModernPetCard(
     Map<String, dynamic> mascota,
@@ -386,16 +413,15 @@ class ModernOccupantsWidget extends StatelessWidget {
     final nombre = mascota['nombre_m'] ?? 'Sin nombre';
     final especie = mascota['especie'] ?? 'No especificada';
     final tamano = mascota['tamanio'] ?? 'No especificado';
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFBBF7D0),
-          width: 1,
+
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0FDF4),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFBBF7D0), width: 1),
         ),
-      ),
       child: Padding(
         padding: EdgeInsets.all(isTablet ? 16 : 10),
         child: Column(
@@ -412,7 +438,7 @@ class ModernOccupantsWidget extends StatelessWidget {
               ),
             ),
             SizedBox(height: isTablet ? 6 : 4),
-            
+
             // Especie y tamaño juntos en una línea
             Text(
               '$especie • $tamano',
@@ -424,11 +450,17 @@ class ModernOccupantsWidget extends StatelessWidget {
             ),
           ],
         ),
+        ),
       ),
     );
   }
 
-  Widget _buildEmptyState(String message, IconData icon, Color color, bool isTablet) {
+  Widget _buildEmptyState(
+    String message,
+    IconData icon,
+    Color color,
+    bool isTablet,
+  ) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -439,11 +471,7 @@ class ModernOccupantsWidget extends StatelessWidget {
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: isTablet ? 48 : 40,
-            ),
+            child: Icon(icon, color: color, size: isTablet ? 48 : 40),
           ),
           SizedBox(height: isTablet ? 20 : 16),
           Text(
@@ -462,14 +490,14 @@ class ModernOccupantsWidget extends StatelessWidget {
 
   List<String> _extractConditions(Map<String, dynamic> integrante) {
     List<String> conditions = [];
-    
+
     // Debug: Imprimir datos del integrante
     debugPrint('🔍 Extrayendo condiciones de: $integrante');
-    
+
     // Lista de campos posibles donde pueden estar las condiciones médicas
     final possibleFields = [
       'condiciones_medicas',
-      'condiciones_especiales', 
+      'condiciones_especiales',
       'enfermedades',
       'discapacidades',
       'padecimiento',
@@ -480,9 +508,9 @@ class ModernOccupantsWidget extends StatelessWidget {
       'alergias',
       'tratamientos',
       'limitaciones',
-      'cuidados_especiales'
+      'cuidados_especiales',
     ];
-    
+
     for (String field in possibleFields) {
       if (integrante[field] != null) {
         debugPrint('📋 Campo encontrado: $field = ${integrante[field]}');
@@ -490,21 +518,32 @@ class ModernOccupantsWidget extends StatelessWidget {
           final condStr = integrante[field] as String;
           if (condStr.isNotEmpty && condStr.toLowerCase() != 'null') {
             // Dividir por comas, puntos y comas, o saltos de línea
-            final parts = condStr.split(RegExp(r'[,;]|\n')).map((e) => e.trim()).where((e) => e.isNotEmpty);
+            final parts = condStr
+                .split(RegExp(r'[,;]|\n'))
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty);
             conditions.addAll(parts);
           }
         } else if (integrante[field] is List) {
           final condList = integrante[field] as List;
-          conditions.addAll(condList.map((e) => e.toString().trim()).where((e) => e.isNotEmpty && e.toLowerCase() != 'null'));
+          conditions.addAll(
+            condList
+                .map((e) => e.toString().trim())
+                .where((e) => e.isNotEmpty && e.toLowerCase() != 'null'),
+          );
         }
       }
     }
-    
+
     // Eliminar duplicados y limpiar
-    conditions = conditions.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
-    
+    conditions = conditions
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+
     debugPrint('🚨 Condiciones extraídas: $conditions');
-    
+
     return conditions;
   }
 }

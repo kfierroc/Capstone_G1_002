@@ -300,13 +300,39 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     List<Map<String, dynamic>> mascotas,
   ) {
     final integrantesConCondiciones = integrantes.where((i) {
-      final padecimiento = i['padecimiento'] as String?;
-      return padecimiento != null && padecimiento.isNotEmpty;
+      // Buscar en múltiples campos posibles para condiciones médicas
+      final possibleFields = [
+        'condiciones_medicas',
+        'condiciones_especiales',
+        'enfermedades',
+        'discapacidades',
+        'padecimiento',
+        'condiciones',
+        'problemas_salud',
+        'necesidades_especiales',
+      ];
+      
+      for (String field in possibleFields) {
+        if (i[field] != null) {
+          if (i[field] is String) {
+            final value = i[field] as String;
+            if (value.isNotEmpty && value.toLowerCase() != 'null') {
+              return true;
+            }
+          } else if (i[field] is List) {
+            final list = i[field] as List;
+            if (list.isNotEmpty) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
     }).length;
 
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
       padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
@@ -360,33 +386,38 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
             ],
           ),
           SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 16),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: ResponsiveHelper.isTablet(context) ? 1.2 : 3.0,
-            crossAxisSpacing: ResponsiveHelper.isTablet(context) ? 16 : 6,
-            mainAxisSpacing: ResponsiveHelper.isTablet(context) ? 16 : 6,
-            children: [
-              _buildModernSummaryCard(
-                number: '${integrantes.length}',
-                label: 'Personas',
-                icon: Icons.people_rounded,
-                color: const Color(0xFF3B82F6),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _buildModernSummaryCard(
+                  number: '${integrantes.length}',
+                  label: 'Personas',
+                  icon: Icons.people_rounded,
+                  color: const Color(0xFF3B82F6),
+                ),
               ),
-              _buildModernSummaryCard(
-                number: '${mascotas.length}',
-                label: 'Mascotas',
-                icon: Icons.pets_rounded,
-                color: const Color(0xFFF59E0B),
+              SizedBox(width: ResponsiveHelper.isTablet(context) ? 16 : 6),
+              Expanded(
+                child: _buildModernSummaryCard(
+                  number: '${mascotas.length}',
+                  label: 'Mascotas',
+                  icon: Icons.pets_rounded,
+                  color: const Color(0xFFF59E0B),
+                ),
               ),
-              _buildModernSummaryCard(
-                number: '$integrantesConCondiciones',
-                label: 'Con condiciones',
-                icon: Icons.medical_services_rounded,
-                color: const Color(0xFFDC2626),
+              SizedBox(width: ResponsiveHelper.isTablet(context) ? 16 : 6),
+              Expanded(
+                child: _buildModernSummaryCard(
+                  number: '$integrantesConCondiciones',
+                  label: 'Condiciones\nMedicas',
+                  icon: Icons.medical_services_rounded,
+                  color: const Color(0xFFDC2626),
+                ),
               ),
             ],
+            ),
           ),
         ],
       ),
@@ -400,7 +431,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 20 : 2),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
@@ -408,10 +439,11 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             padding: EdgeInsets.all(
-              ResponsiveHelper.isTablet(context) ? 12 : 2,
+              ResponsiveHelper.isTablet(context) ? 10 : 6,
             ),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
@@ -420,23 +452,23 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
             child: Icon(
               icon,
               color: color,
-              size: ResponsiveHelper.isTablet(context) ? 24 : 12,
+              size: ResponsiveHelper.isTablet(context) ? 20 : 16,
             ),
           ),
-          SizedBox(height: ResponsiveHelper.isTablet(context) ? 12 : 0),
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 10 : 6),
           Text(
             number,
             style: TextStyle(
-              fontSize: ResponsiveHelper.isTablet(context) ? 24 : 14,
+              fontSize: ResponsiveHelper.isTablet(context) ? 22 : 16,
               fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
-          SizedBox(height: ResponsiveHelper.isTablet(context) ? 4 : 0),
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 6 : 4),
           Text(
             label,
             style: TextStyle(
-              fontSize: ResponsiveHelper.isTablet(context) ? 12 : 7,
+              fontSize: ResponsiveHelper.isTablet(context) ? 12 : 9,
               fontWeight: FontWeight.w500,
               color: color.withValues(alpha: 0.8),
             ),
@@ -452,7 +484,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   Widget _buildAddressInfo(Map<String, dynamic> data) {
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
       padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
@@ -684,7 +716,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     final registroV = data['registro_v'] as Map<String, dynamic>? ?? {};
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
       padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
@@ -794,7 +826,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     final grupoFamiliar = data['grupo_familiar'] as Map<String, dynamic>? ?? {};
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
       padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
