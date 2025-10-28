@@ -188,7 +188,7 @@ class SearchSectionWidget extends StatelessWidget {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFDC2626),
+                      backgroundColor: const Color(0xFF3B82F6),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shadowColor: Colors.transparent,
@@ -213,8 +213,8 @@ class SearchSectionWidget extends StatelessWidget {
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFDC2626),
-                      side: const BorderSide(color: Color(0xFFDC2626)),
+                      foregroundColor: const Color(0xFF3B82F6),
+                      side: const BorderSide(color: Color(0xFF3B82F6)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -265,7 +265,7 @@ class SearchSectionWidget extends StatelessWidget {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFDC2626),
+                        backgroundColor: const Color(0xFF3B82F6),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shadowColor: Colors.transparent,
@@ -291,8 +291,8 @@ class SearchSectionWidget extends StatelessWidget {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFDC2626),
-                        side: const BorderSide(color: Color(0xFFDC2626)),
+                        foregroundColor: const Color(0xFF3B82F6),
+                        side: const BorderSide(color: Color(0xFF3B82F6)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
