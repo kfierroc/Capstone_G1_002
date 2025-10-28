@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../models/registration_data.dart';
-import '../../utils/app_styles.dart';
-import '../../utils/validators.dart';
 
 /// Pantalla inicial de registro - Solo email y contraseña
-class InitialRegistrationScreen extends StatefulWidget {
-  const InitialRegistrationScreen({super.key});
+class RegisterStepInputScreen extends StatefulWidget {
+  const RegisterStepInputScreen({super.key});
 
   @override
-  State<InitialRegistrationScreen> createState() => _InitialRegistrationScreenState();
+  State<RegisterStepInputScreen> createState() => _RegisterStepInputScreenState();
 }
 
-class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
+class _RegisterStepInputScreenState extends State<RegisterStepInputScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -20,7 +17,6 @@ class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
-  String? _errorMessage;
 
   @override
   void dispose() {
@@ -30,7 +26,31 @@ class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
     super.dispose();
   }
 
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor ingresa tu email';
+    }
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value)) {
+      return 'Ingresa un email válido';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor ingresa tu contraseña';
+    }
+    if (value.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+    return null;
+  }
+
   String? _validateConfirmPassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor confirma tu contraseña';
+    }
     if (value != _passwordController.text) {
       return 'Las contraseñas no coinciden';
     }
@@ -42,35 +62,26 @@ class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
-      // Crear objeto de datos de registro temporal
-      final registrationData = RegistrationData(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
       // Navegar a la pantalla de verificación de correo
       if (mounted) {
-        Navigator.pushReplacementNamed(
+        await Navigator.pushReplacementNamed(
           context,
-          '/email-verification',
+          '/email-verification-bomberos',
           arguments: {
-            'email': registrationData.email!,
-            'password': registrationData.password!,
+            'email': _emailController.text.trim(),
+            'password': _passwordController.text,
           },
         );
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error inesperado: $e';
-      });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -147,7 +158,7 @@ class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            validator: Validators.validateEmail,
+                            validator: _validateEmail,
                             decoration: InputDecoration(
                               labelText: 'Email *',
                               hintText: 'correo@ejemplo.com',
@@ -163,10 +174,10 @@ class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
-                            validator: Validators.validatePassword,
+                            validator: _validatePassword,
                             decoration: InputDecoration(
                               labelText: 'Contraseña *',
-                              hintText: 'Mínimo 8 caracteres',
+                              hintText: 'Mínimo 6 caracteres',
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -194,7 +205,6 @@ class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
                             validator: _validateConfirmPassword,
                             decoration: InputDecoration(
                               labelText: 'Confirmar Contraseña *',
-                              hintText: 'Repite tu contraseña',
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -294,3 +304,4 @@ class _InitialRegistrationScreenState extends State<InitialRegistrationScreen> {
     );
   }
 }
+

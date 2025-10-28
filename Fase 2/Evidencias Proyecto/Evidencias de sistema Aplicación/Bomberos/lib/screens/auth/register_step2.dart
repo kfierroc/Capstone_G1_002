@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import '../../utils/app_styles.dart';
-import '../../services/unified_auth_service.dart';
+import '../../services/supabase_auth_service.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/text_styles.dart';
 
 /// Pantalla para verificar el correo electrónico antes de continuar con el registro
-class EmailVerificationScreen extends StatefulWidget {
+class RegisterStep2VerificationScreen extends StatefulWidget {
   final String email;
   final String password;
 
-  const EmailVerificationScreen({
+  const RegisterStep2VerificationScreen({
     super.key,
     required this.email,
     required this.password,
   });
 
   @override
-  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+  State<RegisterStep2VerificationScreen> createState() => _RegisterStep2VerificationScreenState();
 }
 
-class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
+class _RegisterStep2VerificationScreenState extends State<RegisterStep2VerificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _codeController = TextEditingController();
-  final UnifiedAuthService _authService = UnifiedAuthService();
+  final SupabaseAuthService _authService = SupabaseAuthService();
   
   bool _isLoading = false;
   bool _isResending = false;
@@ -52,7 +53,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       final result = await _authService.registerWithEmail(
         widget.email,
         widget.password,
-        sendEmailVerification: true,
       );
 
       if (result.isSuccess) {
@@ -61,13 +61,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Correo de verificación enviado a ${widget.email}'),
-              backgroundColor: AppColors.success,
+              backgroundColor: Colors.green,
             ),
           );
         }
       } else {
         setState(() {
-          _errorMessage = result.message ?? 'Error al enviar correo de verificación';
+          _errorMessage = result.error ?? 'Error al enviar correo de verificación';
         });
       }
     } catch (e) {
@@ -103,13 +103,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       }
     } catch (e) {
       setState(() {
-        if (e.toString().contains('validation_failed')) {
-          _errorMessage = 'Error: No se pudo reenviar el correo. Verifica que el email sea válido.';
-        } else if (e.toString().contains('email no disponible')) {
-          _errorMessage = 'Error: No se puede reenviar el correo. Email no disponible.';
-        } else {
-          _errorMessage = 'Error al reenviar correo: $e';
-        }
+        _errorMessage = 'Error al reenviar correo: $e';
       });
     } finally {
       setState(() {
@@ -147,7 +141,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   void _skipVerification() {
     Navigator.pushReplacementNamed(
       context, 
-      '/registration-steps',
+      '/register-step3',
       arguments: {
         'email': widget.email,
         'password': widget.password,
@@ -165,15 +159,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     });
 
     try {
-      // Usar el servicio de autenticación real
-      final authService = UnifiedAuthService();
-      final result = await authService.verifyEmailCode(_codeController.text.trim());
+      final result = await _authService.verifyEmailCode(_codeController.text.trim());
       
       if (result.isSuccess) {
         if (mounted) {
           Navigator.pushReplacementNamed(
             context, 
-            '/registration-steps',
+            '/register-step3',
             arguments: {
               'email': widget.email,
               'password': widget.password,
@@ -448,6 +440,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         ),
       ),
     );
-
   }
 }
+

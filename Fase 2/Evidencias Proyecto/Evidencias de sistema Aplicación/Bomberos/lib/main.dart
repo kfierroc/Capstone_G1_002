@@ -5,6 +5,9 @@ import 'app.dart';
 import 'screens/auth/login.dart';
 import 'screens/auth/password.dart';
 import 'screens/auth/reset_password_with_code_screen.dart';
+import 'screens/auth/register_step1.dart';
+import 'screens/auth/register_step2.dart';
+import 'screens/auth/register_step3.dart';
 import 'screens/home/home_main.dart';
 import 'screens/grifos/grifos_home_screen.dart';
 
@@ -73,6 +76,28 @@ class MyApp extends StatelessWidget {
         '/code-reset': (context) {
           final email = ModalRoute.of(context)!.settings.arguments as String;
           return ResetPasswordWithCodeScreen(email: email);
+        },
+        '/register-step1': (context) => const RegisterStepInputScreen(),
+        '/register-step2': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return RegisterStep2VerificationScreen(
+            email: args['email'] as String,
+            password: args['password'] as String,
+          );
+        },
+        '/register-step3': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return RegisterStep3CompletionScreen(
+            email: args['email'] as String,
+            password: args['password'] as String,
+          );
+        },
+        '/email-verification-bomberos': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return RegisterStep2VerificationScreen(
+            email: args['email'] as String,
+            password: args['password'] as String,
+          );
         },
         '/home': (context) => const HomeScreen(),
         '/grifos': (context) => const GrifosHomeScreen(),

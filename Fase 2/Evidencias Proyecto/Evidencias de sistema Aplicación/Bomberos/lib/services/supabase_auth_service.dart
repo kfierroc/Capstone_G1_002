@@ -254,6 +254,68 @@ class SupabaseAuthService {
     }
   }
 
+  /// Registrar solo con email y contraseña (para verificación de email)
+  Future<AuthResult> registerWithEmail(String email, String password) async {
+    try {
+      debugPrint('🔐 SupabaseAuthService.registerWithEmail - Creando cuenta temporal...');
+      
+      final response = await _client.auth.signUp(
+        email: email.trim(),
+        password: password,
+      );
+      
+      if (response.user != null) {
+        debugPrint('✅ Cuenta temporal creada');
+        return AuthResult.success(null);
+      } else {
+        return AuthResult.error('No se pudo crear la cuenta');
+      }
+    } on AuthException catch (e) {
+      return AuthResult.error(_translateAuthError(e.message));
+    } catch (e) {
+      return AuthResult.error('Error inesperado: ${e.toString()}');
+    }
+  }
+
+  /// Verificar código de email
+  Future<AuthResult> verifyEmailCode(String code) async {
+    try {
+      debugPrint('🔐 SupabaseAuthService.verifyEmailCode - Verificando código...');
+      
+      final response = await _client.auth.verifyOTP(
+        type: OtpType.signup,
+        email: currentUser?.email ?? '',
+        token: code.trim(),
+      );
+      
+      if (response.user != null) {
+        debugPrint('✅ Código verificado');
+        return AuthResult.success(null);
+      } else {
+        return AuthResult.error('Código de verificación inválido');
+      }
+    } on AuthException catch (e) {
+      return AuthResult.error(_translateAuthError(e.message));
+    } catch (e) {
+      return AuthResult.error('Error inesperado: ${e.toString()}');
+    }
+  }
+
+  /// Reenviar código de verificación de email
+  Future<AuthResult> resendEmailVerification({required String email}) async {
+    try {
+      await _client.auth.resend(
+        type: OtpType.signup,
+        email: email.trim(),
+      );
+      return AuthResult.success(null);
+    } on AuthException catch (e) {
+      return AuthResult.error(_translateAuthError(e.message));
+    } catch (e) {
+      return AuthResult.error('Error al reenviar código: ${e.toString()}');
+    }
+  }
+
   /// Obtener bombero del usuario autenticado
   Future<Bombero?> getCurrentUserBombero() async {
     try {
