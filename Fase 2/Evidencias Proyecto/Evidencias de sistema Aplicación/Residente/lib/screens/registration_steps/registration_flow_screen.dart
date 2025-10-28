@@ -4,9 +4,8 @@ import '../../utils/app_styles.dart';
 import '../../services/unified_auth_service.dart';
 import '../../services/database_service.dart' as db;
 import '../home/resident_home.dart';
-import 'step1_holder_data.dart';
-import 'step2_address_only.dart';
-import 'step3_map_coordinates.dart';
+import 'step2_holder_data.dart';
+import 'step3_residence_info.dart';
 import 'step4_housing_details.dart';
 
 /// Flujo principal de registro reorganizado con verificación de correo
@@ -35,8 +34,7 @@ class _RegistrationFlowScreenState extends State<RegistrationFlowScreen> {
 
   final List<String> _stepTitles = [
     'Datos del Titular',
-    'Dirección',
-    'Coordenadas',
+    'Información de la Residencia',
     'Detalles de la Vivienda',
   ];
 
@@ -104,23 +102,18 @@ class _RegistrationFlowScreenState extends State<RegistrationFlowScreen> {
   Widget _buildCurrentStep() {
     switch (_currentStep) {
       case 0:
-        return Step1HolderData(
+        return Step2HolderData(
           registrationData: _registrationData,
           onNext: _nextStep,
+          onPrevious: () {},
         );
       case 1:
-        return Step2AddressOnly(
+        return Step3ResidenceInfo(
           registrationData: _registrationData,
           onNext: _nextStep,
           onPrevious: _previousStep,
         );
       case 2:
-        return Step3MapCoordinates(
-          registrationData: _registrationData,
-          onNext: _nextStep,
-          onPrevious: _previousStep,
-        );
-      case 3:
         return Step4HousingDetails(
           registrationData: _registrationData,
           onPrevious: _previousStep,

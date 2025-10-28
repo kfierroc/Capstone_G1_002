@@ -2,6 +2,33 @@
 
 Esta documentación explica de manera sencilla cómo funciona el código de autenticación con Supabase en la aplicación Residente (Sistema de Emergencias).
 
+## 🔒 Validación de Roles Implementada
+
+**Funcionalidad de seguridad:**
+- La app de Residente valida que el usuario **NO** esté registrado como bombero
+- Previene acceso cruzado entre aplicaciones
+- Mensaje claro: "Este correo está registrado como bombero. Usa la app de bomberos."
+
+**Código:**
+```dart
+// Verificar que NO es bombero antes de permitir login
+final esBombero = await _verificarSiEsBombero(email.trim());
+if (esBombero) {
+  return AuthResult.error('Está registrado como bombero. Usa la app de bomberos.');
+}
+```
+
+## 📱 Responsividad Completa
+
+### Mejoras Implementadas:
+- **Diseño adaptativo**: Funciona en móvil, tablet y desktop
+- **Prevención de overflow**: Todos los widgets optimizados con `isExpanded: true`
+- **Grid adaptativo**: 2-4 columnas según ancho de pantalla
+- **Contenedor centrado**: Max-width en desktop para mejor legibilidad
+- **Dropdown optimizado**: Prevención de overflow en listas largas
+
+---
+
 ## 📁 Estructura del Proyecto
 
 ```

@@ -246,6 +246,14 @@ class UnifiedAuthService {
       debugPrint('🔐 UnifiedAuthService.signInWithPassword - Iniciando...');
       debugPrint('📧 Email: $email');
 
+      // PRIMERO: Verificar que el usuario no esté registrado como bombero
+      debugPrint('🔍 Verificando que el usuario no esté registrado como bombero: $email');
+      final esBombero = await _verificarSiEsBombero(email.trim());
+      if (esBombero) {
+        debugPrint('❌ El email $email está registrado como bombero');
+        return AuthResult.error('Este correo electrónico está registrado como bombero. Por favor, usa la aplicación de bomberos o usa otro email.');
+      }
+
       final response = await _client.auth.signInWithPassword(
         email: email.trim(),
         password: password,
@@ -381,6 +389,22 @@ class UnifiedAuthService {
     } catch (e) {
       debugPrint('⚠️ No se encontró grupo familiar por email: $e');
       return null;
+    }
+  }
+
+  /// Verificar si un email está registrado como bombero
+  Future<bool> _verificarSiEsBombero(String email) async {
+    try {
+      final response = await _client
+          .from('bombero')
+          .select('email_b')
+          .eq('email_b', email.trim())
+          .limit(1);
+      
+      return response.isNotEmpty;
+    } catch (e) {
+      debugPrint('⚠️ Error al verificar si es bombero: $e');
+      return false; // En caso de error, permitir continuar
     }
   }
 

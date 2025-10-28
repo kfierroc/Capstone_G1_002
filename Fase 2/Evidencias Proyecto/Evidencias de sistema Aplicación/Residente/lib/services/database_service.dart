@@ -1262,10 +1262,18 @@ class DatabaseService {
       // Generar ID manualmente para id_grupof (compatible con INTEGER)
       final idGrupoF = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Usar segundos en lugar de milisegundos
       
+      // Extraer el nombre del email para usarlo como nombre temporal
+      final emailPart = email.split('@')[0];
+      final nameParts = emailPart.split(RegExp(r'[._]'));
+      final tempNombre = nameParts.isNotEmpty ? nameParts.first[0].toUpperCase() + nameParts.first.substring(1) : 'Usuario';
+      final tempApellido = nameParts.length > 1 ? nameParts.last[0].toUpperCase() + nameParts.last.substring(1) : 'Temporal';
+      
       final grupoData = {
         'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
-        // 'user_id': userId, // Comentado temporalmente hasta que se actualice el esquema
-        'rut_titular': 'Sin RUT', // Valor temporal que se puede actualizar
+        'rut_titular': '00000000', // RUT temporal - debe ser actualizado
+        'nomb_titular': tempNombre,
+        'ape_p_titular': tempApellido,
+        'telefono_titular': '', // Teléfono vacío temporalmente
         'email': email,
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };

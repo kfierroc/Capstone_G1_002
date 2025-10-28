@@ -122,7 +122,7 @@ class CompleteAddressInfoWidget extends StatelessWidget {
                   ),
                   SizedBox(width: isTablet ? 6 : 4),
                   Text(
-                    'Última actualización: ${_formatLastUpdated(data['last_update'])}',
+                    'Última actualización: ${_formatLastUpdated(data['last_updated'])}',
                     style: TextStyle(
                       fontSize: isTablet ? 13 : 12,
                       color: const Color(0xFF64748B),
@@ -248,12 +248,12 @@ class CompleteAddressInfoWidget extends StatelessWidget {
         return 'No registrada';
       }
       
-      // Formato: año-mes-día (como en la imagen)
+      // Formato: día/mes/año
       final day = dateTime.day.toString().padLeft(2, '0');
       final month = dateTime.month.toString().padLeft(2, '0');
       final year = dateTime.year.toString();
       
-      return '$year-$month-$day';
+      return '$day/$month/$year';
     } catch (e) {
       return 'No registrada';
     }

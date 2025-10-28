@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../../services/search_service.dart';
 import '../../services/supabase_auth_service.dart';
 import '../../utils/responsive.dart';
-import '../../constants/address_detail_styles.dart';
 import '../../widgets/address_detail/address_detail_widgets.dart';
 import '../grifos/grifos_home_screen.dart';
+import '../grifos/grifo_map_screen.dart';
 
 /// Pantalla de detalles de una dirección específica para bomberos
 /// Refactorizada aplicando principios SOLID y Clean Code
@@ -21,7 +21,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   final SearchService _searchService = SearchService();
   final SupabaseAuthService _authService = SupabaseAuthService();
   final TextEditingController _searchController = TextEditingController();
-  
+
   Map<String, dynamic>? _detailedData;
   bool _isLoading = true;
   int _selectedTab = 0;
@@ -72,20 +72,20 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     final emailPart = email.split('@')[0];
     final namePart = emailPart.replaceAll(RegExp(r'[._]'), ' ');
     final words = namePart.split(' ');
-    return words.map((word) => word.isNotEmpty 
-        ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
-        : '').join(' ');
+    return words
+        .map(
+          (word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+              : '',
+        )
+        .join(' ');
   }
 
   void _performSearch() {
     final query = _searchController.text.trim();
     if (query.isNotEmpty) {
       // Navegar a la pantalla de búsqueda con el término de búsqueda
-      Navigator.pushNamed(
-        context, 
-        '/resident-search',
-        arguments: query,
-      );
+      Navigator.pushNamed(context, '/resident-search', arguments: query);
     }
   }
 
@@ -97,7 +97,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     try {
       final residenceId = widget.residenceData['id_residencia'] as int;
       final result = await _searchService.getResidenceDetails(residenceId);
-      
+
       if (mounted) {
         setState(() {
           _detailedData = result.isSuccess ? result.data : null;
@@ -117,73 +117,139 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final data = _detailedData ?? widget.residenceData;
-    final integrantes = (data['integrantes'] as List<dynamic>?)
-        ?.cast<Map<String, dynamic>>() ?? [];
-    final mascotas = (data['mascotas'] as List<dynamic>?)
-        ?.cast<Map<String, dynamic>>() ?? [];
+    final integrantes =
+        (data['integrantes'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
+    final mascotas =
+        (data['mascotas'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
+
+    final isDesktop = ResponsiveHelper.isDesktop(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: ResponsiveContainer(
-        child: Column(
-          children: [
-            _buildSimpleHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: ResponsiveHelper.getResponsivePadding(context),
-                child: Column(
-                  children: [
-                     SearchSectionWidget(
-                       searchController: _searchController,
-                       onSearch: _performSearch,
-                       onClear: _clearSearch,
-                       onViewGrifos: () {
-                         debugPrint('🔍 Navegando a grifos...');
-                         try {
-                           Navigator.pushNamed(context, '/grifos');
-                         } catch (error) {
-                           debugPrint('❌ Error navegando a grifos: $error');
-                           // Fallback: navegar directamente a la pantalla
-                           Navigator.push(
-                             context,
-                             MaterialPageRoute(
-                               builder: (context) => const GrifosHomeScreen(),
-                             ),
-                           );
-                         }
-                       },
-                     ),
-                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
-                    _buildCriticalSummary(integrantes, mascotas),
-                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
-                    _buildAddressInfo(data),
-                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
-                    _buildHousingInfo(data),
-                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
-                    // Instrucciones especiales eliminadas temporalmente
-                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
-                    _buildContactInfo(data),
-                    SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
-                    ModernOccupantsWidget(
-                      integrantes: integrantes,
-                      mascotas: mascotas,
-                      selectedTab: _selectedTab,
-                      onTabChanged: (tab) => setState(() => _selectedTab = tab),
-                    ),
-                  ],
+      body: Column(
+        children: [
+          _buildSimpleHeader(),
+          Expanded(
+            child: isDesktop 
+              ? SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MediaQuery.of(context).size.width * 0.05,
+                    vertical: 24,
+                  ),
+                  child: Column(
+                    children: [
+                      SearchSectionWidget(
+                        searchController: _searchController,
+                        onSearch: _performSearch,
+                        onClear: _clearSearch,
+                        onViewGrifos: () {
+                          debugPrint('🔍 Navegando a grifos...');
+                          try {
+                            Navigator.pushNamed(context, '/grifos');
+                          } catch (error) {
+                            debugPrint('❌ Error navegando a grifos: $error');
+                            // Fallback: navegar directamente a la pantalla
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const GrifosHomeScreen(),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildCriticalSummary(integrantes, mascotas),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildAddressInfo(data),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildHousingInfo(data),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      // Instrucciones especiales eliminadas temporalmente
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildContactInfo(data),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      ModernOccupantsWidget(
+                        integrantes: integrantes,
+                        mascotas: mascotas,
+                        selectedTab: _selectedTab,
+                        onTabChanged: (tab) =>
+                            setState(() => _selectedTab = tab),
+                      ),
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: ResponsiveHelper.getResponsivePadding(context),
+                  child: Column(
+                    children: [
+                      SearchSectionWidget(
+                        searchController: _searchController,
+                        onSearch: _performSearch,
+                        onClear: _clearSearch,
+                        onViewGrifos: () {
+                          debugPrint('🔍 Navegando a grifos...');
+                          try {
+                            Navigator.pushNamed(context, '/grifos');
+                          } catch (error) {
+                            debugPrint('❌ Error navegando a grifos: $error');
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const GrifosHomeScreen(),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildCriticalSummary(integrantes, mascotas),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildAddressInfo(data),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildHousingInfo(data),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      _buildContactInfo(data),
+                      SizedBox(
+                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                      ),
+                      ModernOccupantsWidget(
+                        integrantes: integrantes,
+                        mascotas: mascotas,
+                        selectedTab: _selectedTab,
+                        onTabChanged: (tab) => setState(() => _selectedTab = tab),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -197,11 +263,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -233,7 +295,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     );
   }
 
-  Widget _buildCriticalSummary(List<Map<String, dynamic>> integrantes, List<Map<String, dynamic>> mascotas) {
+  Widget _buildCriticalSummary(
+    List<Map<String, dynamic>> integrantes,
+    List<Map<String, dynamic>> mascotas,
+  ) {
     final integrantesConCondiciones = integrantes.where((i) {
       final padecimiento = i['padecimiento'] as String?;
       return padecimiento != null && padecimiento.isNotEmpty;
@@ -241,10 +306,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
 
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -263,7 +328,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                padding: EdgeInsets.all(
+                  ResponsiveHelper.isTablet(context) ? 12 : 10,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF10B981), Color(0xFF059669)],
@@ -292,43 +359,34 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               ),
             ],
           ),
-          SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 20),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = ResponsiveHelper.isTablet(context);
-              final crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
-              final childAspectRatio = isTablet ? 1.2 : 1.1;
-              
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: childAspectRatio,
-                crossAxisSpacing: isTablet ? 16 : 12,
-                mainAxisSpacing: isTablet ? 16 : 12,
-                children: [
-                  _buildModernSummaryCard(
-                    number: '${integrantes.length}',
-                    label: 'Personas',
-                    icon: Icons.people_rounded,
-                    color: const Color(0xFF3B82F6),
-                  ),
-                  _buildModernSummaryCard(
-                    number: '${mascotas.length}',
-                    label: 'Mascotas',
-                    icon: Icons.pets_rounded,
-                    color: const Color(0xFFF59E0B),
-                  ),
-                  if (crossAxisCount == 3)
-                    _buildModernSummaryCard(
-                      number: '$integrantesConCondiciones',
-                      label: 'Con condiciones',
-                      icon: Icons.medical_services_rounded,
-                      color: const Color(0xFFDC2626),
-                    ),
-                ],
-              );
-            },
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 16),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: ResponsiveHelper.isTablet(context) ? 1.2 : 3.0,
+            crossAxisSpacing: ResponsiveHelper.isTablet(context) ? 16 : 6,
+            mainAxisSpacing: ResponsiveHelper.isTablet(context) ? 16 : 6,
+            children: [
+              _buildModernSummaryCard(
+                number: '${integrantes.length}',
+                label: 'Personas',
+                icon: Icons.people_rounded,
+                color: const Color(0xFF3B82F6),
+              ),
+              _buildModernSummaryCard(
+                number: '${mascotas.length}',
+                label: 'Mascotas',
+                icon: Icons.pets_rounded,
+                color: const Color(0xFFF59E0B),
+              ),
+              _buildModernSummaryCard(
+                number: '$integrantesConCondiciones',
+                label: 'Con condiciones',
+                icon: Icons.medical_services_rounded,
+                color: const Color(0xFFDC2626),
+              ),
+            ],
           ),
         ],
       ),
@@ -342,7 +400,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 20 : 16),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 20 : 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
@@ -352,7 +410,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+            padding: EdgeInsets.all(
+              ResponsiveHelper.isTablet(context) ? 12 : 2,
+            ),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
@@ -360,34 +420,29 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
             child: Icon(
               icon,
               color: color,
-              size: ResponsiveHelper.isTablet(context) ? 24 : 20,
+              size: ResponsiveHelper.isTablet(context) ? 24 : 12,
             ),
           ),
-          SizedBox(height: ResponsiveHelper.isTablet(context) ? 12 : 8),
-          Flexible(
-            child: Text(
-              number,
-              style: TextStyle(
-                fontSize: ResponsiveHelper.isTablet(context) ? 24 : 20,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-              overflow: TextOverflow.ellipsis,
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 12 : 0),
+          Text(
+            number,
+            style: TextStyle(
+              fontSize: ResponsiveHelper.isTablet(context) ? 24 : 14,
+              fontWeight: FontWeight.w700,
+              color: color,
             ),
           ),
-          SizedBox(height: ResponsiveHelper.isTablet(context) ? 4 : 2),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: ResponsiveHelper.isTablet(context) ? 12 : 11,
-                fontWeight: FontWeight.w500,
-                color: color.withValues(alpha: 0.8),
-              ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 4 : 0),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: ResponsiveHelper.isTablet(context) ? 12 : 7,
+              fontWeight: FontWeight.w500,
+              color: color.withValues(alpha: 0.8),
             ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -397,10 +452,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   Widget _buildAddressInfo(Map<String, dynamic> data) {
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -418,7 +473,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                padding: EdgeInsets.all(
+                  ResponsiveHelper.isTablet(context) ? 12 : 10,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFFDC2626), Color(0xFFB91C1C)],
@@ -475,60 +532,67 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 8 : 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6B7280).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.update_rounded,
-                          color: const Color(0xFF6B7280),
-                          size: ResponsiveHelper.isTablet(context) ? 16 : 14,
-                        ),
-                      ),
-                      SizedBox(width: ResponsiveHelper.isTablet(context) ? 12 : 10),
-                      Expanded(
-                        child: Text(
-                          'Última actualización: ${_formatLastUpdated(data['last_update'])}',
-                          style: TextStyle(
-                            fontSize: ResponsiveHelper.isTablet(context) ? 14 : 12,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF6B7280),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                Container(
+                  padding: EdgeInsets.all(
+                    ResponsiveHelper.isTablet(context) ? 8 : 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6B7280).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.update_rounded,
+                    color: const Color(0xFF6B7280),
+                    size: ResponsiveHelper.isTablet(context) ? 16 : 14,
                   ),
                 ),
                 SizedBox(
-                  height: 40,
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.map_rounded, size: 16),
-                    label: const Text(
-                      'Ver en Mapa',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  width: ResponsiveHelper.isTablet(context) ? 12 : 10,
+                ),
+                Expanded(
+                  child: Text(
+                    'Última actualización: ${_formatLastUpdated(data['last_updated'])}',
+                    style: TextStyle(
+                      fontSize: ResponsiveHelper.isTablet(context) ? 14 : 12,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF6B7280),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF3B82F6),
-                      side: const BorderSide(color: Color(0xFF3B82F6)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Botón Ver en Mapa
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GrifoMapScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map_rounded, size: 16),
+              label: Text(
+                'Ver en Mapa',
+                style: TextStyle(
+                  fontSize: ResponsiveHelper.isTablet(context) ? 14 : 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF3B82F6),
+                side: const BorderSide(color: Color(0xFF3B82F6)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ),
         ],
@@ -601,27 +665,16 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     if (lastUpdated == null || lastUpdated.toString().toLowerCase() == 'null') {
       return 'No registrada';
     }
-    
+
     try {
       final dateTime = DateTime.parse(lastUpdated.toString());
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
       
-      if (difference.inMinutes < 1) {
-        return 'Hace menos de 1 minuto';
-      } else if (difference.inMinutes < 60) {
-        return 'Hace ${difference.inMinutes} minutos';
-      } else if (difference.inHours < 24) {
-        return 'Hace ${difference.inHours} horas';
-      } else if (difference.inDays == 0) {
-        return 'Hoy';
-      } else if (difference.inDays == 1) {
-        return 'Ayer';
-      } else if (difference.inDays < 7) {
-        return 'Hace ${difference.inDays} días';
-      } else {
-        return 'Hace ${(difference.inDays / 7).floor()} semanas';
-      }
+      // Formato: día/mes/año
+      final day = dateTime.day.toString().padLeft(2, '0');
+      final month = dateTime.month.toString().padLeft(2, '0');
+      final year = dateTime.year.toString();
+      
+      return '$day/$month/$year';
     } catch (e) {
       return 'No registrada';
     }
@@ -631,10 +684,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     final registroV = data['registro_v'] as Map<String, dynamic>? ?? {};
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -652,7 +705,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                padding: EdgeInsets.all(
+                  ResponsiveHelper.isTablet(context) ? 12 : 10,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
@@ -683,13 +738,25 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
           ),
           const SizedBox(height: 24),
           // Detalles de la Vivienda
-          _buildHousingDetailRow('Tipo de vivienda', registroV['tipo'] as String? ?? 'No especificado'),
+          _buildHousingDetailRow(
+            'Tipo de vivienda',
+            registroV['tipo'] as String? ?? 'No especificado',
+          ),
           const SizedBox(height: 12),
-          _buildHousingDetailRow('Piso del departamento', registroV['pisos']?.toString() ?? 'No especificado'),
+          _buildHousingDetailRow(
+            'Piso del departamento',
+            registroV['pisos']?.toString() ?? 'No especificado',
+          ),
           const SizedBox(height: 12),
-          _buildHousingDetailRow('Material de construcción', registroV['material'] as String? ?? 'No especificado'),
+          _buildHousingDetailRow(
+            'Material de construcción',
+            registroV['material'] as String? ?? 'No especificado',
+          ),
           const SizedBox(height: 12),
-          _buildHousingDetailRow('Estado de la vivienda', registroV['estado'] as String? ?? 'No especificado'),
+          _buildHousingDetailRow(
+            'Estado de la vivienda',
+            registroV['estado'] as String? ?? 'No especificado',
+          ),
         ],
       ),
     );
@@ -727,10 +794,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     final grupoFamiliar = data['grupo_familiar'] as Map<String, dynamic>? ?? {};
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 8,
         vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 20),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -748,7 +815,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
+                padding: EdgeInsets.all(
+                  ResponsiveHelper.isTablet(context) ? 12 : 10,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
@@ -782,7 +851,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
           const SizedBox(height: 16),
           _buildModernInfoRow(
             label: 'Teléfono Principal',
-            value: grupoFamiliar['telefono_titular'] as String? ?? 'No especificado',
+            value:
+                grupoFamiliar['telefono_titular'] as String? ??
+                'No especificado',
             icon: Icons.phone_rounded,
             color: const Color(0xFF06B6D4),
           ),

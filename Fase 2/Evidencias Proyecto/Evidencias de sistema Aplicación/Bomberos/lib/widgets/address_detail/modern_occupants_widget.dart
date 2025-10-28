@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../constants/address_detail_styles.dart';
 import '../../utils/responsive.dart';
 
 /// Widget modernizado y completamente responsivo para mostrar información de ocupantes
@@ -24,8 +23,11 @@ class ModernOccupantsWidget extends StatelessWidget {
     final isMobile = ResponsiveHelper.isMobile(context);
     
     return Container(
-      margin: ResponsiveHelper.getResponsiveMargin(context),
-      padding: EdgeInsets.all(isTablet ? 28 : 24),
+      margin: EdgeInsets.symmetric(
+        horizontal: isTablet ? 20 : 8,
+        vertical: isTablet ? 16 : 12,
+      ),
+      padding: EdgeInsets.all(isTablet ? 28 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -253,7 +255,10 @@ class ModernOccupantsWidget extends StatelessWidget {
         children: mascotas.asMap().entries.map((entry) {
           final index = entry.key;
           final mascota = entry.value;
-          return _buildModernPetCard(mascota, index, isTablet, isMobile);
+          return Padding(
+            padding: EdgeInsets.only(bottom: isTablet ? 16 : 12),
+            child: _buildModernPetCard(mascota, index, isTablet, isMobile),
+          );
         }).toList(),
       ),
     );
@@ -383,7 +388,6 @@ class ModernOccupantsWidget extends StatelessWidget {
     final tamano = mascota['tamanio'] ?? 'No especificado';
     
     return Container(
-      margin: EdgeInsets.only(bottom: isTablet ? 16 : 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(12),
@@ -393,79 +397,29 @@ class ModernOccupantsWidget extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.all(isTablet ? 16 : 12),
+        padding: EdgeInsets.all(isTablet ? 16 : 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Nombre de la mascota
             Text(
               nombre,
               style: TextStyle(
-                fontSize: isTablet ? 16 : 14,
+                fontSize: isTablet ? 16 : 13,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF1E293B),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: isTablet ? 6 : 4),
             
-            // Detalles: Especie • Tamaño
+            // Especie y tamaño juntos en una línea
             Text(
               '$especie • $tamano',
               style: TextStyle(
-                fontSize: isTablet ? 14 : 12,
+                fontSize: isTablet ? 14 : 11,
                 color: const Color(0xFF64748B),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPetInfoChip(String label, String value, IconData icon, Color color, bool isTablet) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 12 : 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: isTablet ? 16 : 14,
-            ),
-            SizedBox(width: isTablet ? 8 : 6),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: isTablet ? 12 : 10,
-                      fontWeight: FontWeight.w500,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: isTablet ? 14 : 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1E293B),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -503,61 +457,6 @@ class ModernOccupantsWidget extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMedicalConditions(List<String> conditions, bool isTitular, bool isTablet) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.warning_rounded,
-              color: const Color(0xFFEF4444),
-              size: isTablet ? 18 : 16,
-            ),
-            SizedBox(width: isTablet ? 8 : 6),
-            Text(
-              'Condiciones médicas/especiales:',
-              style: TextStyle(
-                fontSize: isTablet ? 14 : 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFFEF4444),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: isTablet ? 8 : 6),
-        Wrap(
-          spacing: isTablet ? 8 : 6,
-          runSpacing: isTablet ? 8 : 6,
-          children: conditions.map((condition) {
-            return Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 12 : 10,
-                vertical: isTablet ? 6 : 4,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444), // Rojo sólido
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFEF4444),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                condition,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: isTablet ? 12 : 11,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 

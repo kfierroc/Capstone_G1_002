@@ -264,26 +264,36 @@ CREATE POLICY "Public read access for domicilio" ON domicilio
 ### 4. Módulo de Grifos
 
 #### Pantalla Principal de Grifos
-- **Lista de grifos**: Todos los grifos registrados
+- **Lista de grifos**: Todos los grifos registrados con información completa
 - **Filtros**: Por estado (Operativo, Dañado, Mantenimiento, Sin verificar)
 - **Búsqueda**: Por dirección o comuna
-- **Estadísticas**: Contadores por estado
+- **Estadísticas**: Contadores por estado con diseño moderno
+- **Diseño responsive**: Adaptado a móvil, tablet y desktop
 
 #### Registro de Grifos
 - **Formulario completo**: Dirección, comuna, tipo, estado
-- **Coordenadas**: Latitud y longitud
+- **Coordenadas**: Latitud y longitud con validación
 - **Notas**: Información adicional
 - **Validaciones**: Campos requeridos
+- **Diseño responsive**: Optimizado para diferentes tamaños de pantalla
 
 #### Gestión de Estados
-- **Cambio de estado**: Desde la lista de grifos
+- **Cambio de estado**: Desde la lista de grifos con confirmación visual
 - **Estados disponibles**: Operativo, Dañado, Mantenimiento, Sin verificar
-- **Actualización**: En tiempo real
+- **Actualización**: En tiempo real con retroalimentación visual
+- **Colores distintivos**: Verde, Rojo, Amarillo, Gris según estado
 
 #### Estadísticas
 - **Total de grifos**: Contador general
-- **Por estado**: Contadores específicos
-- **Visualización**: Tarjetas con iconos y colores
+- **Por estado**: Contadores específicos con iconos
+- **Visualización**: Tarjetas modernas con iconos y colores
+- **Actualización automática**: Se actualiza al cambiar estados
+
+#### Mapa Interactivo
+- **Vista geográfica**: Muestra todos los grifos en un mapa
+- **Leyenda de estados**: Colores identificables por estado
+- **Estadísticas visuales**: Contadores por estado
+- **Responsive**: Adaptado a diferentes tamaños de pantalla
 
 ---
 

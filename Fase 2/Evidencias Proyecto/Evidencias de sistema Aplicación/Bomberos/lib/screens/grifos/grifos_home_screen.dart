@@ -144,60 +144,6 @@ class _GrifosHomeScreenState extends State<GrifosHomeScreen> {
     }
   }
 
-  /// Cargar información de grifos desde Supabase
-  Future<void> _cargarInfoGrifos() async {
-    try {
-      final infoResult = await _infoGrifoService.getAllInfoGrifos();
-      
-      if (infoResult.isSuccess && infoResult.data != null) {
-        // Crear mapa con la información más reciente de cada grifo
-        final Map<int, InfoGrifo> infoMap = {};
-        
-        for (final info in infoResult.data!) {
-          // Mantener solo la información más reciente de cada grifo
-          if (!infoMap.containsKey(info.idGrifo) || 
-              info.fechaRegistro.isAfter(infoMap[info.idGrifo]!.fechaRegistro)) {
-            infoMap[info.idGrifo] = info;
-          }
-        }
-        
-        setState(() {
-          _infoGrifos = infoMap;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error al cargar información de grifos: $e');
-    }
-  }
-
-  /// Cargar nombres de comunas para todos los grifos
-  Future<void> _cargarNombresComunas() async {
-    try {
-      debugPrint('🏙️ Cargando nombres de comunas...');
-      
-      // Obtener códigos únicos de comunas de todos los grifos
-      final cutComsUnicos = _grifos.map((g) => g.cutCom).toSet();
-      
-      for (final cutCom in cutComsUnicos) {
-        final resultado = await _grifoService.obtenerNombreComunaPorCutCom(cutCom);
-        if (resultado.isSuccess) {
-          setState(() {
-            _nombresComunas[cutCom] = resultado.data!;
-          });
-        } else {
-          debugPrint('⚠️ Error al cargar comuna $cutCom: ${resultado.error}');
-          setState(() {
-            _nombresComunas[cutCom] = 'Comuna $cutCom'; // Fallback
-          });
-        }
-      }
-      
-      debugPrint('✅ Nombres de comunas cargados: $_nombresComunas');
-    } catch (e) {
-      debugPrint('❌ Error al cargar nombres de comunas: $e');
-    }
-  }
-
   List<Grifo> get _grifosFiltrados {
     final grifosFiltrados = _grifos.where((grifo) {
       // Filtrar por búsqueda de texto

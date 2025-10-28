@@ -423,31 +423,20 @@ class ResidentInfoCard extends StatelessWidget {
 
   String _formatLastUpdated(dynamic lastUpdated) {
     if (lastUpdated == null || lastUpdated.toString().toLowerCase() == 'null') {
-      return 'Hoy';
+      return 'No registrada';
     }
     
     try {
       final dateTime = DateTime.parse(lastUpdated.toString());
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
       
-      if (difference.inMinutes < 1) {
-        return 'Hace menos de 1 minuto';
-      } else if (difference.inMinutes < 60) {
-        return 'Hace ${difference.inMinutes} minutos';
-      } else if (difference.inHours < 24) {
-        return 'Hace ${difference.inHours} horas';
-      } else if (difference.inDays == 0) {
-        return 'Hoy';
-      } else if (difference.inDays == 1) {
-        return 'Ayer';
-      } else if (difference.inDays < 7) {
-        return 'Hace ${difference.inDays} días';
-      } else {
-        return 'Hace ${(difference.inDays / 7).floor()} semanas';
-      }
+      // Formato: día/mes/año
+      final day = dateTime.day.toString().padLeft(2, '0');
+      final month = dateTime.month.toString().padLeft(2, '0');
+      final year = dateTime.year.toString();
+      
+      return '$day/$month/$year';
     } catch (e) {
-      return 'Hoy';
+      return 'No registrada';
     }
   }
 }

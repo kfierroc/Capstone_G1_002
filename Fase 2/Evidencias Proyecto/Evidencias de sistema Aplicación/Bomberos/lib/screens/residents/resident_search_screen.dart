@@ -20,6 +20,20 @@ class _ResidentSearchScreenState extends State<ResidentSearchScreen> {
   Map<String, dynamic>? _selectedResident;
 
   @override
+  void initState() {
+    super.initState();
+    // Obtener argumentos pasados desde la navegación
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is String && args.isNotEmpty) {
+        _searchController.text = args;
+        // Ejecutar búsqueda automáticamente
+        _searchResidents();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

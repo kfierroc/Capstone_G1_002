@@ -10,17 +10,16 @@ Este documento explica cómo funciona la arquitectura compartida entre las aplic
 ┌─────────────────────────────────────────────────────────────┐
 │                        SUPABASE CLOUD                       │
 │                                                             │
-│  ┌──────────────────┐         ┌──────────────────┐        │
-│  │   auth.users     │         │    profiles      │        │
-│  │                  │         │                  │        │
-│  │ - id (UUID)      │────────▶│ - id (UUID)      │        │
-│  │ - email          │         │ - full_name      │        │
-│  │ - password (enc) │         │ - rut            │        │
-│  │ - created_at     │         │ - fire_company   │        │
-│  │ - last_sign_in   │         │ - email          │        │
-│  └──────────────────┘         └──────────────────┘        │
+│  ┌──────────────────┐    ┌──────────────┐   ┌───────────┐ │
+│  │   auth.users     │    │   bombero    │   │grupofamil│ │
+│  │                  │    │              │   │   iar     │ │
+│  │ - id (UUID)      │    │ - rut_num    │   │ - id_grup│ │
+│  │ - email          │    │ - email_b    │   │ - email   │ │
+│  │ - password (enc) │    │ - nomb_bombr │   │ - rut_tit │ │
+│  └──────────────────┘    └──────────────┘   └───────────┘ │
 │                                                             │
 │              Row Level Security (RLS) Habilitado           │
+│              + Validación de Roles Entre Apps              │
 └─────────────────────────────────────────────────────────────┘
                           ▲         ▲
                           │         │
@@ -29,26 +28,17 @@ Este documento explica cómo funciona la arquitectura compartida entre las aplic
                           │         │
               ┌───────────┴─────────┴───────────┐
               │                                 │
-    ┌─────────▼────────┐     ┌───────────▼─────────┐     ┌───────────▼─────────┐
-    │   APP BOMBEROS   │     │    APP GRIFOS       │     │   APP RESIDENTE     │
-    │                  │           │                     │
-    │  ┌────────────┐  │           │  ┌────────────┐    │
-    │  │   .env     │  │           │  │   .env     │    │
-    │  └────────────┘  │           │  └────────────┘    │
-    │                  │           │                     │
-    │  ┌────────────┐  │           │  ┌────────────┐    │
-    │  │ supabase   │  │           │  │ supabase   │    │
-    │  │ _config    │  │           │  │ _config    │    │
-    │  └────────────┘  │           │  └────────────┘    │
-    │                  │           │                     │
-    │  ┌────────────┐  │           │  ┌────────────┐    │
-    │  │ supabase   │  │           │  │ supabase   │    │
-    │  │ _auth      │◀─┼───────────┼─▶│ _auth      │    │
-    │  │ _service   │  │  IDÉNTICO │  │ _service   │    │
-    │  └────────────┘  │           │  └────────────┘    │
-    │                  │           │                     │
-    │  Login/Register  │     │  Login/Register     │     │  Login/Wizard 4pasos│
-    └──────────────────┘     └─────────────────────┘     └─────────────────────┘
+    ┌─────────▼────────┐                       ┌───────────▼─────────┐
+    │   APP BOMBEROS   │                       │   APP RESIDENTE     │
+    │                  │                       │                     │
+    │  ✅ Valida       │                       │  ✅ Valida          │
+    │     en bombero   │                       │     NO está en      │
+    │                  │                       │     bombero         │
+    │  ✅ Mapa de      │                       │  ✅ Wizard 4 pasos  │
+    │     grifos       │                       │  ✅ Registro        │
+    │                  │                       │     completo        │
+    │  Login/Register  │                       │  Login/Wizard       │
+    └──────────────────┘                       └─────────────────────┘
 ```
 
 ---
@@ -83,11 +73,10 @@ Este documento explica cómo funciona la arquitectura compartida entre las aplic
 
 ## 🔧 Componentes Compartidos
 
-### 1. Archivo .env (Idéntico en ambas apps)
+### 1. Archivo .env (Idéntico en todas las apps)
 
 **Ubicación:**
 - `Bomberos/.env`
-- `Grifos/.env`
 - `Residente/.env`
 
 **Contenido (IDÉNTICO si quieres compartir usuarios):**
@@ -100,7 +89,14 @@ SUPABASE_ANON_KEY=tu-clave-anon-aqui
 - Para que las apps se conecten al mismo proyecto
 - Si usaran diferentes credenciales, serían bases de datos separadas
 
-**Nota:** Residente puede usar credenciales diferentes si quieres una BD separada para residentes.
+**Nota:** Si quieres bases de datos separadas, usa credenciales diferentes para cada app.
+
+### 🔒 Validación de Roles
+
+**Nueva funcionalidad implementada:**
+- La app de **Bomberos** valida que el usuario no esté registrado como residente
+- La app de **Residente** valida que el usuario no esté registrado como bombero
+- Previene que un usuario pueda iniciar sesión en la aplicación incorrecta
 
 ---
 
@@ -277,11 +273,36 @@ profiles:
 
 ---
 
-## 🔒 Seguridad: Row Level Security (RLS)
+## 🔒 Seguridad: Row Level Security (RLS) y Validación de Roles
 
 ### ¿Qué es RLS?
 
 **Row Level Security** es una característica de PostgreSQL (base de datos de Supabase) que limita qué filas puede ver/modificar cada usuario.
+
+### Validación de Roles Entre Apps
+
+**Implementación:**
+1. **App de Bomberos**: Verifica que el usuario exista en la tabla `bombero` antes de permitir login
+2. **App de Residente**: Verifica que el usuario NO exista en la tabla `bombero` antes de permitir login
+3. **Mensajes de error claros**: Indica al usuario en qué app debe iniciar sesión
+
+**Código de validación en Bomberos:**
+```dart
+// Verificar que existe en tabla bombero
+final bombero = await _getBomberoByEmail(email.trim());
+if (bombero == null) {
+  return AuthResult.error('No está registrado como bombero. Usa la app de residentes.');
+}
+```
+
+**Código de validación en Residente:**
+```dart
+// Verificar que NO existe en tabla bombero
+final esBombero = await _verificarSiEsBombero(email.trim());
+if (esBombero) {
+  return AuthResult.error('Está registrado como bombero. Usa la app de bomberos.');
+}
+```
 
 ### Políticas implementadas:
 
@@ -515,6 +536,8 @@ echo "SUPABASE_ANON_KEY=tu-clave-anon" >> .env
 - Validaciones del lado del cliente
 - Encriptación de contraseñas
 - Tokens de sesión seguros
+- **Validación de roles entre apps**: Previene acceso no autorizado entre apps
+- **Migración segura de usuarios**: Manejo de usuarios existentes sin grupo familiar
 
 ### 5. **Escalabilidad**
 - Agregar más apps es fácil
@@ -752,6 +775,56 @@ Es una feature nativa de PostgreSQL (BD de Supabase):
 - Aplica filtros automáticos a queries
 - Se ejecuta en el servidor (no se puede bypassear)
 - Usa funciones especiales como `auth.uid()`
+
+---
+
+## 📱 Responsividad y Diseño Adaptativo
+
+### Mejoras Implementadas
+
+#### 1. **Diseño Centrado en Desktop**
+```dart
+// Max-width de 1400px para mejor legibilidad
+final maxWidth = isDesktop ? 1400.0 : null;
+return Center(
+  child: ResponsiveContainer(
+    maxWidth: maxWidth,
+    child: Column(...),
+  ),
+);
+```
+
+#### 2. **Grid Adaptativo por Ancho**
+```dart
+// Grid de 2 o 4 columnas según ancho de pantalla
+final crossAxisCount = constraints.maxWidth > 800 ? 4 : 2;
+return GridView.count(
+  crossAxisCount: crossAxisCount,
+  childAspectRatio: crossAxisCount == 4 ? 3.5 : 2.5,
+);
+```
+
+#### 3. **Prevención de Overflow**
+- Todos los widgets con `isExpanded: true` donde corresponde
+- Textos con `overflow: TextOverflow.ellipsis`
+- Layouts verticales en móvil, horizontales en desktop
+- Contenedores con `SingleChildScrollView` para contenido extenso
+
+#### 4. **Breakpoints Responsivos**
+```dart
+// Mobile: < 600px
+// Tablet: 600px - 900px
+// Desktop: > 900px
+final isMobile = MediaQuery.of(context).size.width < 600;
+final isTablet = MediaQuery.of(context).size.width >= 600 && 
+                 MediaQuery.of(context).size.width < 900;
+final isDesktop = MediaQuery.of(context).size.width >= 900;
+```
+
+### Navegación Adaptativa
+- **Móvil**: Navigation drawer y tabs inferiores
+- **Tablet**: Tabs superiores o laterales
+- **Desktop**: Sidebar o menú horizontal superior
 
 ---
 

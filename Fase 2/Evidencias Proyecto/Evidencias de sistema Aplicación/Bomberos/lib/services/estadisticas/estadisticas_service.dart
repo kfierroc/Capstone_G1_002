@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import '../../models/info_grifo.dart';
 import '../service_result.dart';
-import '../grifo/grifo_service_refactored.dart';
-import '../info_grifo/info_grifo_service_refactored.dart';
+import '../grifo_service.dart' hide ServiceResult, InfoGrifoService;
+import '../info_grifo/info_grifo_service.dart';
 import '../comuna/comuna_service.dart';
 
 /// Servicio para manejar estadísticas del sistema
@@ -12,8 +12,8 @@ class EstadisticasService {
   factory EstadisticasService() => _instance;
   EstadisticasService._internal();
 
-  final GrifoServiceRefactored _grifoService = GrifoServiceRefactored();
-  final InfoGrifoServiceRefactored _infoGrifoService = InfoGrifoServiceRefactored();
+  final GrifoService _grifoService = GrifoService();
+  final InfoGrifoService _infoGrifoService = InfoGrifoService();
   final ComunaService _comunaService = ComunaService();
 
   /// Obtener estadísticas generales del sistema
@@ -21,11 +21,9 @@ class EstadisticasService {
     try {
       debugPrint('📊 Obteniendo estadísticas generales...');
       
-      // Obtener estadísticas de grifos
-      final grifosResult = await _grifoService.getGrifoStatistics();
-      if (!grifosResult.isSuccess) {
-        return ServiceResult.error('Error al obtener grifos: ${grifosResult.error}');
-      }
+      // Obtener grifos
+      final grifosResult = await _grifoService.getAllGrifos();
+      final totalGrifos = grifosResult.isSuccess && grifosResult.data != null ? grifosResult.data!.length : 0;
 
       // Obtener estadísticas de información de grifos
       final infoGrifosResult = await _infoGrifoService.getAllInfoGrifos();
@@ -33,22 +31,27 @@ class EstadisticasService {
         return ServiceResult.error('Error al obtener información de grifos: ${infoGrifosResult.error}');
       }
 
-      // Obtener estadísticas de comunas
-      final comunasResult = await _comunaService.getComunaStatistics();
-      if (!comunasResult.isSuccess) {
-        return ServiceResult.error('Error al obtener estadísticas de comunas: ${comunasResult.error}');
-      }
+      // Obtener comunas disponibles
+      final comunas = grifosResult.isSuccess && grifosResult.data != null 
+          ? grifosResult.data!.map((g) => g.cutCom).toSet().length 
+          : 0;
 
       // Calcular estadísticas de estados
       final estadosStats = _calcularEstadisticasEstados(infoGrifosResult.data!);
       
-      // Usar estadísticas de comunas del servicio de grifos
-      final comunasStats = grifosResult.data!['por_comuna'] as Map<String, int>? ?? {};
+      // Calcular estadísticas por comuna
+      final comunasStats = <String, int>{};
+      if (grifosResult.isSuccess && grifosResult.data != null) {
+        for (final grifo in grifosResult.data!) {
+          final cutCom = grifo.cutCom.toString();
+          comunasStats[cutCom] = (comunasStats[cutCom] ?? 0) + 1;
+        }
+      }
 
       final estadisticas = {
-        'total_grifos': grifosResult.data!['total_grifos'],
+        'total_grifos': totalGrifos,
         'total_inspecciones': infoGrifosResult.data!.length,
-        'total_comunas': comunasResult.data!['total_comunas'],
+        'total_comunas': comunas,
         'estados_grifos': estadosStats,
         'grifos_por_comuna': comunasStats,
         'fecha_actualizacion': DateTime.now().toIso8601String(),
@@ -67,26 +70,48 @@ class EstadisticasService {
     try {
       debugPrint('📊 Obteniendo estadísticas del bombero: $rutNum');
       
-      // Obtener inspecciones del bombero
-      final inspeccionesResult = await _infoGrifoService.getInfoGrifoStatistics();
-      if (!inspeccionesResult.isSuccess) {
-        return ServiceResult.error('Error al obtener inspecciones: ${inspeccionesResult.error}');
-      }
-
       // Obtener información detallada de grifos inspeccionados
       final infoGrifosResult = await _infoGrifoService.getAllInfoGrifos();
       if (!infoGrifosResult.isSuccess) {
         return ServiceResult.error('Error al obtener información de grifos: ${infoGrifosResult.error}');
       }
 
+      // Filtrar inspecciones del bombero específico
+      final inspeccionesBombero = infoGrifosResult.data!.where((info) => info.rutNum == rutNum).toList();
+      
+      // Calcular estadísticas de estados
+      final inspeccionesPorEstado = <String, int>{
+        'operativo': 0,
+        'dañado': 0,
+        'mantenimiento': 0,
+        'sin_verificar': 0,
+      };
+      
+      for (final info in inspeccionesBombero) {
+        switch (info.estado.toLowerCase()) {
+          case 'operativo':
+            inspeccionesPorEstado['operativo'] = (inspeccionesPorEstado['operativo'] ?? 0) + 1;
+            break;
+          case 'dañado':
+            inspeccionesPorEstado['dañado'] = (inspeccionesPorEstado['dañado'] ?? 0) + 1;
+            break;
+          case 'mantenimiento':
+            inspeccionesPorEstado['mantenimiento'] = (inspeccionesPorEstado['mantenimiento'] ?? 0) + 1;
+            break;
+          case 'sin verificar':
+            inspeccionesPorEstado['sin_verificar'] = (inspeccionesPorEstado['sin_verificar'] ?? 0) + 1;
+            break;
+        }
+      }
+
       // Calcular estadísticas adicionales
       final estadisticas = {
         'rut_num': rutNum,
-        'total_inspecciones': inspeccionesResult.data!['total_inspecciones'],
-        'inspecciones_por_estado': inspeccionesResult.data!['por_estado'],
-        'grifos_inspeccionados': infoGrifosResult.data!.length,
-        'fecha_ultima_inspeccion': _obtenerFechaUltimaInspeccion(infoGrifosResult.data!),
-        'comunas_atendidas': _obtenerComunasAtendidas(infoGrifosResult.data!),
+        'total_inspecciones': inspeccionesBombero.length,
+        'inspecciones_por_estado': inspeccionesPorEstado,
+        'grifos_inspeccionados': inspeccionesBombero.length,
+        'fecha_ultima_inspeccion': _obtenerFechaUltimaInspeccion(inspeccionesBombero),
+        'comunas_atendidas': _obtenerComunasAtendidas(inspeccionesBombero),
         'fecha_actualizacion': DateTime.now().toIso8601String(),
       };
 

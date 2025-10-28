@@ -9,5 +9,3 @@ export 'registro_v_service.dart';
 export 'user_data_service.dart';
 export 'database_service_factory.dart';
 
-// Servicio principal refactorizado
-export '../database_service_refactored.dart';
