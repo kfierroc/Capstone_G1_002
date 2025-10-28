@@ -116,7 +116,7 @@ class SearchService {
             'instrucciones_especiales': null, // Campo eliminado
             'fecha_ini_r': registroV['fecha_ini_r'],
           },
-          'last_updated': DateTime.now().toIso8601String(),
+          'last_updated': registroV['fecha_ini_r'],
         };
 
         results.add(result);
@@ -154,6 +154,7 @@ class SearchService {
       final results = <Map<String, dynamic>>[];
       
       for (final item in response) {
+        final registroV = item['registro_v'] as Map<String, dynamic>? ?? {};
         results.add({
           'id_residencia': item['id_residencia'],
           'address': item['direccion'],
@@ -164,7 +165,7 @@ class SearchService {
           'integrantes': item['integrantes'],
           'mascotas': item['mascotas'],
           'registro_v': item['registro_v'],
-          'last_updated': DateTime.now().toIso8601String(),
+          'last_updated': registroV['fecha_ini_r'],
         });
       }
 
@@ -289,7 +290,7 @@ class SearchService {
           'instrucciones_especiales': null, // Campo eliminado
           'fecha_ini_r': registroV['fecha_ini_r'],
         },
-        'last_updated': DateTime.now().toIso8601String(),
+        'last_updated': registroV['fecha_ini_r'],
       };
 
       debugPrint('✅ Detalles de residencia obtenidos exitosamente');

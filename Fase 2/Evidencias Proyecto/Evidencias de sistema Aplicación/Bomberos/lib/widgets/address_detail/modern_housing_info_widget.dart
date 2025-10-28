@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../constants/address_detail_styles.dart';
 import '../../utils/responsive.dart';
 
 /// Widget modernizado y responsivo para mostrar información de la vivienda
@@ -92,15 +91,19 @@ class ModernHousingInfoWidget extends StatelessWidget {
       );
     }
     
-    // En tablets y desktop, usar layout de grid
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: isTablet ? 2.5 : 3.0,
-      crossAxisSpacing: isTablet ? 16 : 12,
-      mainAxisSpacing: isTablet ? 16 : 12,
-      children: [
+    // En tablets y desktop, usar layout de grid adaptativo
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 800 ? 4 : 2;
+        
+        return GridView.count(
+          crossAxisCount: crossAxisCount,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: crossAxisCount == 4 ? 3.5 : 2.5,
+          crossAxisSpacing: isTablet ? 16 : 12,
+          mainAxisSpacing: isTablet ? 16 : 12,
+          children: [
         _buildHousingInfoCard(
           'Tipo',
           housingData['tipo'] as String? ?? 'No especificado',
@@ -129,7 +132,9 @@ class ModernHousingInfoWidget extends StatelessWidget {
           _getEstadoColor(housingData['estado'] as String?),
           isTablet,
         ),
-      ],
+          ],
+        );
+      },
     );
   }
 

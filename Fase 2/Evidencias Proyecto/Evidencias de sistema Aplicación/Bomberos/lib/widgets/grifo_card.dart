@@ -24,7 +24,6 @@ class GrifoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isTablet = ResponsiveHelper.isTablet(context);
-    final isMobile = ResponsiveHelper.isMobile(context);
     
     // Obtener color basado en el estado del grifo
     final estadoColor = _getEstadoColor();
@@ -374,23 +373,6 @@ class GrifoCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'No disponible';
-    
-    final now = DateTime.now();
-    final difference = now.difference(date);
-    
-    if (difference.inDays == 0) {
-      return 'Hoy';
-    } else if (difference.inDays == 1) {
-      return 'Ayer';
-    } else if (difference.inDays < 7) {
-      return 'Hace ${difference.inDays} días';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-
   String _formatDateComplete(DateTime? date) {
     if (date == null) return 'No disponible';
     
@@ -404,8 +386,6 @@ class GrifoCard extends StatelessWidget {
   }
 
   Widget _buildReporterInfo(BuildContext context) {
-    final isTablet = ResponsiveHelper.isTablet(context);
-    
     if (infoCompleta == null || infoCompleta!['bombero'] == null) {
       return _buildInfoRow(
         context: context,

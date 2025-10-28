@@ -143,6 +143,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     });
   }
 
+  /// Saltar verificación y continuar al registro
+  void _skipVerification() {
+    Navigator.pushReplacementNamed(
+      context, 
+      '/registration-steps',
+      arguments: {
+        'email': widget.email,
+        'password': widget.password,
+      },
+    );
+  }
+
   /// Verificar código de verificación
   Future<void> _verifyEmail() async {
     if (!_formKey.currentState!.validate()) return;
@@ -409,26 +421,50 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
               const SizedBox(height: AppSpacing.lg),
 
-              // Botón de reenviar
-              Center(
-                child: TextButton(
-                  onPressed: _canResend && !_isResending ? _resendVerificationEmail : null,
-                  child: _isResending
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          _canResend
-                              ? 'Reenviar código'
-                              : 'Reenviar en ${_resendCountdown}s',
-                          style: TextStyle(
-                            color: _canResend ? AppColors.primary : AppColors.textTertiary,
-                            fontWeight: FontWeight.w500,
-                          ),
+              // Botones
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _canResend && !_isResending ? _resendVerificationEmail : null,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: _isResending
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              _canResend
+                                  ? 'Reenviar código'
+                                  : 'Reenviar en ${_resendCountdown}s',
+                              style: TextStyle(
+                                color: _canResend ? AppColors.primary : AppColors.textTertiary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isLoading ? null : _skipVerification,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.orange.shade700),
+                      ),
+                      child: Text(
+                        'Saltar',
+                        style: TextStyle(
+                          color: Colors.orange.shade700,
+                          fontWeight: FontWeight.w600,
                         ),
-                ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               const Spacer(),
