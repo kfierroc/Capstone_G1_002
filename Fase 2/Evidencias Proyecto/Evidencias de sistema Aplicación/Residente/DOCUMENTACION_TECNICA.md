@@ -2,6 +2,15 @@
 
 Esta documentación explica de manera sencilla cómo funciona el código de autenticación con Supabase en la aplicación Residente (Sistema de Emergencias).
 
+## 🔐 Sistema de Autenticación Actualizado
+
+### Nuevas Características Implementadas:
+1. **Registro en 3 Pasos**: Email/contraseña → Verificación OTP → Wizard completo
+2. **Verificación de Email con OTP**: Código de 6 dígitos + opción "Saltar"
+3. **Reset de Contraseña con OTP**: Código en lugar de deep links
+4. **Diseño Verde Unificado**: Mismo estilo que Bomberos
+5. **Validación de Roles**: Previene acceso de bomberos a la app de residentes
+
 ## 🔒 Validación de Roles Implementada
 
 **Funcionalidad de seguridad:**
@@ -46,8 +55,10 @@ Residente/
 │   ├── screens/
 │   │   ├── auth/
 │   │   │   ├── login.dart                # Pantalla de login
-│   │   │   ├── register.dart             # Pantalla de registro
-│   │   │   └── password.dart             # Recuperación de contraseña
+│   │   │   ├── initial_registration_screen.dart    # Paso 1: Email y contraseña
+│   │   │   ├── email_verification_screen.dart      # Paso 2: Verificación OTP
+│   │   │   ├── password.dart             # Recuperación de contraseña
+│   │   │   └── reset_password_with_code_screen.dart # Reset con código OTP
 │   │   ├── registration_steps/           # Registro por pasos
 │   │   │   ├── step1_create_account.dart # Paso 1: Crear cuenta
 │   │   │   ├── step2_holder_data.dart    # Paso 2: Datos del titular
@@ -393,6 +404,82 @@ Future<AuthResult> resetPassword({required String email}) async {
 
 ---
 
+### 4.3.5. Verificación de Email con Código OTP
+
+```dart
+Future<AuthResult> verifyEmailCode(String code) async {
+  try {
+    // Verificar código OTP de 6 dígitos
+    final response = await _client.auth.verifyOTP(
+      type: OtpType.signup,
+      email: currentUser?.email ?? '',
+      token: code.trim(),
+    );
+    
+    if (response.user != null) {
+      return AuthResult.success(null);
+    } else {
+      return AuthResult.error('Código de verificación inválido');
+    }
+  } on AuthException catch (e) {
+    return AuthResult.error('Error: ${e.message}');
+  }
+}
+```
+
+### 4.3.6. Reenviar Código de Verificación
+
+```dart
+Future<AuthResult> resendEmailVerification({required String email}) async {
+  try {
+    await _client.auth.resend(
+      type: OtpType.signup,
+      email: email.trim(),
+    );
+    return AuthResult.success(null);
+  } on AuthException catch (e) {
+    return AuthResult.error('Error al reenviar código');
+  }
+}
+```
+
+### 4.3.7. Reset de Contraseña con Código OTP
+
+```dart
+Future<AuthResult> resetPassword(String email) async {
+  // Enviar código OTP
+  await _client.auth.signInWithOtp(
+    email: email.trim(),
+    shouldCreateUser: false, // No crear usuario nuevo
+  );
+  return AuthResult.success(null);
+}
+
+Future<AuthResult> resetPasswordWithCode({
+  required String email,
+  required String code,
+  required String newPassword,
+}) async {
+  // Verificar código OTP
+  final response = await _client.auth.verifyOTP(
+    type: OtpType.recovery,
+    email: email.trim(),
+    token: code.trim(),
+  );
+
+  if (response.user != null) {
+    // Actualizar contraseña
+    await _client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+    await _client.auth.signOut(); // Cerrar sesión
+    return AuthResult.success(null);
+  } else {
+    return AuthResult.error('Código inválido');
+  }
+}
+```
+
 ### 4.4. Traducción de Errores (Mejorada)
 
 ```dart
@@ -691,22 +778,26 @@ Future<void> _login() async {
 
 ---
 
-## 📋 7. Registro por Pasos (Wizard Multi-Paso)
+## 📋 7. Registro en 3 Pasos (Actualizado)
 
 ### ¿Qué es?
-En lugar de un formulario largo, el registro se divide en 4 pasos:
+El registro se divide en 3 pasos principales:
 
 ```
-Paso 1: Crear Cuenta
+Paso 1: Crear Cuenta (Email y contraseña)
    ↓
-Paso 2: Datos del Titular
+Paso 2: Verificar Email (Código OTP de 6 dígitos + opción "Saltar")
    ↓
-Paso 3: Información de Residencia
-   ↓
-Paso 4: Detalles de Vivienda
+Paso 3: Wizard de Registro Completo
    ↓
 ¡Registro Completo!
 ```
+
+### Nuevo Flujo de Verificación con OTP
+- **Envío automático**: Código de 6 dígitos al email
+- **Validación**: Código correcto o botón "Saltar"
+- **Countdown**: Botón de reenvío con countdown de 60 segundos
+- **Diseño**: Estilo verde unificado con diseño de Bomberos
 
 ### Estructura:
 
@@ -1064,6 +1155,25 @@ authOptions: FlutterAuthClientOptions(
   authFlowType: AuthFlowType.pkce,
 ),
 ```
+
+---
+
+## 🎨 Diseño Verde Unificado
+
+### Características del Diseño
+- **Gradiente verde**: `Colors.green.shade400` a `Colors.green.shade700`
+- **Círculos blancos**: Contenedores circulares con iconos en verde
+- **Sombras suaves**: BoxShadow para profundidad
+- **Formularios blancos**: Contenedores blancos con bordes redondeados
+- **Botones verdes**: Botones principales en verde con texto blanco
+
+### Pantallas con Diseño Verde
+- ✅ `initial_registration_screen.dart` - Paso 1 de registro
+- ✅ `email_verification_screen.dart` - Verificación con OTP
+- ✅ `reset_password_with_code_screen.dart` - Reset de contraseña
+
+### Consistencia Entre Apps
+Ambas aplicaciones (Bomberos y Residente) ahora usan el mismo estilo visual en las pantallas de autenticación, mejorando la experiencia del usuario.
 
 ---
 

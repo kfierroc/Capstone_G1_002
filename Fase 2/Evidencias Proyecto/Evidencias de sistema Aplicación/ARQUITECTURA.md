@@ -2,6 +2,36 @@
 
 Este documento explica cómo funciona la arquitectura compartida entre las aplicaciones **Bomberos**, **Grifos** y **Residente**, permitiendo que usuarios compartan credenciales (opcional) entre las apps.
 
+## 🔐 Sistema de Autenticación Actualizado
+
+### Características Implementadas
+
+#### 1. **Registro en 3 Pasos (Bomberos)**
+- **Paso 1**: Email y contraseña (con confirmación)
+- **Paso 2**: Verificación de email con código OTP de 6 dígitos
+- **Paso 3**: Completar datos (nombre, apellido, RUT, compañía)
+
+#### 2. **Registro en 3 Pasos (Residente)**
+- **Paso 1**: Email y contraseña (con confirmación)
+- **Paso 2**: Verificación de email con código OTP de 6 dígitos + opción de "Saltar"
+- **Paso 3**: Datos del titular, residencia y vivienda (wizard completo)
+
+#### 3. **Reset de Contraseña con Código OTP**
+- Envía código OTP de 6 dígitos al email
+- Valida que el email esté registrado
+- Permite cambiar contraseña con código
+- Funciona en ambas aplicaciones
+
+#### 4. **Validación de Roles Entre Apps**
+- Bomberos valida que el usuario NO sea residente
+- Residente valida que el usuario NO sea bombero
+- Mensajes claros de redirección
+
+#### 5. **Diseño Unificado Verde**
+- Todas las pantallas de autenticación usan el estilo verde degradado
+- Círculos blancos con iconos
+・Diseño consistente entre apps
+
 ---
 
 ## 📊 Diagrama de Arquitectura
@@ -68,6 +98,55 @@ Este documento explica cómo funciona la arquitectura compartida entre las aplic
 1. **Bomberos y Grifos comparten una BD**
 2. **Residente usa otra BD diferente**
 3. **Útil si quieres separar usuarios de residentes vs. personal**
+
+---
+
+## 📱 Servicios de Autenticación Actualizados
+
+### Ubicación de Servicios:
+- `Bomberos/lib/services/supabase_auth_service.dart`
+- `Grifos/lib/services/supabase_auth_service.dart`
+- `Residente/lib/services/unified_auth_service.dart`
+
+### Nuevos Métodos en Bomberos:
+
+```dart
+// Registro temporal para verificación de email
+Future<AuthResult> registerWithEmail(String email, String password)
+
+// Verificar código de email OTP
+Future<AuthResult> verifyEmailCode(String code)
+
+// Reenviar código de verificación
+Future<AuthResult> resendEmailVerification({required String email})
+
+// Reset con código OTP - Enviar código
+Future<AuthResult> resetPassword(String email)
+
+// Reset con código OTP - Cambiar contraseña
+Future<AuthResult> resetPasswordWithCode({
+  required String email, 
+  required String code, 
+  required String newPassword
+})
+```
+
+### Nuevos Métodos en Residente:
+
+```dart
+// Registro con verificación de email
+Future<AuthResult> registerWithEmail(String email, String password, {bool sendEmailVerification = false})
+
+// Verificar código OTP
+Future<AuthResult> verifyEmailCode(String code)
+
+// Reenviar código de verificación
+Future<AuthResult> resendEmailVerification({required String email})
+
+// Reset con código OTP
+Future<AuthResult> resetPassword(String email)
+Future<AuthResult> resetPasswordWithCode({required String email, required String code, required String newPassword})
+```
 
 ---
 
@@ -179,13 +258,30 @@ Ahora la app puede:
 // 4. Retorna éxito o error
 ```
 
-#### resetPassword()
+#### resetPassword() - Método actualizado con OTP
 ```dart
 // Lo que hace:
-// 1. Supabase envía email con enlace de recuperación
-// 2. Usuario hace clic y crea nueva contraseña
-// 3. La nueva contraseña funciona en ambas apps
+// 1. Valida que el email esté registrado
+// 2. Envía código OTP de 6 dígitos al email
+// 3. Usuario ingresa código en la app
+// 4. Usuario ingresa nueva contraseña
+// 5. El sistema valida el código y actualiza la contraseña
+// 6. La nueva contraseña funciona en todas las apps
 ```
+
+#### Pantallas de Autenticación
+
+**Bomberos:**
+- `/register-step1` → Email y contraseña
+- `/register-step2` → Verificación de email con OTP
+- `/register-step3` → Completar datos del bombero
+- `/code-reset` → Reset de contraseña con código
+
+**Residente:**
+- `/initial-registration` → Email y contraseña
+- `/email-verification` → Verificación de email con OTP (+ botón "Saltar")
+- `/registration-steps` → Wizard de registro completo
+- `/code-reset` → Reset de contraseña con código
 
 ---
 
