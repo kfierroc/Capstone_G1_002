@@ -175,15 +175,67 @@ class SupabaseAuthService {
     }
   }
 
-  /// Recuperar contraseña
+  /// Recuperar contraseña - envía código OTP al email
   Future<AuthResult> resetPassword(String email) async {
     try {
-      await _client.auth.resetPasswordForEmail(email.trim());
+      debugPrint('🔐 SupabaseAuthService.resetPassword - Enviando código OTP...');
+      
+      // Enviar código OTP para reset de contraseña
+      await _client.auth.signInWithOtp(
+        email: email.trim(),
+        shouldCreateUser: false, // No crear usuario nuevo
+      );
+      
+      debugPrint('✅ Código OTP enviado');
       return AuthResult.success(null);
     } on AuthException catch (e) {
+      debugPrint('❌ AuthException en resetPassword: ${e.message}');
       return AuthResult.error(_translateAuthError(e.message));
     } catch (e) {
-      return AuthResult.error('Error al enviar email: ${e.toString()}');
+      debugPrint('❌ Error inesperado en resetPassword: $e');
+      return AuthResult.error('Error al enviar código: ${e.toString()}');
+    }
+  }
+
+  /// Resetear contraseña con código OTP
+  Future<AuthResult> resetPasswordWithCode({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      debugPrint('🔐 SupabaseAuthService.resetPasswordWithCode - Verificando código...');
+      
+      // Verificar el código OTP
+      final response = await _client.auth.verifyOTP(
+        type: OtpType.recovery,
+        email: email.trim(),
+        token: code.trim(),
+      );
+
+      if (response.user != null) {
+        debugPrint('✅ Código verificado, actualizando contraseña...');
+        
+        // Actualizar la contraseña
+        await _client.auth.updateUser(
+          UserAttributes(password: newPassword),
+        );
+        
+        debugPrint('✅ Contraseña actualizada exitosamente');
+        
+        // Cerrar sesión después de cambiar la contraseña
+        await _client.auth.signOut();
+        
+        return AuthResult.success(null);
+      } else {
+        return AuthResult.error('Código de verificación inválido');
+      }
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en resetPasswordWithCode: ${e.message}');
+      return AuthResult.error(_translateAuthError(e.message));
+    } catch (e) {
+      debugPrint('❌ Error inesperado en resetPasswordWithCode: $e');
+      return AuthResult.error('Error al cambiar contraseña: ${e.toString()}');
     }
   }
 

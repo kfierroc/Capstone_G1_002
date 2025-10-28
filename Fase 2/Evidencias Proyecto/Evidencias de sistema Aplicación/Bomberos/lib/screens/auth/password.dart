@@ -45,19 +45,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
         if (result.isSuccess) {
           setState(() {
-            _emailSent = true;
             _isLoading = false;
           });
 
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Email de recuperación enviado. Revisa tu bandeja de entrada.',
-                ),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 4),
-              ),
+            // Navegar a la pantalla de ingreso de código
+            Navigator.pushNamed(
+              context,
+              '/code-reset',
+              arguments: _emailController.text.trim(),
             );
           }
         } else {

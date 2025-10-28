@@ -3,6 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'screens/auth/login.dart';
+import 'screens/auth/password.dart';
+import 'screens/auth/reset_password_with_code_screen.dart';
 import 'screens/home/home_main.dart';
 import 'screens/grifos/grifos_home_screen.dart';
 
@@ -67,6 +69,11 @@ class MyApp extends StatelessWidget {
       home: const AuthChecker(),
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/code-reset': (context) {
+          final email = ModalRoute.of(context)!.settings.arguments as String;
+          return ResetPasswordWithCodeScreen(email: email);
+        },
         '/home': (context) => const HomeScreen(),
         '/grifos': (context) => const GrifosHomeScreen(),
       },

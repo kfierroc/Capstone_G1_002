@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/supabase_config.dart';
 import 'screens/auth/login.dart';
 import 'screens/auth/reset_password.dart';
+import 'screens/auth/reset_password_with_code_screen.dart';
 import 'screens/auth/initial_registration_screen.dart';
 import 'screens/auth/email_verification_screen.dart';
 import 'screens/registration_steps/registration_flow_screen.dart';
@@ -93,6 +94,12 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/reset-password': (context) => const ResetPasswordScreen(),
+        '/code-reset': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, String>;
+          return ResetPasswordWithCodeScreen(
+            email: args['email']!,
+          );
+        },
         '/home': (context) => const ResidentHomeScreen(),
         '/initial-registration': (context) => const InitialRegistrationScreen(),
         '/email-verification': (context) {

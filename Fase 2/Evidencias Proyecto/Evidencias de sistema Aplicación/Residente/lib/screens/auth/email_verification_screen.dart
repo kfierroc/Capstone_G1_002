@@ -265,7 +265,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Text(
+                          const Text(
                             'Revisa tu correo electrónico',
                             style: TextStyle(
                               color: Colors.white70,
