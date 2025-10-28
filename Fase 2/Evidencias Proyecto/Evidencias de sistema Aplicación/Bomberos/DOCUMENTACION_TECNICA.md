@@ -24,8 +24,12 @@ El Sistema de Bomberos es una aplicación móvil desarrollada en Flutter que pro
 - **Aplicación Unificada**: Integra funcionalidades de bomberos y grifos en una sola aplicación
 - **Búsqueda de Domicilios**: Sistema de búsqueda en tiempo real de información crítica de domicilios
 - **Gestión de Grifos**: Módulo completo para registro y gestión de grifos de agua
-- **Autenticación Segura**: Sistema de login/registro con Supabase
+- **Registro en 3 Pasos**: Email/contraseña → Verificación OTP → Datos del bombero
+- **Autenticación Segura**: Sistema de login/registro con Supabase y verificación de email
+- **Reset de Contraseña**: Con código OTP en lugar de deep links
+- **Validación de Roles**: Previene acceso cruzado entre Bomberos y Residente
 - **Interfaz Responsive**: Adaptable a diferentes tamaños de pantalla
+- **Diseño Verde Unificado**: Estilo consistente en todas las pantallas de autenticación
 - **Modo Emergencia**: Interfaz especializada para situaciones críticas
 
 ---
@@ -219,11 +223,31 @@ CREATE POLICY "Public read access for domicilio" ON domicilio
 - **Validaciones**: Email válido, contraseña requerida
 - **Integración**: Supabase Auth
 
-#### Registro
-- **Ruta**: `/register`
-- **Funcionalidad**: Registro de nuevos usuarios
-- **Campos**: Email, contraseña, nombre completo, RUT, compañía
-- **Validaciones**: Email único, RUT válido, contraseña segura
+#### Registro en 3 Pasos
+
+**Paso 1**: `/register-step1`
+- **Funcionalidad**: Registro inicial con email y contraseña
+- **Campos**: Email, contraseña, confirmar contraseña
+- **Validaciones**: Email válido, contraseña mínimo 6 caracteres, contraseñas coinciden
+- **Navegación**: Después de continuar, va a verificación de email
+
+**Paso 2**: `/register-step2` 
+- **Funcionalidad**: Verificación de email con código OTP
+- **Envío automático**: Se envía código de 6 dígitos al email
+- **Opciones**: 
+  - Ingresar código de 6 dígitos
+  - Botón "Reenviar código" (con countdown de 60s)
+  - Botón "Saltar" para omitir verificación
+- **Navegación**: Después de verificar o saltar, va a completar datos
+
+**Paso 3**: `/register-step3`
+- **Funcionalidad**: Completar datos del bombero
+- **Campos**: Nombre, apellido paterno, RUT, compañía de bomberos
+- **Validaciones**: 
+  - Nombre y apellido mínimo 2 caracteres
+  - RUT válido con dígito verificador
+  - Compañía mínimo 3 caracteres
+- **Funcionalidad**: Crea registro en tabla `bombero` y completa el proceso
 
 #### Logout
 - **Funcionalidad**: Cierre de sesión seguro
@@ -414,8 +438,24 @@ class SupabaseAuthService {
   // Cerrar sesión
   Future<void> signOut();
 
-  // Recuperar contraseña
+  // Registro temporal para verificación
+  Future<AuthResult> registerWithEmail(String email, String password);
+  
+  // Verificar código de email
+  Future<AuthResult> verifyEmailCode(String code);
+  
+  // Reenviar código de verificación
+  Future<AuthResult> resendEmailVerification({required String email});
+  
+  // Recuperar contraseña - Enviar código OTP
   Future<AuthResult> resetPassword(String email);
+  
+  // Recuperar contraseña - Cambiar con código OTP
+  Future<AuthResult> resetPasswordWithCode({
+    required String email,
+    required String code,
+    required String newPassword,
+  });
 }
 ```
 
