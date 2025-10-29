@@ -43,6 +43,7 @@ android/app/profile/
 android/build/
 android/app/build/
 .gradle/
+android/plugins/
 
 # Artefactos temporales de Gradle/D8 (evitar trackeo de jars buckets)
 **/intermediates/**
@@ -83,6 +84,11 @@ macos/Flutter/Flutter-Release.xcconfig
 *.ipr
 *.iws
 .vscode/
+
+# ----------------------------------------
+# Plugins en raíz (si existiera una carpeta generada por herramientas)
+# ----------------------------------------
+plugins/
 
 # ----------------------------------------
 # Archivos generados automáticamente

@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
 import '../../models/registration_data.dart';
 import '../../utils/validators.dart';
 import '../../utils/responsive.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Step3ResidenceInfo extends StatefulWidget {
   final RegistrationData registrationData;
@@ -33,6 +39,11 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
   GoogleMapController? _mapController;
   late LatLng _currentLatLng;
   Set<Marker> _markers = {};
+  final FocusNode _addressFocus = FocusNode();
+  Timer? _debounce;
+  List<_PlacePrediction> _predictions = [];
+  bool _isFetchingPredictions = false;
+  String get _googleApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
 
   @override
   void initState() {
@@ -68,6 +79,8 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    _addressFocus.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -142,6 +155,8 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _addressController,
+                      focusNode: _addressFocus,
+                      onChanged: _onAddressChanged,
                       validator: Validators.validateAddress,
                       decoration: InputDecoration(
                         labelText: 'Dirección completa *',
@@ -154,6 +169,45 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                         fillColor: Colors.grey.shade50,
                       ),
                     ),
+                    if (_shouldShowPredictions)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        constraints: BoxConstraints(
+                          maxHeight: isTablet ? 300 : 240,
+                        ),
+                        child: _isFetchingPredictions
+                            ? const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: _predictions.length,
+                                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
+                                itemBuilder: (context, index) {
+                                  final p = _predictions[index];
+                                  return ListTile(
+                                    dense: false,
+                                    leading: const Icon(Icons.place_outlined),
+                                    title: Text(p.primaryText),
+                                    subtitle: p.secondaryText != null ? Text(p.secondaryText!) : null,
+                                    onTap: () => _onPredictionTap(p),
+                                  );
+                                },
+                              ),
+                      ),
                     const SizedBox(height: 24),
 
                     // Vista previa de ubicación
@@ -184,7 +238,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: SizedBox(
-                                height: 200,
+                                height: isTablet ? 420 : 320,
                                 child: Stack(
                                   children: [
                                     GoogleMap(
@@ -196,6 +250,11 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                                       markers: _markers,
                                       zoomControlsEnabled: false,
                                       myLocationButtonEnabled: false,
+                                      gestureRecognizers:
+                                          <Factory<OneSequenceGestureRecognizer>>{
+                                        Factory<EagerGestureRecognizer>(
+                                            () => EagerGestureRecognizer()),
+                                      },
                                       onMapCreated: (controller) {
                                         _mapController = controller;
                                       },
@@ -209,12 +268,12 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                                           _buildMapButton(Icons.add, onTap: () {
                                             _mapController
                                                 ?.animateCamera(CameraUpdate.zoomIn());
-                                          }),
+                                          }, size: isTablet ? 44 : 36),
                                           const SizedBox(height: 4),
                                           _buildMapButton(Icons.remove, onTap: () {
                                             _mapController
                                                 ?.animateCamera(CameraUpdate.zoomOut());
-                                          }),
+                                          }, size: isTablet ? 44 : 36),
                                         ],
                                       ),
                                     ),
@@ -241,7 +300,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                                       ),
                                       const SizedBox(width: 8),
                                       const Text(
-                                        '📍 Ubicación confirmada',
+                                        'Ubicación confirmada',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -255,7 +314,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    '📡 Coordenadas: ${_latitudeController.text}, ${_longitudeController.text}',
+                                    'Coordenadas: ${_latitudeController.text}, ${_longitudeController.text}',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey.shade600,
@@ -494,13 +553,13 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
     _updateFromMap(pos);
   }
 
-  Widget _buildMapButton(IconData icon, {VoidCallback? onTap}) {
+  Widget _buildMapButton(IconData icon, {VoidCallback? onTap, double size = 32}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        width: 32,
-        height: 32,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(6),
@@ -508,8 +567,116 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
             BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
           ],
         ),
-        child: Icon(icon, size: 18, color: Colors.grey.shade700),
+        child: Icon(icon, size: size * 0.56, color: Colors.grey.shade700),
       ),
+    );
+  }
+
+  bool get _shouldShowPredictions =>
+      _addressFocus.hasFocus && _predictions.isNotEmpty;
+
+  void _onAddressChanged(String value) {
+    _debounce?.cancel();
+    if (value.trim().isEmpty) {
+      setState(() => _predictions = []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () async {
+      await _fetchPredictions(value.trim());
+    });
+  }
+
+  Future<void> _fetchPredictions(String input) async {
+    setState(() => _isFetchingPredictions = true);
+    try {
+      final uri = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/place/autocomplete/json',
+        <String, String>{
+          'input': input,
+          'key': _googleApiKey,
+          'language': 'es',
+          'components': 'country:cl',
+        },
+      );
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final preds = (data['predictions'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map((m) => _PlacePrediction.fromJson(m))
+            .toList();
+        setState(() => _predictions = preds);
+      } else {
+        setState(() => _predictions = []);
+      }
+    } catch (_) {
+      setState(() => _predictions = []);
+    } finally {
+      if (mounted) setState(() => _isFetchingPredictions = false);
+    }
+  }
+
+  Future<void> _onPredictionTap(_PlacePrediction p) async {
+    // Cerrar lista
+    setState(() {
+      _addressController.text = p.description;
+      _predictions = [];
+      _addressFocus.unfocus();
+    });
+
+    // Obtener detalles para coordenadas
+    try {
+      final uri = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/place/details/json',
+        <String, String>{
+          'place_id': p.placeId,
+          'fields': 'geometry,name,formatted_address',
+          'key': _googleApiKey,
+          'language': 'es',
+        },
+      );
+      final res = await http.get(uri);
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body) as Map<String, dynamic>;
+        final result = data['result'] as Map<String, dynamic>;
+        final loc = result['geometry']['location'] as Map<String, dynamic>;
+        final lat = (loc['lat'] as num).toDouble();
+        final lng = (loc['lng'] as num).toDouble();
+        final pos = LatLng(lat, lng);
+
+        _mapController?.animateCamera(CameraUpdate.newLatLngZoom(pos, 17));
+        _updateFromMap(pos);
+      }
+    } catch (_) {
+      // Silencioso, no bloquear la UI si hay error de red
+    }
+  }
+}
+
+class _PlacePrediction {
+  final String placeId;
+  final String description;
+  final String primaryText;
+  final String? secondaryText;
+
+  _PlacePrediction({
+    required this.placeId,
+    required this.description,
+    required this.primaryText,
+    this.secondaryText,
+  });
+
+  factory _PlacePrediction.fromJson(Map<String, dynamic> json) {
+    final structured = json['structured_formatting'] as Map<String, dynamic>?;
+    final primary = structured != null ? (structured['main_text'] as String? ?? '') : '';
+    final secondary = structured != null ? (structured['secondary_text'] as String?) : null;
+    return _PlacePrediction(
+      placeId: json['place_id'] as String,
+      description: json['description'] as String,
+      primaryText: primary.isNotEmpty ? primary : (json['description'] as String),
+      secondaryText: secondary,
     );
   }
 }
