@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/registration_data.dart';
 import '../../utils/validators.dart';
 import '../../utils/responsive.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class Step3ResidenceInfo extends StatefulWidget {
   final RegistrationData registrationData;
@@ -29,6 +30,10 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
 
   bool _showManualCoordinates = false;
 
+  GoogleMapController? _mapController;
+  late LatLng _currentLatLng;
+  Set<Marker> _markers = {};
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +48,19 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
       _latitudeController.text = '-33.4234';
       _longitudeController.text = '-70.6345';
     }
+
+    final parsedLat = double.tryParse(_latitudeController.text) ?? -33.4234;
+    final parsedLng = double.tryParse(_longitudeController.text) ?? -70.6345;
+    _currentLatLng = LatLng(parsedLat, parsedLng);
+    _markers = {
+      Marker(
+        markerId: const MarkerId('residence'),
+        position: _currentLatLng,
+        draggable: true,
+        infoWindow: const InfoWindow(title: 'Residencia'),
+        onDragEnd: (pos) => _updateFromMap(pos),
+      ),
+    };
   }
 
   @override
@@ -163,58 +181,45 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Container(
-                              height: 200,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 60,
-                                          color: Colors.red.shade700,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            '🏠 Residencia',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: SizedBox(
+                                height: 200,
+                                child: Stack(
+                                  children: [
+                                    GoogleMap(
+                                      mapType: MapType.normal,
+                                      initialCameraPosition: CameraPosition(
+                                        target: _currentLatLng,
+                                        zoom: 16,
+                                      ),
+                                      markers: _markers,
+                                      zoomControlsEnabled: false,
+                                      myLocationButtonEnabled: false,
+                                      onMapCreated: (controller) {
+                                        _mapController = controller;
+                                      },
+                                      onTap: (pos) => _updateFromMap(pos),
                                     ),
-                                  ),
-                                  Positioned(
-                                    right: 8,
-                                    top: 8,
-                                    child: Column(
-                                      children: [
-                                        _buildMapButton(Icons.add),
-                                        const SizedBox(height: 4),
-                                        _buildMapButton(Icons.remove),
-                                      ],
+                                    Positioned(
+                                      right: 8,
+                                      top: 8,
+                                      child: Column(
+                                        children: [
+                                          _buildMapButton(Icons.add, onTap: () {
+                                            _mapController
+                                                ?.animateCamera(CameraUpdate.zoomIn());
+                                          }),
+                                          const SizedBox(height: 4),
+                                          _buildMapButton(Icons.remove, onTap: () {
+                                            _mapController
+                                                ?.animateCamera(CameraUpdate.zoomOut());
+                                          }),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -279,7 +284,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                                   const SizedBox(width: 8),
                                   const Expanded(
                                     child: Text(
-                                      '💡 Esta vista previa ayuda a los bomberos a localizar rápidamente tu domicilio en caso de emergencia.',
+                                      'Esta vista previa ayuda a los bomberos a localizar rápidamente tu domicilio en caso de emergencia.',
                                       style: TextStyle(fontSize: 12),
                                     ),
                                   ),
@@ -351,6 +356,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                                   filled: true,
                                   fillColor: Colors.white,
                                 ),
+                                onChanged: (_) => _tryUpdateMapFromFields(),
                               ),
                               const SizedBox(height: 12),
                               TextFormField(
@@ -371,6 +377,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                                   filled: true,
                                   fillColor: Colors.white,
                                 ),
+                                onChanged: (_) => _tryUpdateMapFromFields(),
                               ),
                               const SizedBox(height: 12),
                               Container(
@@ -461,18 +468,48 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
     );
   }
 
-  Widget _buildMapButton(IconData icon) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
-        ],
+  void _updateFromMap(LatLng pos) {
+    setState(() {
+      _currentLatLng = pos;
+      _markers = {
+        Marker(
+          markerId: const MarkerId('residence'),
+          position: pos,
+          draggable: true,
+          infoWindow: const InfoWindow(title: 'Residencia'),
+          onDragEnd: (p) => _updateFromMap(p),
+        ),
+      };
+      _latitudeController.text = pos.latitude.toStringAsFixed(6);
+      _longitudeController.text = pos.longitude.toStringAsFixed(6);
+    });
+  }
+
+  void _tryUpdateMapFromFields() {
+    final lat = double.tryParse(_latitudeController.text);
+    final lng = double.tryParse(_longitudeController.text);
+    if (lat == null || lng == null) return;
+    final pos = LatLng(lat, lng);
+    _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+    _updateFromMap(pos);
+  }
+
+  Widget _buildMapButton(IconData icon, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
+          ],
+        ),
+        child: Icon(icon, size: 18, color: Colors.grey.shade700),
       ),
-      child: Icon(icon, size: 18, color: Colors.grey.shade700),
     );
   }
 }
