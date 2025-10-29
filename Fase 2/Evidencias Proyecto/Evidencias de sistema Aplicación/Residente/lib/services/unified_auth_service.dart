@@ -44,7 +44,7 @@ class UnifiedAuthService {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
-        emailRedirectTo: sendEmailVerification ? 'https://tu-app.com/verify' : null,
+        emailRedirectTo: sendEmailVerification ? 'https://residente.firedata.app/verify' : null,
       );
 
       if (response.user != null) {
@@ -178,7 +178,7 @@ class UnifiedAuthService {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
-        emailRedirectTo: null, // Deshabilitar confirmación de email para pruebas
+        emailRedirectTo: 'https://residente.firedata.app/verify',
       );
 
       if (response.user != null) {
@@ -315,21 +315,32 @@ class UnifiedAuthService {
     }
   }
 
-  /// Recuperar contraseña - envía código OTP al email
+  /// Recuperar contraseña - envía enlace de recuperación al email
   Future<AuthResult> resetPassword(String email) async {
     try {
-      debugPrint('🔐 UnifiedAuthService.resetPassword - Enviando código OTP...');
+      debugPrint('🔐 UnifiedAuthService.resetPassword - Enviando enlace de recuperación...');
       
-      // Enviar código OTP para reset de contraseña
-      await _client.auth.signInWithOtp(
-        email: email.trim(),
-        shouldCreateUser: false, // No crear usuario nuevo
+      // PRIMERO: Verificar que el email esté registrado como residente
+      debugPrint('🔍 Verificando que el email está registrado: $email');
+      final grupoFamiliar = await _getGrupoFamiliarByEmail(email.trim());
+      
+      if (grupoFamiliar == null) {
+        debugPrint('❌ Email no encontrado en residentes: $email');
+        return AuthResult.error('Este correo electrónico no está registrado. Verifica que ingresaste el email correcto o regístrate primero.');
+      }
+      
+      debugPrint('✅ Email confirmado, enviando enlace de recuperación...');
+      
+      // Enviar enlace de recuperación de contraseña
+      await _client.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: 'https://residente.firedata.app/reset-password',
       );
       
-      debugPrint('✅ Código OTP enviado');
+      debugPrint('✅ Enlace de recuperación enviado');
       return AuthResult.success(
         null,
-        message: 'Se ha enviado un código de verificación a tu correo',
+        message: 'Se ha enviado un enlace de recuperación a tu correo',
       );
     } on AuthException catch (e) {
       debugPrint('❌ AuthException en resetPassword: ${e.message}');
@@ -391,15 +402,27 @@ class UnifiedAuthService {
       debugPrint('🔐 UnifiedAuthService.updatePassword - Actualizando contraseña...');
       
       final user = _client.auth.currentUser;
-      if (user == null) {
-        return AuthResult.error('No hay usuario autenticado');
+      final session = _client.auth.currentSession;
+      
+      debugPrint('👤 Usuario actual: ${user?.email}');
+      debugPrint('🔑 Sesión actual: ${session != null ? "Activa" : "Inactiva"}');
+      
+      if (user == null || session == null) {
+        debugPrint('❌ No hay usuario o sesión activa');
+        return AuthResult.error('No hay sesión de recuperación activa. Por favor, haz clic en el enlace que te enviamos por correo para cambiar tu contraseña.');
       }
       
+      // Actualizar la contraseña
       await _client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
       
       debugPrint('✅ Contraseña actualizada exitosamente');
+      
+      // Cerrar sesión después de cambiar la contraseña
+      await _client.auth.signOut();
+      debugPrint('✅ Sesión cerrada después de cambiar contraseña');
+      
       return AuthResult.success(null);
     } on AuthException catch (e) {
       debugPrint('❌ AuthException en updatePassword: ${e.message}');

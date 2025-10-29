@@ -56,6 +56,7 @@ class SupabaseAuthService {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
+        emailRedirectTo: 'https://bomberos.firedata.app/verify',
       );
 
       if (response.user != null) {
@@ -175,18 +176,29 @@ class SupabaseAuthService {
     }
   }
 
-  /// Recuperar contraseña - envía código OTP al email
+  /// Recuperar contraseña - envía enlace de recuperación al email
   Future<AuthResult> resetPassword(String email) async {
     try {
-      debugPrint('🔐 SupabaseAuthService.resetPassword - Enviando código OTP...');
+      debugPrint('🔐 SupabaseAuthService.resetPassword - Enviando enlace de recuperación...');
       
-      // Enviar código OTP para reset de contraseña
-      await _client.auth.signInWithOtp(
-        email: email.trim(),
-        shouldCreateUser: false, // No crear usuario nuevo
+      // PRIMERO: Verificar que el email esté registrado como bombero
+      debugPrint('🔍 Verificando que el email está registrado: $email');
+      final bombero = await _getBomberoByEmail(email.trim());
+      
+      if (bombero == null) {
+        debugPrint('❌ Email no encontrado en bomberos: $email');
+        return AuthResult.error('Este correo electrónico no está registrado. Verifica que ingresaste el email correcto o regístrate primero.');
+      }
+      
+      debugPrint('✅ Email confirmado, enviando enlace de recuperación...');
+      
+      // Enviar enlace de recuperación de contraseña
+      await _client.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: 'https://bomberos.firedata.app/reset-password',
       );
       
-      debugPrint('✅ Código OTP enviado');
+      debugPrint('✅ Enlace de recuperación enviado');
       return AuthResult.success(null);
     } on AuthException catch (e) {
       debugPrint('❌ AuthException en resetPassword: ${e.message}');
@@ -239,6 +251,43 @@ class SupabaseAuthService {
     }
   }
 
+  /// Actualizar contraseña del usuario actual
+  Future<AuthResult> updatePassword(String newPassword) async {
+    try {
+      debugPrint('🔐 SupabaseAuthService.updatePassword - Actualizando contraseña...');
+      
+      final user = _client.auth.currentUser;
+      final session = _client.auth.currentSession;
+      
+      debugPrint('👤 Usuario actual: ${user?.email}');
+      debugPrint('🔑 Sesión actual: ${session != null ? "Activa" : "Inactiva"}');
+      
+      if (user == null || session == null) {
+        debugPrint('❌ No hay usuario o sesión activa');
+        return AuthResult.error('No hay sesión de recuperación activa. Por favor, haz clic en el enlace que te enviamos por correo para cambiar tu contraseña.');
+      }
+      
+      // Actualizar la contraseña
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+      
+      debugPrint('✅ Contraseña actualizada exitosamente');
+      
+      // Cerrar sesión después de cambiar la contraseña
+      await _client.auth.signOut();
+      debugPrint('✅ Sesión cerrada después de cambiar contraseña');
+      
+      return AuthResult.success(null);
+    } on AuthException catch (e) {
+      debugPrint('❌ AuthException en updatePassword: ${e.message}');
+      return AuthResult.error(_translateAuthError(e.message));
+    } catch (e) {
+      debugPrint('❌ Error inesperado en updatePassword: $e');
+      return AuthResult.error('Error al actualizar contraseña: ${e.toString()}');
+    }
+  }
+
   /// Reenviar email de confirmación
   Future<AuthResult> resendConfirmationEmail(String email) async {
     try {
@@ -262,6 +311,7 @@ class SupabaseAuthService {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
+        emailRedirectTo: 'https://bomberos.firedata.app/verify',
       );
       
       if (response.user != null) {

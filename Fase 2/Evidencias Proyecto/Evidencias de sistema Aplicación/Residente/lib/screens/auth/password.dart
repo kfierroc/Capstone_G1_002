@@ -50,19 +50,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
         if (result.isSuccess) {
           setState(() {
-            _isLoading = false;
+            _emailSent = true;
           });
-
-          // Navegar a la pantalla de código
-          if (mounted) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/code-reset',
-              arguments: {
-                'email': _emailController.text.trim(),
-              },
-            );
-          }
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

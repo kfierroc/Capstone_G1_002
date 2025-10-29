@@ -45,17 +45,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
         if (result.isSuccess) {
           setState(() {
-            _isLoading = false;
+            _emailSent = true;
           });
-
-          if (mounted) {
-            // Navegar a la pantalla de ingreso de código
-            Navigator.pushNamed(
-              context,
-              '/code-reset',
-              arguments: _emailController.text.trim(),
-            );
-          }
         } else {
           if (mounted) {
             setState(() {
