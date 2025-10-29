@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../services/grifo_service.dart';
 import '../../models/grifo.dart';
 import '../../models/info_grifo.dart';
@@ -16,10 +17,19 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
   final GrifoService _grifoService = GrifoService();
   bool _isLoading = true;
   String? _errorMessage;
+  GoogleMapController? _mapController;
   
   List<Grifo> _grifos = [];
   Map<int, InfoGrifo> _infoGrifos = {};
   Map<String, int> _estadisticas = {};
+
+  LatLng get _initialTarget {
+    if (_grifos.isNotEmpty) {
+      final first = _grifos.first;
+      return LatLng(first.lat, first.lon);
+    }
+    return const LatLng(-33.4489, -70.6693); // Santiago
+  }
 
   @override
   void initState() {
@@ -231,10 +241,9 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
                   children: [
                     // Encabezado con estadísticas
                     _buildHeader(),
-                    
-                    // Mapa placeholder
+                    // Mapa de Google con marcadores
                     Expanded(
-                      child: _buildMapPlaceholder(),
+                      child: _buildGoogleMap(),
                     ),
                     
                     // Leyenda de estados
@@ -308,114 +317,50 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
     );
   }
 
-  Widget _buildMapPlaceholder() {
-    final isTablet = ResponsiveHelper.isTablet(context);
-    
-    return Container(
-      margin: EdgeInsets.all(isTablet ? 20 : 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.map_outlined,
-            size: isTablet ? 120 : 100,
-            color: const Color(0xFF3B82F6),
-          ),
-          SizedBox(height: isTablet ? 24 : 20),
-          Text(
-            'Mapa Interactivo',
-            style: TextStyle(
-              fontSize: isTablet ? 24 : 20,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1E293B),
-            ),
-          ),
-          SizedBox(height: isTablet ? 12 : 8),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: isTablet ? 40 : 24),
-            child: Text(
-              'Aquí se mostraría un mapa interactivo con la ubicación de todos los grifos',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: isTablet ? 16 : 14,
-                color: const Color(0xFF6B7280),
-              ),
-            ),
-          ),
-          SizedBox(height: isTablet ? 32 : 24),
-          
-          // Mostrar algunos grifos como ejemplo
-          if (_grifos.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.symmetric(horizontal: isTablet ? 40 : 24),
-              padding: EdgeInsets.all(isTablet ? 20 : 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ubicaciones de ejemplo:',
-                    style: TextStyle(
-                      fontSize: isTablet ? 14 : 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF6B7280),
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 12 : 8),
-                  ..._grifos.take(5).map((grifo) {
-                    final info = _infoGrifos[grifo.idGrifo];
-                    final estado = info?.estado ?? 'Sin verificar';
-                    final color = _getEstadoColor(estado);
-                    
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: isTablet ? 8 : 6),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: isTablet ? 16 : 14,
-                            height: isTablet ? 16 : 14,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          SizedBox(width: isTablet ? 12 : 10),
-                          Expanded(
-                            child: Text(
-                              'Grifo ${grifo.idGrifo} - ${grifo.lat.toStringAsFixed(4)}, ${grifo.lon.toStringAsFixed(4)}',
-                              style: TextStyle(
-                                fontSize: isTablet ? 12 : 11,
-                                color: const Color(0xFF1E293B),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
+  Widget _buildGoogleMap() {
+    final markers = _buildMarkers();
+    return GoogleMap(
+      onMapCreated: (controller) => _mapController = controller,
+      initialCameraPosition: CameraPosition(target: _initialTarget, zoom: 14.0),
+      zoomControlsEnabled: true,
+      myLocationButtonEnabled: false,
+      myLocationEnabled: false,
+      markers: markers,
     );
+  }
+
+  Set<Marker> _buildMarkers() {
+    final Set<Marker> markers = {};
+    for (final grifo in _grifos) {
+      final info = _infoGrifos[grifo.idGrifo];
+      final estado = info?.estado ?? 'Sin verificar';
+      final hue = _estadoToHue(estado);
+      markers.add(
+        Marker(
+          markerId: MarkerId('grifo_${grifo.idGrifo}'),
+          position: LatLng(grifo.lat, grifo.lon),
+          infoWindow: InfoWindow(
+            title: 'Grifo ${grifo.idGrifo}',
+            snippet: 'Estado: $estado',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(hue),
+        ),
+      );
+    }
+    return markers;
+  }
+
+  double _estadoToHue(String estado) {
+    switch (estado.toLowerCase()) {
+      case 'operativo':
+        return BitmapDescriptor.hueGreen;
+      case 'dañado':
+        return BitmapDescriptor.hueRed;
+      case 'mantenimiento':
+        return BitmapDescriptor.hueYellow;
+      default:
+        return BitmapDescriptor.hueAzure;
+    }
   }
 
   Widget _buildLegend() {

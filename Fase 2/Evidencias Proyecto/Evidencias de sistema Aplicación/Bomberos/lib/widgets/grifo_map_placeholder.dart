@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants/grifo_colors.dart';
 import '../constants/grifo_styles.dart';
 import '../utils/responsive.dart';
+import '../screens/grifos/grifo_map_screen.dart';
 
 class GrifoMapPlaceholder extends StatelessWidget {
   final int itemCount;
@@ -52,20 +53,30 @@ class GrifoMapPlaceholder extends StatelessWidget {
             ),
           ),
           SizedBox(height: isTablet ? 16 : 12),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 24 : 16,
-              vertical: isTablet ? 12 : 8,
-            ),
-            decoration: BoxDecoration(
-              color: GrifoColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              'Funcionalidad de mapa próximamente',
-              style: GrifoStyles.bodySmall.copyWith(
-                color: GrifoColors.primary,
-                fontWeight: FontWeight.w500,
+          SizedBox(
+            height: isTablet ? 44 : 40,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GrifoMapScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map_rounded, size: 18),
+              label: const Text('Ver mapa'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GrifoColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 20 : 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
           ),
