@@ -45,5 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Google Maps API Key -->
+	<key>GMSApiKey</key>
+	<string>AIzaSyDusFD-N_evAqvIVfRm-496mzhXDoFmz0E</string>
 </dict>
 </plist>

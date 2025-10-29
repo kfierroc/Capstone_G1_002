@@ -41,6 +41,26 @@ android/app/release/
 android/app/debug/
 android/app/profile/
 android/build/
+android/app/build/
+.gradle/
+android/plugins/
+
+# Artefactos temporales de Gradle/D8 (evitar trackeo de jars buckets)
+**/intermediates/**
+**/transforms/**
+**/tmp/**
+**/dex/**
+**/dex-cache/**
+**/incremental/**
+**/dexer/**
+**/external_file_lib_dex_archives/**
+**/dexBuilder/**
+**/compile_library_classes_*/**
+**/compile_and_runtime_not_namespaced_r_class_jar/**
+**/runtime_symbol_list/**
+# Patrones específicos tipo jar_<hash>_bucket_X
+**/jar_*_bucket_*/
+**/jar_*_bucket_*.*
 
 # ----------------------------------------
 # iOS / macOS
@@ -64,6 +84,11 @@ macos/Flutter/Flutter-Release.xcconfig
 *.ipr
 *.iws
 .vscode/
+
+# ----------------------------------------
+# Plugins en raíz (si existiera una carpeta generada por herramientas)
+# ----------------------------------------
+plugins/
 
 # ----------------------------------------
 # Archivos generados automáticamente
