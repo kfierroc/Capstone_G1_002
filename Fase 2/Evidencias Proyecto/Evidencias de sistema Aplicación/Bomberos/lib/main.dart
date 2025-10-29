@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/supabase_config.dart';
 import 'app.dart';
 import 'screens/auth/login.dart';
 import 'screens/auth/password.dart';
@@ -20,6 +21,28 @@ Future<void> main() async {
 
     // Inicializar Supabase con las credenciales del .env
     await SupabaseConfig.initialize();
+    
+    // Configurar listener para manejar deep links de verificación de email y reset de contraseña
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      final Session? session = data.session;
+      
+      debugPrint('📱 Evento de autenticación: $event');
+      
+      // Detectar cuando se abre el enlace de reset de contraseña
+      if (event == AuthChangeEvent.passwordRecovery) {
+        debugPrint('🔄 Evento de recuperación de contraseña detectado');
+        if (session != null && session.user.email != null) {
+          debugPrint('✅ Email encontrado: ${session.user.email}');
+          // La navegación se manejará en AuthChecker o en la pantalla actual
+        }
+      }
+      
+      // Detectamos cuando se verifica el email o se confirma el registro
+      if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.userUpdated) {
+        debugPrint('✅ Usuario autenticado o actualizado');
+      }
+    });
 
     runApp(const MyApp());
   } catch (e) {
@@ -117,15 +140,38 @@ class AuthChecker extends StatefulWidget {
 class _AuthCheckerState extends State<AuthChecker> {
   @override
   Widget build(BuildContext context) {
-    // Verificar si hay una sesión activa en Supabase
-    final session = Supabase.instance.client.auth.currentSession;
+    // Usar StreamBuilder para escuchar cambios en el estado de autenticación
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        final session = snapshot.data?.session;
+        final event = snapshot.data?.event;
 
-    if (session != null) {
-      // Usuario autenticado -> Ir a Home
-      return const HomeScreen();
-    } else {
-      // Usuario no autenticado -> Ir a Login
-      return const LoginScreen();
-    }
+        // Manejar evento de recuperación de contraseña
+        if (event == AuthChangeEvent.passwordRecovery && session != null) {
+          // Navegar a la pantalla de reset de contraseña con el email
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.pushReplacementNamed(
+                context,
+                '/code-reset',
+                arguments: session.user.email,
+              );
+            }
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // Si hay sesión activa, mostrar home
+        if (session != null) {
+          return const HomeScreen();
+        }
+
+        // Si no hay sesión, mostrar login
+        return const LoginScreen();
+      },
+    );
   }
 }

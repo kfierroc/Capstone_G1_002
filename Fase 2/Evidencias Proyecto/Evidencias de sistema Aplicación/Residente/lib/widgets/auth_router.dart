@@ -116,14 +116,32 @@ class _AuthRouterState extends State<AuthRouter> {
 
         // Manejar eventos específicos
         if (event == AuthChangeEvent.passwordRecovery) {
-          debugPrint('🔄 Redirigiendo a reset password...');
+          debugPrint('🔄 Evento de recuperación de contraseña detectado');
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.pushReplacementNamed(context, '/reset-password');
+            if (mounted && session != null && session?.user.email != null) {
+              debugPrint('✅ Navegando a pantalla de nueva contraseña para: ${session!.user.email}');
+              Navigator.pushReplacementNamed(
+                context,
+                '/code-reset',
+                arguments: {
+                  'email': session!.user.email!,
+                },
+              );
+            } else {
+              debugPrint('❌ No hay sesión disponible para reset');
             }
           });
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Procesando enlace de recuperación...'),
+                ],
+              ),
+            ),
           );
         }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 import 'screens/auth/login.dart';
 import 'screens/auth/reset_password.dart';
@@ -26,6 +27,18 @@ void main() async {
     
     // Inicializar Supabase con las credenciales del .env
     await SupabaseConfig.initialize();
+    
+    // Configurar listener para manejar deep links de verificación de email
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final AuthChangeEvent event = data.event;
+      
+      debugPrint('📱 Evento de autenticación: $event');
+      
+      // Detectamos cuando se verifica el email o se confirma el registro
+      if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.userUpdated) {
+        debugPrint('✅ Usuario autenticado o actualizado');
+      }
+    });
   } catch (e) {
     debugPrint('Error al inicializar Supabase: $e');
     // Mostrar pantalla de error en lugar de continuar
@@ -98,6 +111,13 @@ class MyApp extends StatelessWidget {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, String>;
           return ResetPasswordWithCodeScreen(
             email: args['email']!,
+          );
+        },
+        '/reset-password-confirm': (context) {
+          // Esta ruta se usa cuando se abre el deep link de reset de contraseña
+          final email = ModalRoute.of(context)!.settings.arguments as String?;
+          return ResetPasswordWithCodeScreen(
+            email: email ?? '',
           );
         },
         '/home': (context) => const ResidentHomeScreen(),
