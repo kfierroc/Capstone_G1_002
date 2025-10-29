@@ -43,11 +43,25 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
   Timer? _debounce;
   List<_PlacePrediction> _predictions = [];
   bool _isFetchingPredictions = false;
-  String get _googleApiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+  String get _googleApiKey {
+    final fromEnv = dotenv.env['GOOGLE_MAPS_API_KEY'];
+    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+    // Fallback para evitar que falle si .env no está cargado
+    return 'AIzaSyDusFD-N_evAqvIVfRm-496mzhXDoFmz0E';
+  }
+  String? _placesSessionToken;
 
   @override
   void initState() {
     super.initState();
+    _addressFocus.addListener(() {
+      if (_addressFocus.hasFocus) {
+        _placesSessionToken = UniqueKey().toString();
+      } else {
+        _placesSessionToken = null;
+      }
+      setState(() {});
+    });
     _addressController.text = widget.registrationData.address ?? '';
     _latitudeController.text =
         widget.registrationData.latitude?.toString() ?? '';
@@ -130,18 +144,6 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Proporciona los datos básicos de tu vivienda',
-                      style: TextStyle(
-                        fontSize: ResponsiveHelper.getResponsiveFontSize(
-                          context,
-                          mobile: 16,
-                          tablet: 18,
-                          desktop: 18,
-                        ),
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
                     SizedBox(height: isTablet ? 40 : 32),
 
                     // Dirección
@@ -160,7 +162,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
                       validator: Validators.validateAddress,
                       decoration: InputDecoration(
                         labelText: 'Dirección completa *',
-                        hintText: 'Calle, número, comuna, ciudad',
+                        hintText: 'Dirección Google maps',
                         prefixIcon: const Icon(Icons.location_on_outlined),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -587,6 +589,14 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
   }
 
   Future<void> _fetchPredictions(String input) async {
+    if (_googleApiKey.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: falta Google Maps API Key')),
+        );
+      }
+      return;
+    }
     setState(() => _isFetchingPredictions = true);
     try {
       final uri = Uri.https(
@@ -597,6 +607,8 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
           'key': _googleApiKey,
           'language': 'es',
           'components': 'country:cl',
+          'types': 'address',
+          if (_placesSessionToken != null) 'sessiontoken': _placesSessionToken!,
         },
       );
       final response = await http.get(uri);
@@ -635,6 +647,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
           'fields': 'geometry,name,formatted_address',
           'key': _googleApiKey,
           'language': 'es',
+          if (_placesSessionToken != null) 'sessiontoken': _placesSessionToken!,
         },
       );
       final res = await http.get(uri);
@@ -648,6 +661,7 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
 
         _mapController?.animateCamera(CameraUpdate.newLatLngZoom(pos, 17));
         _updateFromMap(pos);
+        _placesSessionToken = null; // cerrar sesión de búsqueda
       }
     } catch (_) {
       // Silencioso, no bloquear la UI si hay error de red
