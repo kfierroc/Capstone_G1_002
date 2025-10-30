@@ -62,6 +62,12 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     final lon = widget.addressData['lon'] as double?;
     _target = (lat != null && lon != null) ? LatLng(lat, lon) : _fallbackTarget;
     _loadNearestGrifos();
+    // Animar cámara al objetivo cuando el mapa esté listo
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLng(_target ?? _fallbackTarget),
+      );
+    }
   }
 
   Future<void> _loadNearestGrifos() async {
@@ -86,6 +92,12 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     } catch (_) {
       // Silenciar errores en esta vista táctica
     }
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
   }
 
   double _distance(LatLng a, LatLng b) {
@@ -154,14 +166,30 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       body: Stack(
         children: [
           GoogleMap(
-            onMapCreated: (controller) => _mapController = controller,
+            onMapCreated: (controller) {
+              _mapController = controller;
+            },
             initialCameraPosition: CameraPosition(
-              target: _fallbackTarget,
+              target: _target ?? _fallbackTarget,
               zoom: _zoomLevel,
             ),
+            cameraTargetBounds: CameraTargetBounds(
+              LatLngBounds(
+                southwest: const LatLng(-56.0, -110.0),
+                northeast: const LatLng(-17.0, -65.0),
+              ),
+            ),
+            mapType: MapType.normal,
+            minMaxZoomPreference: const MinMaxZoomPreference(3, 21),
             myLocationButtonEnabled: true,
             myLocationEnabled: false,
             zoomControlsEnabled: false,
+            compassEnabled: true,
+            mapToolbarEnabled: false,
+            rotateGesturesEnabled: true,
+            scrollGesturesEnabled: true,
+            tiltGesturesEnabled: true,
+            zoomGesturesEnabled: true,
             markers: {
               Marker(
                 markerId: const MarkerId('objetivo'),

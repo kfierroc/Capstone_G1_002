@@ -37,6 +37,12 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
     _cargarGrifos();
   }
 
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _cargarGrifos() async {
     setState(() {
       _isLoading = true;
@@ -320,14 +326,37 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
   Widget _buildGoogleMap() {
     final markers = _buildMarkers();
     return GoogleMap(
-      onMapCreated: (controller) => _mapController = controller,
-      initialCameraPosition: CameraPosition(target: _initialTarget, zoom: 14.0),
+      onMapCreated: (controller) {
+        _mapController = controller;
+        // Precargar tiles del área visible
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (_mapController != null) {
+            _preloadMapTiles();
+          }
+        });
+      },
+      initialCameraPosition: CameraPosition(target: _initialTarget, zoom: 5.0),
+      cameraTargetBounds: CameraTargetBounds(
+        LatLngBounds(
+          southwest: const LatLng(-56.0, -110.0),
+          northeast: const LatLng(-17.0, -65.0),
+        ),
+      ),
+      minMaxZoomPreference: const MinMaxZoomPreference(3, 21),
       zoomControlsEnabled: true,
+      mapType: MapType.normal,
       myLocationButtonEnabled: false,
       myLocationEnabled: false,
+      compassEnabled: true,
+      mapToolbarEnabled: false,
+      rotateGesturesEnabled: true,
+      scrollGesturesEnabled: true,
+      tiltGesturesEnabled: true,
+      zoomGesturesEnabled: true,
       markers: markers,
     );
   }
+
 
   Set<Marker> _buildMarkers() {
     final Set<Marker> markers = {};
@@ -348,6 +377,22 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
       );
     }
     return markers;
+  }
+
+  Future<void> _preloadMapTiles() async {
+    // Mover la cámara para forzar la carga de tiles
+    if (_mapController == null) return;
+    
+    try {
+      // Hacer zoom out para cargar área más amplia
+      await _mapController!.animateCamera(CameraUpdate.zoomBy(-1));
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // Volver al zoom anterior
+      await _mapController!.animateCamera(CameraUpdate.zoomBy(1));
+    } catch (e) {
+      debugPrint('Error en preload: $e');
+    }
   }
 
   double _estadoToHue(String estado) {
