@@ -4,7 +4,7 @@ import '../../services/supabase_auth_service.dart';
 import '../../utils/responsive.dart';
 import '../../widgets/address_detail/address_detail_widgets.dart';
 import '../grifos/grifos_home_screen.dart';
-import '../grifos/grifo_map_screen.dart';
+import './emergency_map.dart';
 
 /// Pantalla de detalles de una dirección específica para bomberos
 /// Refactorizada aplicando principios SOLID y Clean Code
@@ -602,10 +602,18 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () {
+                final data = {
+                  'address': _detailedData?['address'] ?? widget.residenceData['address'] ?? 'Dirección no disponible',
+                  'people_count': _detailedData?['people_count'] ?? widget.residenceData['people_count'] ?? 0,
+                  'pets_count': _detailedData?['pets_count'] ?? widget.residenceData['pets_count'] ?? 0,
+                  'special_conditions_count': _detailedData?['special_conditions_count'] ?? widget.residenceData['special_conditions_count'] ?? 0,
+                  'special_instructions': _detailedData?['special_instructions'] ?? widget.residenceData['special_instructions'] ?? 'Sin instrucciones específicas',
+                };
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const GrifoMapScreen(),
+                    builder: (context) => EmergencyMapScreen(addressData: data),
                   ),
                 );
               },
