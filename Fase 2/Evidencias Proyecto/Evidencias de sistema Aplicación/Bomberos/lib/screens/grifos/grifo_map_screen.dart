@@ -7,7 +7,14 @@ import '../../utils/responsive.dart';
 
 /// Pantalla que muestra todos los grifos en un mapa interactivo
 class GrifoMapScreen extends StatefulWidget {
-  const GrifoMapScreen({super.key});
+  final Grifo? grifoEspecifico; // Si se proporciona, muestra solo este grifo
+  final InfoGrifo? infoGrifoEspecifico; // Información del grifo específico (opcional)
+  
+  const GrifoMapScreen({
+    super.key,
+    this.grifoEspecifico,
+    this.infoGrifoEspecifico,
+  });
 
   @override
   State<GrifoMapScreen> createState() => _GrifoMapScreenState();
@@ -24,11 +31,23 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
   Map<String, int> _estadisticas = {};
 
   LatLng get _initialTarget {
+    // Si hay un grifo específico, usar sus coordenadas
+    if (widget.grifoEspecifico != null) {
+      return LatLng(widget.grifoEspecifico!.lat, widget.grifoEspecifico!.lon);
+    }
     if (_grifos.isNotEmpty) {
       final first = _grifos.first;
       return LatLng(first.lat, first.lon);
     }
     return const LatLng(-33.4489, -70.6693); // Santiago
+  }
+
+  double get _initialZoom {
+    // Si hay un grifo específico, usar zoom más cercano
+    if (widget.grifoEspecifico != null) {
+      return 16.0;
+    }
+    return 5.0;
   }
 
   @override
@@ -50,6 +69,70 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
     });
 
     try {
+      // Si hay un grifo específico, solo cargar ese
+      if (widget.grifoEspecifico != null) {
+        debugPrint('🗺️ Cargando grifo específico ${widget.grifoEspecifico!.idGrifo}...');
+        
+        final grifo = widget.grifoEspecifico!;
+        final List<Grifo> grifos = [grifo];
+        final Map<int, InfoGrifo> infoGrifos = {};
+        
+        // Usar la información del grifo que se pasó como parámetro
+        if (widget.infoGrifoEspecifico != null) {
+          infoGrifos[grifo.idGrifo] = widget.infoGrifoEspecifico!;
+        }
+        
+        // Calcular estadísticas solo para este grifo
+        final Map<String, int> stats = {
+          'operativo': 0,
+          'dañado': 0,
+          'mantenimiento': 0,
+          'sin_verificar': 0,
+        };
+        
+        final info = infoGrifos[grifo.idGrifo];
+        if (info != null) {
+          switch (info.estado.toLowerCase()) {
+            case 'operativo':
+              stats['operativo'] = 1;
+              break;
+            case 'dañado':
+              stats['dañado'] = 1;
+              break;
+            case 'mantenimiento':
+              stats['mantenimiento'] = 1;
+              break;
+            case 'sin verificar':
+              stats['sin_verificar'] = 1;
+              break;
+          }
+        } else {
+          stats['sin_verificar'] = 1;
+        }
+        
+        setState(() {
+          _grifos = grifos;
+          _infoGrifos = infoGrifos;
+          _estadisticas = stats;
+          _isLoading = false;
+        });
+        
+        // Centrar el mapa en el grifo específico después de cargar
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (_mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngZoom(
+                LatLng(grifo.lat, grifo.lon),
+                16.0,
+              ),
+            );
+          }
+        });
+        
+        debugPrint('✅ Grifo específico cargado');
+        return;
+      }
+      
       debugPrint('🗺️ Cargando grifos para el mapa...');
       
       // Cargar grifos con información completa
@@ -128,18 +211,6 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
     }
   }
 
-  Color _getEstadoColor(String estado) {
-    switch (estado.toLowerCase()) {
-      case 'operativo':
-        return const Color(0xFF10B981); // Verde
-      case 'dañado':
-        return const Color(0xFFEF4444); // Rojo
-      case 'mantenimiento':
-        return const Color(0xFFF59E0B); // Amarillo
-      default:
-        return const Color(0xFF6B7280); // Gris
-    }
-  }
 
 
   @override
@@ -300,7 +371,9 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Vista geográfica de todos los grifos registrados',
+                  widget.grifoEspecifico != null
+                      ? 'Ubicación del Grifo ${widget.grifoEspecifico!.idGrifo}'
+                      : 'Vista geográfica de todos los grifos registrados',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: isTablet ? 18 : 16,
@@ -309,7 +382,9 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '($totalGrifos mostrados)',
+                  widget.grifoEspecifico != null
+                      ? 'Coordenadas: ${widget.grifoEspecifico!.lat.toStringAsFixed(6)}, ${widget.grifoEspecifico!.lon.toStringAsFixed(6)}'
+                      : '($totalGrifos mostrados)',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
                     fontSize: isTablet ? 14 : 12,
@@ -335,7 +410,7 @@ class _GrifoMapScreenState extends State<GrifoMapScreen> {
           }
         });
       },
-      initialCameraPosition: CameraPosition(target: _initialTarget, zoom: 5.0),
+      initialCameraPosition: CameraPosition(target: _initialTarget, zoom: _initialZoom),
       cameraTargetBounds: CameraTargetBounds(
         LatLngBounds(
           southwest: const LatLng(-56.0, -110.0),
