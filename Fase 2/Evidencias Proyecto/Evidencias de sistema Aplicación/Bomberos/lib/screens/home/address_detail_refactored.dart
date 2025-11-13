@@ -144,26 +144,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                   ),
                   child: Column(
                     children: [
-                      SearchSectionWidget(
-                        searchController: _searchController,
-                        onSearch: _performSearch,
-                        onClear: _clearSearch,
-                        onViewGrifos: () {
-                          debugPrint('🔍 Navegando a grifos...');
-                          try {
-                            Navigator.pushNamed(context, '/grifos');
-                          } catch (error) {
-                            debugPrint('❌ Error navegando a grifos: $error');
-                            // Fallback: navegar directamente a la pantalla
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const GrifosHomeScreen(),
-                              ),
-                            );
-                          }
-                        },
-                      ),
+                      _buildGrifosButton(),
                       SizedBox(
                         height: ResponsiveHelper.isTablet(context) ? 24 : 20,
                       ),
@@ -201,25 +182,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                   padding: ResponsiveHelper.getResponsivePadding(context),
                   child: Column(
                     children: [
-                      SearchSectionWidget(
-                        searchController: _searchController,
-                        onSearch: _performSearch,
-                        onClear: _clearSearch,
-                        onViewGrifos: () {
-                          debugPrint('🔍 Navegando a grifos...');
-                          try {
-                            Navigator.pushNamed(context, '/grifos');
-                          } catch (error) {
-                            debugPrint('❌ Error navegando a grifos: $error');
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const GrifosHomeScreen(),
-                              ),
-                            );
-                          }
-                        },
-                      ),
+                      _buildGrifosButton(),
                       SizedBox(
                         height: ResponsiveHelper.isTablet(context) ? 24 : 20,
                       ),
@@ -250,6 +213,54 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                 ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGrifosButton() {
+    final isTablet = ResponsiveHelper.isTablet(context);
+    
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
+        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: isTablet ? 52 : 48,
+        child: OutlinedButton.icon(
+          onPressed: () {
+            debugPrint('🔍 Navegando a grifos...');
+            try {
+              Navigator.pushNamed(context, '/grifos');
+            } catch (error) {
+              debugPrint('❌ Error navegando a grifos: $error');
+              // Fallback: navegar directamente a la pantalla
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GrifosHomeScreen(),
+                ),
+              );
+            }
+          },
+          icon: Icon(Icons.water_drop_rounded, size: isTablet ? 20 : 18),
+          label: Text(
+            'Consultar Grifos de Agua',
+            style: TextStyle(
+              fontSize: isTablet ? 16 : 14,
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF3B82F6),
+            side: const BorderSide(color: Color(0xFF3B82F6)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
       ),
     );
   }
