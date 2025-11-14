@@ -14,6 +14,18 @@ class SupabaseConfig {
   static String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? 'TU_SUPABASE_URL';
   static String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? 'TU_SUPABASE_ANON_KEY';
 
+  static String? get emailRedirectUrl {
+    final value = dotenv.env['SUPABASE_EMAIL_REDIRECT'];
+    if (value == null || value.isEmpty || value == 'null') return null;
+    return value;
+  }
+
+  static String? get passwordResetRedirectUrl {
+    final value = dotenv.env['SUPABASE_PASSWORD_RESET_REDIRECT'];
+    if (value == null || value.isEmpty || value == 'null') return null;
+    return value;
+  }
+
   /// Inicializar Supabase
   /// Debe llamarse antes de usar cualquier funcionalidad de Supabase
   static Future<void> initialize() async {
