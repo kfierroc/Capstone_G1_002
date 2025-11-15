@@ -15,12 +15,14 @@ class RegisterStep2VerificationScreen extends StatefulWidget {
   });
 
   @override
-  State<RegisterStep2VerificationScreen> createState() => _RegisterStep2VerificationScreenState();
+  State<RegisterStep2VerificationScreen> createState() =>
+      _RegisterStep2VerificationScreenState();
 }
 
-class _RegisterStep2VerificationScreenState extends State<RegisterStep2VerificationScreen> {
+class _RegisterStep2VerificationScreenState
+    extends State<RegisterStep2VerificationScreen> {
   final SupabaseAuthService _authService = SupabaseAuthService();
-  
+
   bool _isLoading = false;
 
   @override
@@ -132,10 +134,7 @@ class _RegisterStep2VerificationScreenState extends State<RegisterStep2Verificat
                         const Text(
                           'Hemos enviado un enlace de verificación a:',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.black54,
-                          ),
+                          style: TextStyle(fontSize: 16, color: Colors.black54),
                         ),
                         const SizedBox(height: 12),
                         Container(
@@ -157,10 +156,7 @@ class _RegisterStep2VerificationScreenState extends State<RegisterStep2Verificat
                         const Text(
                           'Haz clic en el enlace que te enviamos para verificar tu correo y continuar con el registro.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(fontSize: 15, color: Colors.black87),
                         ),
                         const SizedBox(height: 32),
                         SizedBox(
@@ -183,7 +179,7 @@ class _RegisterStep2VerificationScreenState extends State<RegisterStep2Verificat
                               ),
                             ),
                             child: const Text(
-                              'Continuar al registro',
+                              'Continuar con el registro',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

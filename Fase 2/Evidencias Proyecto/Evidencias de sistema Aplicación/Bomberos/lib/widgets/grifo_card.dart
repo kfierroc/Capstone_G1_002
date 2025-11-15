@@ -4,7 +4,6 @@ import '../models/info_grifo.dart';
 import '../constants/grifo_colors.dart';
 import '../constants/grifo_styles.dart';
 import '../utils/responsive.dart';
-import '../screens/grifos/grifo_map_screen.dart';
 
 class GrifoCard extends StatelessWidget {
   final Grifo grifo;
@@ -445,19 +444,9 @@ class GrifoCard extends StatelessWidget {
             width: double.infinity,
             height: isTablet ? 52 : 48,
             child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GrifoMapScreen(
-                      grifoEspecifico: grifo,
-                      infoGrifoEspecifico: infoGrifo,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.location_on_rounded, size: 18),
-              label: const Text('Ver ubicación'),
+              onPressed: () => _showDetallesDialog(context),
+              icon: const Icon(Icons.info_outline_rounded, size: 18),
+              label: const Text('Ver Detalles'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF10B981),
                 side: const BorderSide(color: Color(0xFF10B981), width: 2),
@@ -498,19 +487,9 @@ class GrifoCard extends StatelessWidget {
           child: SizedBox(
             height: isTablet ? 52 : 48,
             child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GrifoMapScreen(
-                      grifoEspecifico: grifo,
-                      infoGrifoEspecifico: infoGrifo,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.location_on_rounded, size: 18),
-              label: const Text('Ver ubicación'),
+              onPressed: () => _showDetallesDialog(context),
+              icon: const Icon(Icons.info_outline_rounded, size: 18),
+              label: const Text('Ver Detalles'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF10B981),
                 side: const BorderSide(color: Color(0xFF10B981), width: 2),
