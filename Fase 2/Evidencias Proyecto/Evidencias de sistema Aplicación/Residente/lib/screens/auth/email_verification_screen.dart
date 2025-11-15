@@ -14,13 +14,12 @@ class EmailVerificationScreen extends StatefulWidget {
   });
 
   @override
-  State<EmailVerificationScreen> createState() =>
-      _EmailVerificationScreenState();
+  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
 }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   final UnifiedAuthService _authService = UnifiedAuthService();
-
+  
   bool _isLoading = false;
 
   @override
@@ -158,7 +157,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         const Text(
                           'Haz clic en el enlace que te enviamos para verificar tu correo y continuar con el registro.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15, color: Colors.black87),
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                          ),
                         ),
                         const SizedBox(height: 32),
                         SizedBox(
@@ -181,7 +183,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                               ),
                             ),
                             child: const Text(
-                              'Continuar con el registro',
+                              'Continuar al registro',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

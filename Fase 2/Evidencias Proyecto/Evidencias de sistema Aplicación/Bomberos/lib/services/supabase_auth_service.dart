@@ -56,7 +56,7 @@ class SupabaseAuthService {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
-        emailRedirectTo: SupabaseConfig.emailRedirectUrl,
+        emailRedirectTo: 'https://bomberos.firedata.app/verify',
       );
 
       if (response.user != null) {
@@ -195,7 +195,7 @@ class SupabaseAuthService {
       // Enviar enlace de recuperación de contraseña
       await _client.auth.resetPasswordForEmail(
         email.trim(),
-        redirectTo: SupabaseConfig.passwordResetRedirectUrl,
+        redirectTo: 'https://bomberos.firedata.app/reset-password',
       );
       
       debugPrint('✅ Enlace de recuperación enviado');
@@ -311,7 +311,7 @@ class SupabaseAuthService {
       final response = await _client.auth.signUp(
         email: email.trim(),
         password: password,
-        emailRedirectTo: SupabaseConfig.emailRedirectUrl,
+        emailRedirectTo: 'https://bomberos.firedata.app/verify',
       );
       
       if (response.user != null) {
@@ -491,9 +491,6 @@ class SupabaseAuthService {
   }
 
   /// Obtener una comuna válida para crear bomberos
-  /// 
-  /// IMPORTANTE: Solo busca comunas existentes. No intenta crear comunas
-  /// ya que la tabla comunas está protegida y no se puede modificar.
   Future<int> _obtenerComunaValida() async {
     try {
       // Buscar comunas existentes
@@ -508,15 +505,51 @@ class SupabaseAuthService {
         return cutCom;
       }
       
-      // Si no hay comunas, usar Santiago por defecto (13101)
-      // NO intentamos crear la comuna ya que la tabla está protegida
-      const cutComDefault = 13101; // Santiago
-      debugPrint('⚠️ No se encontraron comunas en la BD. Usando valor por defecto: $cutComDefault');
-      debugPrint('💡 Asegúrate de que la tabla comunas tenga al menos una comuna cargada.');
-      return cutComDefault;
+      // Si no hay comunas, crear una temporal válida
+      const cutComTemporal = 13101; // Santiago
+      debugPrint('⚠️ No hay comunas en la BD, usando Santiago por defecto: $cutComTemporal');
+      
+      try {
+        await _client.from('comunas').insert({
+          'cut_com': cutComTemporal,
+          'comuna': 'Santiago',
+          'cut_reg': 13,
+          'region': 'Metropolitana',
+          'cut_prov': 131,
+          'provincia': 'Santiago',
+          'superficie': 641.4,
+          'geometry': 'POINT(-70.6693 -33.4489)',
+        });
+        debugPrint('✅ Comuna temporal creada: $cutComTemporal');
+        return cutComTemporal;
+      } catch (e) {
+        debugPrint('⚠️ Error al crear comuna temporal: $e');
+        // Usar comuna alternativa
+        const cutComAlternativo = 13102; // Providencia
+        debugPrint('🔄 Intentando con comuna alternativa: $cutComAlternativo');
+        
+        try {
+          await _client.from('comunas').insert({
+            'cut_com': cutComAlternativo,
+            'comuna': 'Providencia',
+            'cut_reg': 13,
+            'region': 'Metropolitana',
+            'cut_prov': 131,
+            'provincia': 'Santiago',
+            'superficie': 14.4,
+            'geometry': 'POINT(-70.6167 -33.4255)',
+          });
+          debugPrint('✅ Comuna alternativa creada: $cutComAlternativo');
+          return cutComAlternativo;
+        } catch (e2) {
+          debugPrint('❌ Error al crear comuna alternativa: $e2');
+          // Retornar valor por defecto
+          return cutComTemporal;
+        }
+      }
     } catch (e) {
       debugPrint('❌ Error al obtener comuna válida: $e');
-      // Retornar Santiago por defecto si hay error
+      // Retornar Santiago por defecto
       return 13101;
     }
   }

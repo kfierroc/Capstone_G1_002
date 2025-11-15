@@ -1,4 +1,4 @@
-|import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../services/supabase_auth_service.dart';
 import '../../utils/responsive.dart';
 import '../home/home_main.dart';
@@ -144,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.red.shade400, Colors.red.shade700],
+            colors: [Colors.blue.shade400, Colors.blue.shade700],
           ),
         ),
         child: SafeArea(
@@ -174,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Icon(
                           Icons.lock_outline,
                           size: isTablet ? 70 : 60,
-                          color: Colors.red,
+                          color: Colors.blue,
                         ),
                       ),
                       SizedBox(height: isTablet ? 50 : 40),
@@ -357,10 +357,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _login,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFB71C1C),
+                                  backgroundColor: Colors.blue,
                                   foregroundColor: Colors.white,
-                                  overlayColor:
-                                      const Color(0xFFD32F2F).withOpacity(0.12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
                                       isTablet ? 16 : 12,

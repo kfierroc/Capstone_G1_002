@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../utils/responsive.dart';
+import '../../models/grifo.dart';
+import '../../services/grifo_service.dart';
+import 'dart:math' as math;
 
 class EmergencyMapScreen extends StatefulWidget {
   final Map<String, dynamic> addressData;
@@ -11,25 +15,105 @@ class EmergencyMapScreen extends StatefulWidget {
 }
 
 class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
-  double _zoomLevel = 1.0;
+  double _zoomLevel = 16.0;
+  GoogleMapController? _mapController;
+  static const LatLng _fallbackTarget = LatLng(-33.4489, -70.6693); // Santiago
+  final GrifoService _grifoService = GrifoService();
+
+  LatLng? _target; // coordenadas del domicilio si existen
+  List<Grifo> _nearestGrifos = [];
 
   void _zoomIn() {
     setState(() {
-      _zoomLevel = (_zoomLevel + 0.2).clamp(0.5, 3.0);
+      _zoomLevel = (_zoomLevel + 1.0).clamp(3.0, 21.0);
     });
+    _animateZoom();
   }
 
   void _zoomOut() {
     setState(() {
-      _zoomLevel = (_zoomLevel - 0.2).clamp(0.5, 3.0);
+      _zoomLevel = (_zoomLevel - 1.0).clamp(3.0, 21.0);
     });
+    _animateZoom();
   }
 
   void _resetZoom() {
     setState(() {
-      _zoomLevel = 1.0;
+      _zoomLevel = 16.0;
     });
+    _animateZoom();
   }
+
+  void _animateZoom() {
+    if (_mapController == null) return;
+    _mapController!.animateCamera(
+      CameraUpdate.zoomTo(_zoomLevel),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveTargetAndLoad();
+  }
+
+  void _resolveTargetAndLoad() {
+    final lat = widget.addressData['lat'] as double?;
+    final lon = widget.addressData['lon'] as double?;
+    _target = (lat != null && lon != null) ? LatLng(lat, lon) : _fallbackTarget;
+    _loadNearestGrifos();
+    // Animar cámara al objetivo cuando el mapa esté listo
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLng(_target ?? _fallbackTarget),
+      );
+    }
+  }
+
+  Future<void> _loadNearestGrifos() async {
+    try {
+      final center = _target ?? _fallbackTarget;
+      // Intentar RPC de cercanos si existe, si no, cargar todos y ordenar por distancia
+      final nearby = await _grifoService.getGrifosNearby(lat: center.latitude, lon: center.longitude, radiusKm: 10);
+      List<Grifo> grifos;
+      if (nearby.isSuccess && nearby.data != null && nearby.data!.isNotEmpty) {
+        grifos = nearby.data!;
+      } else {
+        final all = await _grifoService.getAllGrifos();
+        grifos = all.data ?? [];
+      }
+
+      grifos.sort((a, b) => _distance(center, LatLng(a.lat, a.lon)).compareTo(
+            _distance(center, LatLng(b.lat, b.lon)),
+          ));
+      setState(() {
+        _nearestGrifos = grifos.take(3).toList();
+      });
+    } catch (_) {
+      // Silenciar errores en esta vista táctica
+    }
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  double _distance(LatLng a, LatLng b) {
+    const earthRadiusKm = 6371.0;
+    final dLat = _degToRad(b.latitude - a.latitude);
+    final dLon = _degToRad(b.longitude - a.longitude);
+    final lat1 = _degToRad(a.latitude);
+    final lat2 = _degToRad(b.latitude);
+    final sinDLat = math.sin(dLat / 2);
+    final sinDLon = math.sin(dLon / 2);
+    final aTerm = sinDLat * sinDLat + math.cos(lat1) * math.cos(lat2) * sinDLon * sinDLon;
+    final c = 2 * math.atan2(math.sqrt(aTerm), math.sqrt(1 - aTerm));
+    return earthRadiusKm * c;
+  }
+
+  double _degToRad(double deg) => deg * (math.pi / 180.0);
 
   @override
   Widget build(BuildContext context) {
@@ -81,81 +165,52 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       ),
       body: Stack(
         children: [
-          // ============================================
-          // MAPA SIMULADO (Aquí iría el mapa real)
-          // ============================================
-          Container(
-            color: Colors.grey.shade200,
-            child: Center(
-              child: Transform.scale(
-                scale: _zoomLevel,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: isTablet ? 100 : 80,
-                      color: Colors.red.shade700,
-                    ),
-                    SizedBox(height: isTablet ? 12 : 8),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isTablet ? 20 : 16,
-                        vertical: isTablet ? 12 : 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        'Ubicación objetivo',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: ResponsiveHelper.getResponsiveFontSize(
-                            context,
-                            mobile: 12,
-                            tablet: 14,
-                            desktop: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: isTablet ? 120 : 100),
-                    Text(
-                      'Aquí se mostraría el mapa interactivo',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: ResponsiveHelper.getResponsiveFontSize(
-                          context,
-                          mobile: 10,
-                          tablet: 12,
-                          desktop: 14,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '(Google Maps, Mapbox, etc.)',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: ResponsiveHelper.getResponsiveFontSize(
-                          context,
-                          mobile: 8,
-                          tablet: 10,
-                          desktop: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+          GoogleMap(
+            onMapCreated: (controller) {
+              _mapController = controller;
+            },
+            initialCameraPosition: CameraPosition(
+              target: _target ?? _fallbackTarget,
+              zoom: _zoomLevel,
+            ),
+            cameraTargetBounds: CameraTargetBounds(
+              LatLngBounds(
+                southwest: const LatLng(-56.0, -110.0),
+                northeast: const LatLng(-17.0, -65.0),
               ),
             ),
+            mapType: MapType.normal,
+            minMaxZoomPreference: const MinMaxZoomPreference(3, 21),
+            myLocationButtonEnabled: true,
+            myLocationEnabled: false,
+            zoomControlsEnabled: false,
+            compassEnabled: true,
+            mapToolbarEnabled: false,
+            rotateGesturesEnabled: true,
+            scrollGesturesEnabled: true,
+            tiltGesturesEnabled: true,
+            zoomGesturesEnabled: true,
+            markers: {
+              Marker(
+                markerId: const MarkerId('objetivo'),
+                position: _target ?? _fallbackTarget,
+                infoWindow: const InfoWindow(title: 'Ubicación objetivo'),
+                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+              ),
+              ..._nearestGrifos
+                  .map(
+                    (g) => Marker(
+                      markerId: MarkerId('grifo_${g.idGrifo}'),
+                      position: LatLng(g.lat, g.lon),
+                      infoWindow: InfoWindow(
+                        title: 'Grifo ${g.idGrifo}',
+                        snippet: '${_distance(_target ?? _fallbackTarget, LatLng(g.lat, g.lon)).toStringAsFixed(2)} km',
+                      ),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+                    ),
+                  )
+                  .toSet(),
+            },
           ),
 
           // ============================================
@@ -221,7 +276,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           ),
 
           // ============================================
-          // PANEL INFERIOR CON INFORMACIÓN TÁCTICA
+          // PANEL INFERIOR: SOLO 3 GRIFOS MÁS CERCANOS
           // ============================================
           DraggableScrollableSheet(
             initialChildSize: isTablet ? 0.4 : 0.35,
@@ -265,17 +320,16 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Título
                           Row(
                             children: [
                               Icon(
-                                Icons.shield,
+                                Icons.water_drop,
                                 color: Colors.red.shade700,
                                 size: isTablet ? 28 : 24,
                               ),
                               SizedBox(width: isTablet ? 16 : 12),
                               Text(
-                                'Vista Táctica de Emergencia',
+                                '3 grifos más cercanos',
                                 style: TextStyle(
                                   fontSize: ResponsiveHelper.getResponsiveFontSize(
                                     context,
@@ -288,229 +342,39 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                               ),
                             ],
                           ),
-
-                          const SizedBox(height: 20),
-
-                          // Información del domicilio
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue.shade200),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.home,
-                                      color: Colors.blue.shade700,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      ' Domicilio registrado',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  widget.addressData['address'] as String,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    _buildInfoChip(
-                                      Icons.people,
-                                      '${widget.addressData['people_count']} Personas',
-                                      Colors.blue,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildInfoChip(
-                                      Icons.pets,
-                                      '${widget.addressData['pets_count']} Mascotas',
-                                      Colors.orange,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
                           const SizedBox(height: 16),
-
-                          // Condiciones Especiales
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.red.shade200),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.warning,
-                                      color: Colors.red.shade700,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Condiciones Especiales',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${widget.addressData['special_conditions_count']} persona(s) con condiciones médicas',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.red.shade900,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Instrucciones
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.amber.shade300),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info,
-                                      color: Colors.amber.shade700,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Instrucciones',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  widget.addressData['special_instructions']
-                                      as String,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Información de coordenadas y grifo
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.location_on,
-                                      color: Colors.grey.shade700,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      ' Coordenadas: ',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const Text(
-                                      '-33.4234°, -70.6345°',
-                                      style: TextStyle(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.water_drop,
-                                      color: Colors.blue.shade700,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      ' Grifo más cercano: ',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const Text(
-                                      '200m al norte',
-                                      style: TextStyle(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Botón volver
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              icon: const Icon(Icons.arrow_back),
-                              label: const Text('Volver a Información'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red.shade700,
-                                side: BorderSide(color: Colors.red.shade700),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                          ..._nearestGrifos.map((g) {
+                            final distKm = _distance(_target ?? _fallbackTarget, LatLng(g.lat, g.lon));
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
                               ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.water_drop, color: Colors.blue, size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Grifo ${g.idGrifo}  ·  ${g.lat.toStringAsFixed(5)}, ${g.lon.toStringAsFixed(5)}',
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('${distKm.toStringAsFixed(2)} km', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          if (_nearestGrifos.isEmpty)
+                            Text(
+                              'Sin datos de grifos cercanos',
+                              style: TextStyle(color: Colors.grey.shade600),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -518,33 +382,6 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                 ),
               );
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildInfoChip(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
           ),
         ],
       ),
