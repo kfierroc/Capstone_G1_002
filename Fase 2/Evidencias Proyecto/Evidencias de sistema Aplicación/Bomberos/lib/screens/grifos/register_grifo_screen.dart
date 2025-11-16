@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../models/grifo.dart';
 import '../../models/info_grifo.dart';
 import '../../services/services.dart';
@@ -18,12 +25,15 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
   final _direccionController = TextEditingController();
   final _comunaController = TextEditingController();
   final _notasController = TextEditingController();
+  final _latitudeController = TextEditingController();
+  final _longitudeController = TextEditingController();
   
   String _tipo = 'Alto flujo';
   String _estado = 'Sin verificar';
   double _lat = -33.4489;
   double _lng = -70.6693;
   bool _isLoading = false;
+  bool _showManualCoordinates = false;
 
   final List<String> _tipos = ['Alto flujo', 'Seco', 'Hidrante', 'Bomba'];
   final List<String> _estados = ['Operativo', 'Dañado', 'Mantenimiento', 'Sin verificar'];
@@ -32,11 +42,58 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
   final GrifoService _grifoService = GrifoService();
   final InfoGrifoService _infoGrifoService = InfoGrifoService();
 
+  // Google Maps
+  GoogleMapController? _mapController;
+  late LatLng _currentLatLng;
+  Set<Marker> _markers = {};
+  final FocusNode _addressFocus = FocusNode();
+  Timer? _debounce;
+  List<_PlacePrediction> _predictions = [];
+  bool _isFetchingPredictions = false;
+  String? _placesSessionToken;
+
+  String get _googleApiKey {
+    final fromEnv = dotenv.env['GOOGLE_MAPS_API_KEY'];
+    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+    // Fallback para evitar que falle si .env no está cargado
+    return 'AIzaSyDusFD-N_evAqvIVfRm-496mzhXDoFmz0E';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _addressFocus.addListener(() {
+      if (_addressFocus.hasFocus) {
+        _placesSessionToken = UniqueKey().toString();
+      } else {
+        _placesSessionToken = null;
+      }
+      setState(() {});
+    });
+
+    _latitudeController.text = _lat.toString();
+    _longitudeController.text = _lng.toString();
+    _currentLatLng = LatLng(_lat, _lng);
+    _markers = {
+      Marker(
+        markerId: const MarkerId('grifo'),
+        position: _currentLatLng,
+        draggable: true,
+        infoWindow: const InfoWindow(title: 'Ubicación del Grifo'),
+        onDragEnd: (pos) => _updateFromMap(pos),
+      ),
+    };
+  }
+
   @override
   void dispose() {
     _direccionController.dispose();
     _comunaController.dispose();
     _notasController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
+    _addressFocus.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -82,16 +139,16 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
       ),
       body: SingleChildScrollView(
         child: ResponsiveContainer(
-          padding: EdgeInsets.all(isTablet ? 24 : 16),
+          padding: EdgeInsets.all(isTablet ? 12 : 8),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(),
-                SizedBox(height: isTablet ? 24 : 20),
+                SizedBox(height: isTablet ? 12 : 8),
                 _buildForm(),
-                SizedBox(height: isTablet ? 32 : 24),
+                SizedBox(height: isTablet ? 16 : 12),
                 _buildSubmitButton(),
               ],
             ),
@@ -106,8 +163,8 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
@@ -180,8 +237,8 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     final isTablet = ResponsiveHelper.isTablet(context);
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -225,20 +282,81 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          _buildTextField(
-            controller: _direccionController,
-            label: 'Dirección',
-            hint: 'Ej: Av. Libertador 1234',
-            icon: Icons.location_on,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese la dirección';
-              }
-              return null;
-            },
+          const SizedBox(height: 16),
+          // Dirección con autocompletado
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Dirección',
+                style: GrifoStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _direccionController,
+                focusNode: _addressFocus,
+                onChanged: _onAddressChanged,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor ingrese la dirección';
+                  }
+                  return null;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Dirección completa *',
+                  hintText: 'Ej: Av. Libertador 1234',
+                  prefixIcon: const Icon(Icons.location_on),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: GrifoColors.surfaceVariant,
+                ),
+              ),
+              if (_shouldShowPredictions)
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  constraints: BoxConstraints(
+                    maxHeight: isTablet ? 300 : 240,
+                  ),
+                  child: _isFetchingPredictions
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: _predictions.length,
+                          separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
+                          itemBuilder: (context, index) {
+                            final p = _predictions[index];
+                            return ListTile(
+                              dense: false,
+                              leading: const Icon(Icons.place_outlined),
+                              title: Text(p.primaryText),
+                              subtitle: p.secondaryText != null ? Text(p.secondaryText!) : null,
+                              onTap: () => _onPredictionTap(p),
+                            );
+                          },
+                        ),
+                ),
+            ],
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+          SizedBox(height: isTablet ? 12 : 8),
           _buildTextField(
             controller: _comunaController,
             label: 'Comuna',
@@ -252,10 +370,10 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
                 return 'Ingrese un nombre de comuna válido';
               }
               return null;
-            },
-          ),
-          SizedBox(height: isTablet ? 16 : 12),
-          Row(
+             },
+           ),
+           SizedBox(height: isTablet ? 12 : 8),
+           Row(
             children: [
               Expanded(
                 child: _buildDropdown(
@@ -276,16 +394,263 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
               ),
             ],
           ),
-          SizedBox(height: isTablet ? 16 : 12),
+          SizedBox(height: isTablet ? 12 : 8),
           _buildTextField(
             controller: _notasController,
             label: 'Notas',
             hint: 'Información adicional sobre el grifo...',
             icon: Icons.note,
-            maxLines: 3,
-          ),
-          SizedBox(height: isTablet ? 16 : 12),
-          _buildCoordinatesSection(),
+             maxLines: 3,
+           ),
+           SizedBox(height: isTablet ? 12 : 8),
+           // Vista previa de ubicación con mapa
+           Container(
+             padding: EdgeInsets.all(isTablet ? 12 : 10),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.map, color: Colors.blue.shade700),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Vista previa de ubicación',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                 const SizedBox(height: 8),
+                 ClipRRect(
+                   borderRadius: BorderRadius.circular(12),
+                   child: SizedBox(
+                     height: isTablet ? 350 : 280,
+                    child: Stack(
+                      children: [
+                        GoogleMap(
+                          mapType: MapType.normal,
+                          initialCameraPosition: CameraPosition(
+                            target: _currentLatLng,
+                            zoom: 16,
+                          ),
+                          markers: _markers,
+                          zoomControlsEnabled: false,
+                          myLocationButtonEnabled: false,
+                          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                            Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
+                          },
+                          onMapCreated: (controller) {
+                            _mapController = controller;
+                          },
+                          onTap: (pos) => _updateFromMap(pos),
+                        ),
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Column(
+                            children: [
+                              _buildMapButton(Icons.add, onTap: () {
+                                _mapController?.animateCamera(CameraUpdate.zoomIn());
+                              }, size: isTablet ? 44 : 36),
+                              const SizedBox(height: 4),
+                              _buildMapButton(Icons.remove, onTap: () {
+                                _mapController?.animateCamera(CameraUpdate.zoomOut());
+                              }, size: isTablet ? 44 : 36),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green.shade600,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Ubicación confirmada',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _direccionController.text.isEmpty 
+                            ? 'Seleccione una ubicación en el mapa' 
+                            : _direccionController.text,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Coordenadas: ${_latitudeController.text}, ${_longitudeController.text}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                     ],
+                   ),
+                 ),
+                 const SizedBox(height: 8),
+                 Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.amber.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.lightbulb_outline,
+                        color: Colors.amber.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Puedes arrastrar el marcador o tocar el mapa para seleccionar la ubicación del grifo.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+               ],
+             ),
+           ),
+           const SizedBox(height: 8),
+           // Opción de ingresar coordenadas manualmente
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _showManualCoordinates = !_showManualCoordinates;
+              });
+            },
+            icon: Icon(
+              _showManualCoordinates
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down,
+            ),
+            label: Text(
+              _showManualCoordinates
+                  ? 'Ocultar coordenadas'
+                  : 'Si tienes problemas con ubicar el grifo, ingresa las coordenadas manualmente',
+            ),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.blue.shade700,
+            ),
+           ),
+           if (_showManualCoordinates) ...[
+             const SizedBox(height: 8),
+             Container(
+               padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ingresar coordenadas manualmente',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                     ),
+                   ),
+                   const SizedBox(height: 12),
+                   TextFormField(
+                    controller: _latitudeController,
+                    validator: (value) => _validateCoordinate(value, true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Latitud (coordenada Y) *',
+                      hintText: 'Ejemplo: -33.4489',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                     onChanged: (_) => _tryUpdateMapFromFields(),
+                   ),
+                   const SizedBox(height: 8),
+                   TextFormField(
+                    controller: _longitudeController,
+                    validator: (value) => _validateCoordinate(value, false),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Longitud (coordenada X) *',
+                      hintText: 'Ejemplo: -70.6693',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                     onChanged: (_) => _tryUpdateMapFromFields(),
+                   ),
+                   const SizedBox(height: 8),
+                   Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Colors.blue.shade700,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            '💡 Puedes obtener las coordenadas desde Google Maps: haz clic derecho en tu ubicación y selecciona las coordenadas que aparecen.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -353,73 +718,189 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     );
   }
 
-  Widget _buildCoordinatesSection() {
-    final isTablet = ResponsiveHelper.isTablet(context);
-    
-    return Container(
-      padding: EdgeInsets.all(isTablet ? 16 : 12),
-      decoration: BoxDecoration(
-        color: GrifoColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Coordenadas',
-            style: GrifoStyles.bodyMedium.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: isTablet ? 12 : 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  initialValue: _lat.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Latitud',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  onChanged: (value) {
-                    _lat = double.tryParse(value) ?? _lat;
-                  },
-                ),
-              ),
-              SizedBox(width: isTablet ? 16 : 12),
-              Expanded(
-                child: TextFormField(
-                  initialValue: _lng.toString(),
-                  decoration: const InputDecoration(
-                    labelText: 'Longitud',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  onChanged: (value) {
-                    _lng = double.tryParse(value) ?? _lng;
-                  },
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isTablet ? 8 : 6),
-          Text(
-            'Coordenadas por defecto: Santiago Centro',
-            style: GrifoStyles.caption,
-          ),
-        ],
+  void _updateFromMap(LatLng pos) {
+    setState(() {
+      _currentLatLng = pos;
+      _lat = pos.latitude;
+      _lng = pos.longitude;
+      _markers = {
+        Marker(
+          markerId: const MarkerId('grifo'),
+          position: pos,
+          draggable: true,
+          infoWindow: const InfoWindow(title: 'Ubicación del Grifo'),
+          onDragEnd: (p) => _updateFromMap(p),
+        ),
+      };
+      _latitudeController.text = pos.latitude.toStringAsFixed(6);
+      _longitudeController.text = pos.longitude.toStringAsFixed(6);
+    });
+  }
+
+  void _tryUpdateMapFromFields() {
+    final lat = double.tryParse(_latitudeController.text);
+    final lng = double.tryParse(_longitudeController.text);
+    if (lat == null || lng == null) return;
+    _lat = lat;
+    _lng = lng;
+    final pos = LatLng(lat, lng);
+    _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+    _updateFromMap(pos);
+  }
+
+  Widget _buildMapButton(IconData icon, {VoidCallback? onTap, double size = 32}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
+          ],
+        ),
+        child: Icon(icon, size: size * 0.56, color: Colors.grey.shade700),
       ),
     );
+  }
+
+  bool get _shouldShowPredictions =>
+      _addressFocus.hasFocus && _predictions.isNotEmpty;
+
+  void _onAddressChanged(String value) {
+    _debounce?.cancel();
+    if (value.trim().isEmpty) {
+      setState(() => _predictions = []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 350), () async {
+      await _fetchPredictions(value.trim());
+    });
+  }
+
+  Future<void> _fetchPredictions(String input) async {
+    if (_googleApiKey.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: falta Google Maps API Key')),
+        );
+      }
+      return;
+    }
+    setState(() => _isFetchingPredictions = true);
+    try {
+      final uri = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/place/autocomplete/json',
+        <String, String>{
+          'input': input,
+          'key': _googleApiKey,
+          'language': 'es',
+          'components': 'country:cl',
+          'types': 'address',
+          if (_placesSessionToken != null) 'sessiontoken': _placesSessionToken!,
+        },
+      );
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final preds = (data['predictions'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map((m) => _PlacePrediction.fromJson(m))
+            .toList();
+        setState(() => _predictions = preds);
+      } else {
+        setState(() => _predictions = []);
+      }
+    } catch (_) {
+      setState(() => _predictions = []);
+    } finally {
+      if (mounted) setState(() => _isFetchingPredictions = false);
+    }
+  }
+
+  Future<void> _onPredictionTap(_PlacePrediction p) async {
+    // Cerrar lista
+    setState(() {
+      _direccionController.text = p.description;
+      _predictions = [];
+      _addressFocus.unfocus();
+    });
+
+    // Obtener detalles para coordenadas
+    try {
+      final uri = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/place/details/json',
+        <String, String>{
+          'place_id': p.placeId,
+          'fields': 'geometry,name,formatted_address,address_components',
+          'key': _googleApiKey,
+          'language': 'es',
+          if (_placesSessionToken != null) 'sessiontoken': _placesSessionToken!,
+        },
+      );
+      final res = await http.get(uri);
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body) as Map<String, dynamic>;
+        final result = data['result'] as Map<String, dynamic>;
+        final loc = result['geometry']['location'] as Map<String, dynamic>;
+        final lat = (loc['lat'] as num).toDouble();
+        final lng = (loc['lng'] as num).toDouble();
+        final pos = LatLng(lat, lng);
+        
+        // Extraer comuna de address_components si está disponible
+        if (result.containsKey('address_components')) {
+          final components = result['address_components'] as List<dynamic>;
+          for (var component in components) {
+            final comp = component as Map<String, dynamic>;
+            final types = comp['types'] as List<dynamic>;
+            if (types.contains('administrative_area_level_2') || 
+                types.contains('locality')) {
+              final comunaName = comp['long_name'] as String;
+              _comunaController.text = comunaName;
+              break;
+            }
+          }
+        }
+        
+        _mapController?.animateCamera(CameraUpdate.newLatLngZoom(pos, 17));
+        _updateFromMap(pos);
+        _placesSessionToken = null; // cerrar sesión de búsqueda
+      }
+    } catch (_) {
+      // Silencioso, no bloquear la UI si hay error de red
+    }
+  }
+
+  String? _validateCoordinate(String? value, bool isLatitude) {
+    if (value == null || value.isEmpty) {
+      return 'Por favor ingrese la ${isLatitude ? "latitud" : "longitud"}';
+    }
+    final coord = double.tryParse(value);
+    if (coord == null) {
+      return 'Ingrese un valor numérico válido';
+    }
+    if (isLatitude) {
+      if (coord < -90 || coord > 90) {
+        return 'La latitud debe estar entre -90 y 90';
+      }
+    } else {
+      if (coord < -180 || coord > 180) {
+        return 'La longitud debe estar entre -180 y 180';
+      }
+    }
+    return null;
   }
 
   Widget _buildSubmitButton() {
     final isTablet = ResponsiveHelper.isTablet(context);
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: SizedBox(
         width: double.infinity,
         height: isTablet ? 64 : 56,
@@ -540,5 +1021,32 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
         });
       }
     }
+  }
+}
+
+class _PlacePrediction {
+  final String placeId;
+  final String description;
+  final String primaryText;
+  final String? secondaryText;
+
+  _PlacePrediction({
+    required this.placeId,
+    required this.description,
+    required this.primaryText,
+    this.secondaryText,
+  });
+
+  factory _PlacePrediction.fromJson(Map<String, dynamic> json) {
+    final structured = json['structured_formatting'] as Map<String, dynamic>?;
+    final primary = structured != null ? (structured['main_text'] as String? ?? '') : '';
+    final secondary = structured != null ? (structured['secondary_text'] as String?) : null;
+
+    return _PlacePrediction(
+      placeId: json['place_id'] as String,
+      description: json['description'] as String,
+      primaryText: primary.isNotEmpty ? primary : (json['description'] as String),
+      secondaryText: secondary,
+    );
   }
 }
