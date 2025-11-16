@@ -19,6 +19,54 @@ class DatabaseService {
   /// Obtener el cliente de Supabase
   SupabaseClient get _client => SupabaseConfig.client;
 
+  /// Normaliza el teléfono al formato requerido por la BD: +56[2-9][0-9]{8,9}
+  /// El formato debe cumplir: ^\+56[2-9][0-9]{8,9}$
+  String _normalizePhoneForDB(String? phone) {
+    if (phone == null || phone.isEmpty) {
+      return ''; // Retornar vacío si no hay teléfono
+    }
+    
+    // Remover todos los caracteres no numéricos
+    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    if (cleanPhone.isEmpty) {
+      return '';
+    }
+    
+    // Si ya empieza con 56, removerlo para procesar
+    if (cleanPhone.startsWith('56')) {
+      cleanPhone = cleanPhone.substring(2);
+    }
+    
+    // Si tiene 9 dígitos y empieza con 9 (celular)
+    if (cleanPhone.length == 9 && cleanPhone.startsWith('9')) {
+      return '+56$cleanPhone'; // +56988776655
+    }
+    
+    // Si tiene 8 dígitos (fijo, generalmente empieza con 2)
+    if (cleanPhone.length == 8) {
+      return '+56$cleanPhone'; // +56221234567
+    }
+    
+    // Si tiene 9 dígitos pero no empieza con 9
+    if (cleanPhone.length == 9) {
+      return '+56$cleanPhone';
+    }
+    
+    // Si tiene 10 dígitos (fijo con código de área de 2 dígitos)
+    if (cleanPhone.length == 10) {
+      return '+56$cleanPhone';
+    }
+    
+    // Si tiene 11 dígitos (ya incluye el 56)
+    if (cleanPhone.length == 11 && cleanPhone.startsWith('56')) {
+      return '+${cleanPhone.substring(2)}'; // Ya tiene 56, solo agregar +
+    }
+    
+    // Por defecto, agregar +56 al inicio
+    return '+56$cleanPhone';
+  }
+
   /// Parsear condiciones médicas desde string a lista
   List<String> _parseMedicalConditions(String? padecimiento) {
     if (padecimiento == null || padecimiento.isEmpty) {
@@ -67,12 +115,13 @@ class DatabaseService {
       // Generar ID manualmente para id_grupof (compatible con INTEGER)
       final idGrupoF = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Usar segundos en lugar de milisegundos
       
+      // Normalizar teléfono al formato requerido por la BD
+      final telefonoNormalizado = _normalizePhoneForDB(data.phoneNumber);
+      
       final grupoData = {
         'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
         'rut_titular': data.rut,
-        'nomb_titular': data.fullName ?? '', // NUEVO CAMPO según esquema actualizado
-        'ape_p_titular': '', // NUEVO CAMPO - se puede extraer del fullName si es necesario
-        'telefono_titular': data.phoneNumber ?? '', // Updated to use phoneNumber from step 2
+        'telefono_titular': telefonoNormalizado,
         'email': data.email, // Agregar email que es requerido
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
@@ -264,9 +313,12 @@ class DatabaseService {
     try {
       debugPrint('📝 Actualizando teléfono principal para grupo: $grupoId');
       
+      // Normalizar teléfono al formato requerido por la BD
+      final telefonoNormalizado = _normalizePhoneForDB(telefono);
+      
       final response = await _client
           .from('grupofamiliar')
-          .update({'telefono_titular': telefono})
+          .update({'telefono_titular': telefonoNormalizado})
           .eq('id_grupof', int.parse(grupoId))
           .select()
           .single();
@@ -307,8 +359,104 @@ class DatabaseService {
   // MÉTODOS AUXILIARES PARA COMUNAS
   // ============================================================================
 
-  /// Obtiene una comuna válida para crear residencias
+  /// Obtiene una comuna válida usando PostGIS basado en coordenadas
+  /// Usa ST_Contains para determinar si el punto está dentro del polígono de la comuna
+  Future<int> _obtenerComunaPorCoordenadas({
+    required double lat,
+    required double lon,
+  }) async {
+    try {
+      debugPrint('📍 Buscando comuna por coordenadas: lat=$lat, lon=$lon');
+      
+      // Usar coordenadas tal cual de Google Maps (sin validación)
+      
+      // Usar RPC para llamar a la función SQL que usa PostGIS
+      try {
+        final response = await _client.rpc(
+          'obtener_comuna_por_coordenadas',
+          params: {
+            'p_lon': lon,  // Primero longitud (como en el código Python)
+            'p_lat': lat,  // Luego latitud
+          },
+        );
+        
+        if (response != null && response is Map && response.containsKey('cut_com')) {
+          final cutCom = response['cut_com'] as int;
+          debugPrint('✅ Comuna encontrada por PostGIS: $cutCom (${response['comuna']})');
+          return cutCom;
+        }
+        
+        debugPrint('⚠️ No se encontró comuna para las coordenadas dadas');
+        return 0;
+        
+      } catch (rpcError) {
+        debugPrint('❌ Error al llamar función RPC: $rpcError');
+        debugPrint('⚠️ La función SQL obtener_comuna_por_coordenadas no está disponible');
+        debugPrint('   Por favor, créala en Supabase usando el archivo SQL proporcionado');
+        return 0;
+      }
+      
+    } catch (e) {
+      debugPrint('❌ Error al obtener comuna por coordenadas: $e');
+      return 0;
+    }
+  }
+
+  /// Busca comuna por nombre en la dirección
+  /// Extrae nombres de comunas comunes de la dirección y busca en la BD
+  Future<int> _buscarComunaPorDireccion(String direccion) async {
+    try {
+      // Lista de palabras comunes de comunas chilenas para buscar
+      final palabrasComunas = [
+        'Santiago', 'Valparaíso', 'Concepción', 'La Serena', 'Antofagasta',
+        'Temuco', 'Rancagua', 'Talca', 'Arica', 'Iquique', 'Puerto Montt',
+        'Coquimbo', 'Valdivia', 'Osorno', 'Chillán', 'Los Ángeles',
+        'San Pedro', 'Viña del Mar', 'Quilpué', 'Villa Alemana', 'Quillota',
+        'San Antonio', 'Cartagena', 'El Tabo', 'Algarrobo', 'Santo Domingo',
+        'Puchuncaví', 'Zapallar', 'Papudo', 'La Ligua', 'Petorca',
+        'Cabildo', 'Hijuelas', 'La Calera', 'Nogales', 'Limache',
+        'Olmué', 'Marga Marga', 'Quintero', 'Concón', 'Juan Fernández',
+        'Isla de Pascua', 'Calle Larga', 'Los Andes', 'San Esteban',
+        'Rinconada', 'Catemu', 'Llay Llay', 'Panquehue', 'San Felipe',
+        'Putaendo', 'Santa María', 'Nogales', 'La Cruz', 'Quillota',
+        'La Palma', 'Hijuelas', 'La Calera', 'Nogales', 'Limache',
+      ];
+      
+      // Buscar palabras de comunas en la dirección
+      final direccionLower = direccion.toLowerCase();
+      for (final palabra in palabrasComunas) {
+        if (direccionLower.contains(palabra.toLowerCase())) {
+          debugPrint('🔍 Buscando comuna: $palabra');
+          try {
+            final response = await _client
+                .from('comunas')
+                .select('cut_com')
+                .ilike('comuna', '%$palabra%')
+                .limit(1);
+            
+            if (response.isNotEmpty) {
+              final cutCom = response.first['cut_com'] as int;
+              debugPrint('✅ Comuna encontrada por nombre: $cutCom ($palabra)');
+              return cutCom;
+            }
+          } catch (e) {
+            debugPrint('⚠️ Error al buscar comuna $palabra: $e');
+            continue;
+          }
+        }
+      }
+      
+      debugPrint('⚠️ No se encontró comuna por nombre en la dirección');
+      return 0;
+    } catch (e) {
+      debugPrint('❌ Error al buscar comuna por dirección: $e');
+      return 0;
+    }
+  }
+
+  /// Obtiene una comuna válida para crear residencias (método legacy)
   /// Primero busca comunas existentes, si no hay ninguna crea una temporal válida
+  /// DEPRECATED: Usar _obtenerComunaPorCoordenadas en su lugar
   Future<int> _obtenerComunaValida() async {
     try {
       // 1. Buscar comunas existentes
@@ -393,54 +541,62 @@ class DatabaseService {
     try {
       debugPrint('📝 Creando residencia y registro_v para grupo: $grupoId');
       
-      // 1. Buscar una comuna existente primero
-      int cutCom = await _obtenerComunaValida(); // Cambiado de outCom a cutCom
+      // 1. Usar coordenadas tal cual las entrega Google Maps (sin redondeo ni validación)
+      if (data.latitude == null || data.longitude == null) {
+        return DatabaseResult.error('Las coordenadas son requeridas para crear la residencia');
+      }
       
-      if (cutCom == 0) { // Cambiado de outCom a cutCom
+      final lat = data.latitude!;
+      final lon = data.longitude!;
+      
+      // 2. Obtener comuna usando PostGIS basado en coordenadas
+      int cutCom = await _obtenerComunaPorCoordenadas(lat: lat, lon: lon);
+      
+      // Si PostGIS no encuentra comuna, intentar alternativas
+      if (cutCom == 0) {
+        debugPrint('⚠️ No se encontró comuna por PostGIS, intentando alternativas...');
+        
+        // Alternativa 1: Buscar por nombre de comuna en la dirección
+        if (data.address != null && data.address!.isNotEmpty) {
+          debugPrint('🔍 Intentando buscar comuna por nombre en la dirección: ${data.address}');
+          final comunaPorNombre = await _buscarComunaPorDireccion(data.address!);
+          if (comunaPorNombre != 0) {
+            debugPrint('✅ Comuna encontrada por nombre en dirección: $comunaPorNombre');
+            cutCom = comunaPorNombre;
+          }
+        }
+        
+        // Alternativa 2: Si aún no se encontró, usar método legacy
+        if (cutCom == 0) {
+          debugPrint('⚠️ No se encontró comuna por nombre, usando método legacy');
+          cutCom = await _obtenerComunaValida();
+        }
+      }
+      
+      if (cutCom == 0) {
         return DatabaseResult.error('No se pudo obtener una comuna válida para crear la residencia');
       }
       
-      // 2. Crear la residencia
+      debugPrint('✅ Usando comuna: $cutCom');
+      
+      // 3. Crear la residencia
       final idResidencia = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      
-      // Asegurar que lat/lon tengan la precisión correcta para DECIMAL(9,6)
-      double lat = 0.0;
-      double lon = 0.0;
-      
-      if (data.latitude != null) {
-        lat = double.parse(data.latitude!.toStringAsFixed(6));
-        // Asegurar que esté dentro del rango válido para coordenadas
-        if (lat < -90.0 || lat > 90.0) {
-          lat = -33.448890; // Santiago por defecto
-        }
-      } else {
-        lat = -33.448890; // Santiago por defecto
-      }
-      
-      if (data.longitude != null) {
-        lon = double.parse(data.longitude!.toStringAsFixed(6));
-        // Asegurar que esté dentro del rango válido para coordenadas
-        if (lon < -180.0 || lon > 180.0) {
-          lon = -70.669270; // Santiago por defecto
-        }
-      } else {
-        lon = -70.669270; // Santiago por defecto
-      }
       
       final residenciaData = {
         'id_residencia': idResidencia,
         'direccion': (data.address != null && data.address!.isNotEmpty) 
             ? data.address!
             : null, // No usar dirección temporal
-        'lat': lat,
-        'lon': lon,
+        'lat': lat, // Coordenadas tal cual de Google Maps
+        'lon': lon, // Coordenadas tal cual de Google Maps
         'cut_com': cutCom, // Cambiado de out_com a cut_com
-        'numero_pisos': data.numberOfFloors, // Agregar número de pisos
+        // numero_pisos no existe en la tabla residencia, se guarda en registro_v.pisos
       };
       
       debugPrint('📝 Datos de residencia: $residenciaData');
-      debugPrint('📍 Coordenadas procesadas: lat=$lat, lon=$lon');
-      debugPrint('📍 Precisión: lat=${lat.toStringAsFixed(6)}, lon=${lon.toStringAsFixed(6)}');
+      // Mostrar coordenadas con 6 decimales para legibilidad, pero se guardan completas
+      debugPrint('📍 Coordenadas de Google Maps: lat=${lat.toStringAsFixed(6)}, lon=${lon.toStringAsFixed(6)}');
+      debugPrint('📍 Coordenadas completas guardadas: lat=$lat, lon=$lon');
       
       final residenciaResponse = await _client
           .from('residencia')
@@ -587,14 +743,20 @@ class DatabaseService {
         residenciaUpdates['direccion'] = updates['address'];
       }
       if (updates.containsKey('latitude')) {
-        residenciaUpdates['lat'] = updates['latitude'];
+        // Usar coordenadas tal cual de Google Maps
+        final latValue = updates['latitude'] as double?;
+        if (latValue != null) {
+          residenciaUpdates['lat'] = latValue;
+        }
       }
       if (updates.containsKey('longitude')) {
-        residenciaUpdates['lon'] = updates['longitude'];
+        // Usar coordenadas tal cual de Google Maps
+        final lonValue = updates['longitude'] as double?;
+        if (lonValue != null) {
+          residenciaUpdates['lon'] = lonValue;
+        }
       }
-      if (updates.containsKey('numberOfFloors')) {
-        residenciaUpdates['numero_pisos'] = updates['numberOfFloors'];
-      }
+      // numero_pisos no existe en la tabla residencia, se guarda en registro_v.pisos
       // Campo eliminado - no hacer nada
       if (updates.containsKey('specialInstructions')) {
         updates.remove('specialInstructions');
@@ -1173,19 +1335,12 @@ class DatabaseService {
 
       // Extraer datos del grupo familiar usando toJson para evitar problemas de reconocimiento
       final grupoJson = grupo.toJson();
-      final nombreTitular = grupoJson['nomb_titular'] as String? ?? '';
-      final apellidoTitular = grupoJson['ape_p_titular'] as String? ?? '';
       final telefonoTitular = grupoJson['telefono_titular'] as String? ?? '';
-      
-      // Construir nombre completo solo si hay datos
-      final nombreCompleto = nombreTitular.isNotEmpty || apellidoTitular.isNotEmpty 
-          ? '${nombreTitular.trim()} ${apellidoTitular.trim()}'.trim()
-          : 'Usuario';
       
       final registrationData = RegistrationData(
         email: grupo.email,
         rut: grupo.rutTitular,
-        fullName: nombreCompleto, // Usar nombre completo construido
+        fullName: 'Usuario', // Nombre por defecto ya que no se almacena nombre/apellido
         phoneNumber: telefonoTitular.isNotEmpty ? telefonoTitular : 'No especificado', // Usar teléfono del grupo familiar
         mainPhone: telefonoTitular.isNotEmpty ? telefonoTitular : 'No especificado', // También asignar mainPhone
         address: residencia?.direccion,
@@ -1262,18 +1417,14 @@ class DatabaseService {
       // Generar ID manualmente para id_grupof (compatible con INTEGER)
       final idGrupoF = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Usar segundos en lugar de milisegundos
       
-      // Extraer el nombre del email para usarlo como nombre temporal
-      final emailPart = email.split('@')[0];
-      final nameParts = emailPart.split(RegExp(r'[._]'));
-      final tempNombre = nameParts.isNotEmpty ? nameParts.first[0].toUpperCase() + nameParts.first.substring(1) : 'Usuario';
-      final tempApellido = nameParts.length > 1 ? nameParts.last[0].toUpperCase() + nameParts.last.substring(1) : 'Temporal';
+      // Usar un teléfono temporal válido que cumpla con el constraint
+      // Formato requerido: ^\+56[2-9][0-9]{8,9}$
+      const telefonoTemporal = '+56900000000'; // Teléfono temporal válido
       
       final grupoData = {
         'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
         'rut_titular': '00000000', // RUT temporal - debe ser actualizado
-        'nomb_titular': tempNombre,
-        'ape_p_titular': tempApellido,
-        'telefono_titular': '', // Teléfono vacío temporalmente
+        'telefono_titular': telefonoTemporal, // Teléfono temporal válido que cumple el constraint
         'email': email,
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
@@ -1327,8 +1478,6 @@ class DatabaseService {
 class GrupoFamiliar {
   final int idGrupoF;           // INTEGER como en el esquema real
   final String rutTitular;
-  final String nombTitular;     // NUEVO CAMPO según esquema actualizado
-  final String apePTitular;     // NUEVO CAMPO según esquema actualizado
   final String telefonoTitular; // NUEVO CAMPO según esquema actualizado
   final String email;           // Email como en el esquema real
   final DateTime fechaCreacion;
@@ -1338,8 +1487,6 @@ class GrupoFamiliar {
   GrupoFamiliar({
     required this.idGrupoF,
     required this.rutTitular,
-    required this.nombTitular,
-    required this.apePTitular,
     required this.telefonoTitular,
     required this.email,
     required this.fechaCreacion,
@@ -1351,8 +1498,6 @@ class GrupoFamiliar {
     return GrupoFamiliar(
       idGrupoF: json['id_grupof'] as int, // Usar int directamente
       rutTitular: json['rut_titular'] as String,
-      nombTitular: json['nomb_titular'] as String? ?? '',
-      apePTitular: json['ape_p_titular'] as String? ?? '',
       telefonoTitular: json['telefono_titular'] as String? ?? '',
       email: json['email'] as String,
       fechaCreacion: DateTime.parse(json['fecha_creacion'] as String),
@@ -1369,8 +1514,6 @@ class GrupoFamiliar {
     return {
       'id_grupof': idGrupoF,
       'rut_titular': rutTitular,
-      'nomb_titular': nombTitular,
-      'ape_p_titular': apePTitular,
       'telefono_titular': telefonoTitular,
       'email': email,
       'fecha_creacion': fechaCreacion.toIso8601String().split('T')[0],

@@ -39,8 +39,6 @@ CREATE TABLE residencia (
 CREATE TABLE grupofamiliar(
   id_grupof INTEGER PRIMARY KEY NOT NULL,
   rut_titular VARCHAR(12) NOT NULL,
-  nomb_titular VARCHAR(50) NOT NULL,
-  ape_p_titular VARCHAR(50) NOT NULL,
   telefono_titular VARCHAR(13) NOT NULL,
   CHECK (telefono_titular ~ '^\+56[2-9][0-9]{8,9}$'),
   email TEXT UNIQUE NOT NULL,

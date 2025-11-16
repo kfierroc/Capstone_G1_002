@@ -165,6 +165,54 @@ class Validators {
     return phone;
   }
 
+  /// Normaliza el teléfono al formato requerido por la BD: +56[2-9][0-9]{8,9}
+  /// El formato debe cumplir: ^\+56[2-9][0-9]{8,9}$
+  static String normalizePhoneForDB(String? phone) {
+    if (phone == null || phone.isEmpty) {
+      return ''; // Retornar vacío si no hay teléfono
+    }
+    
+    // Remover todos los caracteres no numéricos
+    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    if (cleanPhone.isEmpty) {
+      return '';
+    }
+    
+    // Si ya empieza con 56, removerlo para procesar
+    if (cleanPhone.startsWith('56')) {
+      cleanPhone = cleanPhone.substring(2);
+    }
+    
+    // Si tiene 9 dígitos y empieza con 9 (celular)
+    if (cleanPhone.length == 9 && cleanPhone.startsWith('9')) {
+      return '+56$cleanPhone'; // +56988776655
+    }
+    
+    // Si tiene 8 dígitos (fijo, generalmente empieza con 2)
+    if (cleanPhone.length == 8) {
+      return '+56$cleanPhone'; // +56221234567
+    }
+    
+    // Si tiene 9 dígitos pero no empieza con 9
+    if (cleanPhone.length == 9) {
+      return '+56$cleanPhone';
+    }
+    
+    // Si tiene 10 dígitos (fijo con código de área de 2 dígitos)
+    if (cleanPhone.length == 10) {
+      return '+56$cleanPhone';
+    }
+    
+    // Si tiene 11 dígitos (ya incluye el 56)
+    if (cleanPhone.length == 11 && cleanPhone.startsWith('56')) {
+      return '+${cleanPhone.substring(2)}'; // Ya tiene 56, solo agregar +
+    }
+    
+    // Por defecto, agregar +56 al inicio
+    return '+56$cleanPhone';
+  }
+
   /// Valida email
   static String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {

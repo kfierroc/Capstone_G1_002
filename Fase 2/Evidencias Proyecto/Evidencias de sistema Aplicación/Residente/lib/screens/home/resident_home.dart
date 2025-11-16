@@ -3,6 +3,7 @@ import '../../models/models.dart';
 import '../../services/unified_auth_service.dart';
 import '../../services/database_service.dart' as db;
 import '../../utils/app_styles.dart';
+import '../../utils/validators.dart';
 import 'tabs/family_tab.dart';
 import 'tabs/pets_tab.dart';
 import 'tabs/residence_tab.dart';
@@ -467,14 +468,16 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         debugPrint('📝 RUT cambió: ${_registrationData.rut} -> ${newData.rut}');
       }
       if (newData.phoneNumber != null && newData.phoneNumber != _registrationData.phoneNumber) {
-        grupoUpdates['telefono_titular'] = newData.phoneNumber;
-        debugPrint('📝 Teléfono cambió: ${_registrationData.phoneNumber} -> ${newData.phoneNumber}');
+        final telefonoNormalizado = Validators.normalizePhoneForDB(newData.phoneNumber);
+        grupoUpdates['telefono_titular'] = telefonoNormalizado;
+        debugPrint('📝 Teléfono cambió: ${_registrationData.phoneNumber} -> $telefonoNormalizado');
       }
       
       // También actualizar mainPhone si cambió (ambos representan el mismo teléfono)
       if (newData.mainPhone != null && newData.mainPhone != _registrationData.mainPhone) {
-        grupoUpdates['telefono_titular'] = newData.mainPhone;
-        debugPrint('📝 Teléfono principal cambió: ${_registrationData.mainPhone} -> ${newData.mainPhone}');
+        final telefonoNormalizado = Validators.normalizePhoneForDB(newData.mainPhone);
+        grupoUpdates['telefono_titular'] = telefonoNormalizado;
+        debugPrint('📝 Teléfono principal cambió: ${_registrationData.mainPhone} -> $telefonoNormalizado');
       }
       
       if (grupoUpdates.isNotEmpty) {
@@ -531,12 +534,12 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
           debugPrint('📝 Reemplazando "Dirección no especificada" con: ${newData.address}');
         }
         
-        // Solo actualizar coordenadas si son válidas y no causan overflow
+        // Solo actualizar coordenadas si son válidas (sin redondeo, tal cual de Google Maps)
         if (newData.latitude != null && newData.latitude! != 0.0) {
-          residenciaUpdates['lat'] = double.parse(newData.latitude!.toStringAsFixed(6));
+          residenciaUpdates['lat'] = newData.latitude!;
         }
         if (newData.longitude != null && newData.longitude! != 0.0) {
-          residenciaUpdates['lon'] = double.parse(newData.longitude!.toStringAsFixed(6));
+          residenciaUpdates['lon'] = newData.longitude!;
         }
         
         // Los campos telefonoPrincipal se manejan en otras tablas
