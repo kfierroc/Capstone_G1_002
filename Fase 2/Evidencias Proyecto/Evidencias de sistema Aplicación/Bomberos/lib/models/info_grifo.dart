@@ -6,6 +6,7 @@ class InfoGrifo {
   final int idGrifo; // FK -> grifo
   final DateTime fechaRegistro;
   final String estado;
+  final String nota; // Notas del grifo (máximo 100 caracteres)
   final int rutNum; // FK -> bombero
 
   InfoGrifo({
@@ -13,6 +14,7 @@ class InfoGrifo {
     required this.idGrifo,
     required this.fechaRegistro,
     required this.estado,
+    required this.nota,
     required this.rutNum,
   });
 
@@ -22,6 +24,7 @@ class InfoGrifo {
     int? idGrifo,
     DateTime? fechaRegistro,
     String? estado,
+    String? nota,
     int? rutNum,
   }) {
     return InfoGrifo(
@@ -29,6 +32,7 @@ class InfoGrifo {
       idGrifo: idGrifo ?? this.idGrifo,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
       estado: estado ?? this.estado,
+      nota: nota ?? this.nota,
       rutNum: rutNum ?? this.rutNum,
     );
   }
@@ -40,6 +44,7 @@ class InfoGrifo {
       'id_grifo': idGrifo,
       'fecha_registro': fechaRegistro.toIso8601String(),
       'estado': estado,
+      'nota': nota,
       'rut_num': rutNum,
     };
   }
@@ -51,6 +56,7 @@ class InfoGrifo {
       idGrifo: json['id_grifo'] as int,
       fechaRegistro: DateTime.parse(json['fecha_registro'] as String),
       estado: json['estado'] as String,
+      nota: json['nota'] as String? ?? '',
       rutNum: json['rut_num'] as int,
     );
   }
@@ -61,6 +67,7 @@ class InfoGrifo {
       'id_grifo': idGrifo,
       'fecha_registro': fechaRegistro.toIso8601String(),
       'estado': estado,
+      'nota': nota,
       'rut_num': rutNum,
     };
   }
@@ -71,6 +78,7 @@ class InfoGrifo {
       'id_grifo': idGrifo,
       'fecha_registro': fechaRegistro.toIso8601String(),
       'estado': estado,
+      'nota': nota,
       'rut_num': rutNum,
     };
   }
@@ -84,7 +92,7 @@ class InfoGrifo {
 
   @override
   String toString() {
-    return 'InfoGrifo(idRegGrifo: $idRegGrifo, idGrifo: $idGrifo, estado: $estado, rutNum: $rutNum)';
+    return 'InfoGrifo(idRegGrifo: $idRegGrifo, idGrifo: $idGrifo, estado: $estado, nota: $nota, rutNum: $rutNum)';
   }
 
   @override

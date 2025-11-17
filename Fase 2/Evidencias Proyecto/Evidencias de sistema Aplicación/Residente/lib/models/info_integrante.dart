@@ -31,12 +31,18 @@ class InfoIntegrante {
 
   /// Convierte el modelo a JSON para Supabase
   Map<String, dynamic> toJson() {
-    return {
+    final data = <String, dynamic>{
       'id_integrante': idIntegrante,
       'fecha_reg_ii': fechaRegIi.toIso8601String(),
       'anio_nac': anioNac, // Nombre correcto de columna según esquema real
-      'padecimiento': padecimiento,
     };
+    
+    // Solo incluir padecimiento si no es null ni vacío
+    if (padecimiento != null && padecimiento!.isNotEmpty) {
+      data['padecimiento'] = padecimiento;
+    }
+    
+    return data;
   }
 
   /// Crea un InfoIntegrante desde JSON de Supabase
@@ -51,21 +57,33 @@ class InfoIntegrante {
 
   /// Crear datos para inserción en Supabase
   Map<String, dynamic> toInsertData() {
-    return {
+    final data = <String, dynamic>{
       'id_integrante': idIntegrante,
       'fecha_reg_ii': fechaRegIi.toIso8601String(),
       'anio_nac': anioNac, // Nombre correcto de columna según esquema real
-      'padecimiento': padecimiento,
     };
+    
+    // Solo incluir padecimiento si no es null ni vacío
+    if (padecimiento != null && padecimiento!.isNotEmpty) {
+      data['padecimiento'] = padecimiento;
+    }
+    
+    return data;
   }
 
   /// Crear datos para actualización en Supabase
   Map<String, dynamic> toUpdateData() {
-    return {
+    final data = <String, dynamic>{
       'fecha_reg_ii': fechaRegIi.toIso8601String(),
       'anio_nac': anioNac, // Nombre correcto de columna según esquema real
-      'padecimiento': padecimiento,
     };
+    
+    // Solo incluir padecimiento si no es null ni vacío
+    if (padecimiento != null && padecimiento!.isNotEmpty) {
+      data['padecimiento'] = padecimiento;
+    }
+    
+    return data;
   }
 
   @override

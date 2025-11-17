@@ -5,7 +5,6 @@
 class FamilyMember {
   final String id;
   final String? residentId; // ID del residente (null si no está guardado aún)
-  final String rut;
   final int age;
   final int birthYear;
   final List<String> conditions;
@@ -15,7 +14,6 @@ class FamilyMember {
   FamilyMember({
     required this.id,
     this.residentId,
-    required this.rut,
     required this.age,
     required this.birthYear,
     List<String>? conditions,
@@ -28,7 +26,6 @@ class FamilyMember {
     return FamilyMember(
       id: map['id'] as String,
       residentId: map['residentId'] as String?,
-      rut: map['rut'] as String,
       age: map['age'] as int,
       birthYear: map['birthYear'] as int,
       conditions: (map['conditions'] as List<dynamic>?)
@@ -42,7 +39,6 @@ class FamilyMember {
     return {
       'id': id,
       'residentId': residentId,
-      'rut': rut,
       'age': age,
       'birthYear': birthYear,
       'conditions': conditions,
@@ -53,7 +49,6 @@ class FamilyMember {
   FamilyMember copyWith({
     String? id,
     String? residentId,
-    String? rut,
     int? age,
     int? birthYear,
     List<String>? conditions,
@@ -63,7 +58,6 @@ class FamilyMember {
     return FamilyMember(
       id: id ?? this.id,
       residentId: residentId ?? this.residentId,
-      rut: rut ?? this.rut,
       age: age ?? this.age,
       birthYear: birthYear ?? this.birthYear,
       conditions: conditions ?? this.conditions,
@@ -77,7 +71,6 @@ class FamilyMember {
     return FamilyMember(
       id: json['id'] as String,
       residentId: json['resident_id'] as String?,
-      rut: json['rut'] as String,
       age: json['age'] as int,
       birthYear: json['birth_year'] as int,
       conditions: (json['medical_conditions'] as List<dynamic>?)
@@ -96,7 +89,6 @@ class FamilyMember {
     return {
       'id': id,
       'resident_id': residentId,
-      'rut': rut,
       'age': age,
       'birth_year': birthYear,
       'medical_conditions': conditions,
@@ -107,28 +99,38 @@ class FamilyMember {
 
   /// Crear datos para inserción en Supabase (sin id, createdAt, updatedAt)
   Map<String, dynamic> toInsertData({required String residentId}) {
-    return {
+    final data = <String, dynamic>{
       'resident_id': residentId,
-      'rut': rut,
       'age': age,
       'birth_year': birthYear,
-      'medical_conditions': conditions,
     };
+    
+    // Solo incluir condiciones si no está vacío
+    if (conditions.isNotEmpty) {
+      data['medical_conditions'] = conditions;
+    }
+    
+    return data;
   }
 
   /// Crear datos para actualización en Supabase
   Map<String, dynamic> toUpdateData() {
-    return {
-      'rut': rut,
+    final data = <String, dynamic>{
       'age': age,
       'birth_year': birthYear,
-      'medical_conditions': conditions,
     };
+    
+    // Solo incluir condiciones si no está vacío
+    if (conditions.isNotEmpty) {
+      data['medical_conditions'] = conditions;
+    }
+    
+    return data;
   }
 
   @override
   String toString() {
-    return 'FamilyMember(id: $id, rut: $rut, age: $age, birthYear: $birthYear, conditions: $conditions)';
+    return 'FamilyMember(id: $id, age: $age, birthYear: $birthYear, conditions: $conditions)';
   }
 }
 

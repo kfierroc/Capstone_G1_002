@@ -140,33 +140,33 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               ? SingleChildScrollView(
                   padding: EdgeInsets.symmetric(
                     horizontal: MediaQuery.of(context).size.width * 0.05,
-                    vertical: 24,
+                    vertical: 12,
                   ),
                   child: Column(
                     children: [
                       _buildGrifosButton(),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildCriticalSummary(integrantes, mascotas),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildAddressInfo(data),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildHousingInfo(data),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       // Instrucciones especiales eliminadas temporalmente
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildContactInfo(data),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       ModernOccupantsWidget(
                         integrantes: integrantes,
@@ -184,23 +184,23 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                     children: [
                       _buildGrifosButton(),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildCriticalSummary(integrantes, mascotas),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildAddressInfo(data),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildHousingInfo(data),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       _buildContactInfo(data),
                       SizedBox(
-                        height: ResponsiveHelper.isTablet(context) ? 24 : 20,
+                        height: ResponsiveHelper.isTablet(context) ? 12 : 8,
                       ),
                       ModernOccupantsWidget(
                         integrantes: integrantes,
@@ -222,8 +222,8 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 16,
-        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+        horizontal: ResponsiveHelper.isTablet(context) ? 8 : 4,
+        vertical: ResponsiveHelper.isTablet(context) ? 8 : 6,
       ),
       child: SizedBox(
         width: double.infinity,
@@ -268,8 +268,8 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   Widget _buildSimpleHeader() {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 24 : 20,
-        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+        horizontal: ResponsiveHelper.isTablet(context) ? 12 : 8,
+        vertical: ResponsiveHelper.isTablet(context) ? 12 : 8,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -343,10 +343,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
 
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
-        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+        horizontal: ResponsiveHelper.isTablet(context) ? 8 : 4,
+        vertical: ResponsiveHelper.isTablet(context) ? 8 : 6,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -396,7 +396,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               ),
             ],
           ),
-          SizedBox(height: ResponsiveHelper.isTablet(context) ? 24 : 16),
+          SizedBox(height: ResponsiveHelper.isTablet(context) ? 16 : 12),
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -409,7 +409,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                   color: const Color(0xFF3B82F6),
                 ),
               ),
-              SizedBox(width: ResponsiveHelper.isTablet(context) ? 16 : 6),
+              SizedBox(width: ResponsiveHelper.isTablet(context) ? 8 : 4),
               Expanded(
                 child: _buildModernSummaryCard(
                   number: '${mascotas.length}',
@@ -418,7 +418,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
                   color: const Color(0xFFF59E0B),
                 ),
               ),
-              SizedBox(width: ResponsiveHelper.isTablet(context) ? 16 : 6),
+              SizedBox(width: ResponsiveHelper.isTablet(context) ? 8 : 4),
               Expanded(
                 child: _buildModernSummaryCard(
                   number: '$integrantesConCondiciones',
@@ -442,7 +442,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 8),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
@@ -495,10 +495,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
   Widget _buildAddressInfo(Map<String, dynamic> data) {
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
-        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+        horizontal: ResponsiveHelper.isTablet(context) ? 8 : 4,
+        vertical: ResponsiveHelper.isTablet(context) ? 8 : 6,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -547,7 +547,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           _buildModernInfoRow(
             label: 'Dirección',
             value: data['address'] as String? ?? 'No especificada',
@@ -560,15 +560,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
             icon: Icons.my_location_rounded,
             color: const Color(0xFF10B981),
           ),
-          _buildModernInfoRow(
-            label: 'Comuna',
-            value: data['comuna'] as String? ?? 'No especificada',
-            icon: Icons.location_city_rounded,
-            color: const Color(0xFF8B5CF6),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
@@ -607,7 +601,7 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           // Botón Ver en Mapa
           SizedBox(
             width: double.infinity,
@@ -658,8 +652,8 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     required Color color,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 12 : 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
@@ -735,10 +729,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     final registroV = data['registro_v'] as Map<String, dynamic>? ?? {};
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
-        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+        horizontal: ResponsiveHelper.isTablet(context) ? 8 : 4,
+        vertical: ResponsiveHelper.isTablet(context) ? 8 : 6,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -787,23 +781,23 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           // Detalles de la Vivienda
           _buildHousingDetailRow(
             'Tipo de vivienda',
             registroV['tipo'] as String? ?? 'No especificado',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildHousingDetailRow(
             'Piso del departamento',
             registroV['pisos']?.toString() ?? 'No especificado',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildHousingDetailRow(
             'Material de construcción',
             registroV['material'] as String? ?? 'No especificado',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildHousingDetailRow(
             'Estado de la vivienda',
             registroV['estado'] as String? ?? 'No especificado',
@@ -845,10 +839,10 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
     final grupoFamiliar = data['grupo_familiar'] as Map<String, dynamic>? ?? {};
     return Container(
       margin: EdgeInsets.symmetric(
-        horizontal: ResponsiveHelper.isTablet(context) ? 20 : 4,
-        vertical: ResponsiveHelper.isTablet(context) ? 16 : 12,
+        horizontal: ResponsiveHelper.isTablet(context) ? 8 : 4,
+        vertical: ResponsiveHelper.isTablet(context) ? 8 : 6,
       ),
-      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 24 : 12),
+      padding: EdgeInsets.all(ResponsiveHelper.isTablet(context) ? 16 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -897,9 +891,9 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Información de contacto eliminada temporalmente
           const SizedBox(height: 16),
+          // Información de contacto eliminada temporalmente
+          const SizedBox(height: 12),
           _buildModernInfoRow(
             label: 'Teléfono Principal',
             value:
