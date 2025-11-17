@@ -182,8 +182,6 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       final grupo = grupoResult.data!;
       final integranteResult = await databaseService.agregarIntegrante(
         grupoId: grupo.idGrupoF.toString(),
-        rut: member.rut, // Se pasa pero no se usa en la BD real
-        edad: member.age, // Se pasa pero no se usa en la BD real
         anioNac: member.birthYear, // Este SÍ se guarda en info_integrante
         padecimiento: member.conditions.isNotEmpty ? member.conditions.join(', ') : null, // Este SÍ se guarda en info_integrante
       );
@@ -524,32 +522,45 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       if (residenciaResult.isSuccess && residenciaResult.data != null) {
         // Residencia existe, actualizar
         final residenciaUpdates = <String, dynamic>{};
+        final residenciaActual = residenciaResult.data!;
         
-        // Actualizar dirección si hay una nueva o si la actual es "Dirección no especificada"
-        if (newData.address != null && newData.address!.isNotEmpty && newData.address != residenciaResult.data!.direccion) {
-          residenciaUpdates['direccion'] = newData.address;
-          debugPrint('📝 Dirección cambió: ${residenciaResult.data!.direccion} -> ${newData.address}');
-        } else if (residenciaResult.data!.direccion == 'Dirección no especificada' && newData.address != null && newData.address!.isNotEmpty) {
-          residenciaUpdates['direccion'] = newData.address;
-          debugPrint('📝 Reemplazando "Dirección no especificada" con: ${newData.address}');
+        // Actualizar dirección si hay cambios o si la actual es "Dirección no especificada"
+        if (newData.address != null && newData.address!.isNotEmpty) {
+          if (newData.address != residenciaActual.direccion || 
+              residenciaActual.direccion == 'Dirección no especificada') {
+            residenciaUpdates['direccion'] = newData.address;
+            debugPrint('📝 Dirección actualizada: ${residenciaActual.direccion} -> ${newData.address}');
+          }
         }
         
-        // Solo actualizar coordenadas si son válidas (sin redondeo, tal cual de Google Maps)
+        // Actualizar coordenadas si hay cambios (comparar con valores anteriores)
         if (newData.latitude != null && newData.latitude! != 0.0) {
-          residenciaUpdates['lat'] = newData.latitude!;
+          final latAnterior = residenciaActual.lat;
+          if ((newData.latitude! - latAnterior).abs() > 0.000001) {
+            residenciaUpdates['lat'] = newData.latitude!;
+            debugPrint('📝 Latitud actualizada: $latAnterior -> ${newData.latitude}');
+          }
         }
         if (newData.longitude != null && newData.longitude! != 0.0) {
-          residenciaUpdates['lon'] = newData.longitude!;
+          final lonAnterior = residenciaActual.lon;
+          if ((newData.longitude! - lonAnterior).abs() > 0.000001) {
+            residenciaUpdates['lon'] = newData.longitude!;
+            debugPrint('📝 Longitud actualizada: $lonAnterior -> ${newData.longitude}');
+          }
         }
         
         // Los campos telefonoPrincipal se manejan en otras tablas
         // telefonoPrincipal -> grupofamiliar.telefono_titular
         
         if (residenciaUpdates.isNotEmpty) {
+          debugPrint('📝 Actualizando residencia con: $residenciaUpdates');
           await databaseService.actualizarResidencia(
             grupoId: grupo.idGrupoF.toString(),
             updates: residenciaUpdates,
           );
+          debugPrint('✅ Residencia actualizada exitosamente');
+        } else {
+          debugPrint('ℹ️ No hay cambios en la residencia para actualizar');
         }
         
         // Actualizar también el registro_v si hay cambios en material, tipo, estado, pisos
