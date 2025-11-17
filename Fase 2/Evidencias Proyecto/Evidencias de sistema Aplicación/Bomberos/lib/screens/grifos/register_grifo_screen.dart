@@ -23,19 +23,16 @@ class RegisterGrifoScreen extends StatefulWidget {
 class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _direccionController = TextEditingController();
-  final _comunaController = TextEditingController();
   final _notasController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   
-  String _tipo = 'Alto flujo';
   String _estado = 'Sin verificar';
   double _lat = -33.4489;
   double _lng = -70.6693;
   bool _isLoading = false;
   bool _showManualCoordinates = false;
 
-  final List<String> _tipos = ['Alto flujo', 'Seco', 'Hidrante', 'Bomba'];
   final List<String> _estados = ['Operativo', 'Dañado', 'Mantenimiento', 'Sin verificar'];
 
   // Servicios
@@ -88,7 +85,6 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
   @override
   void dispose() {
     _direccionController.dispose();
-    _comunaController.dispose();
     _notasController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
@@ -283,6 +279,30 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          // Estado
+          _buildDropdown(
+            label: 'Estado',
+            value: _estado,
+            items: _estados,
+            onChanged: (value) => setState(() => _estado = value!),
+          ),
+          SizedBox(height: isTablet ? 12 : 8),
+          // Notas con límite de 100 caracteres
+          _buildTextField(
+            controller: _notasController,
+            label: 'Notas (opcional)',
+            hint: 'Información adicional sobre el grifo... (máximo 100 caracteres)',
+            icon: Icons.note,
+            maxLines: 3,
+            maxLength: 100,
+            validator: (value) {
+              if (value != null && value.length > 100) {
+                return 'Las notas no pueden exceder 100 caracteres';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: isTablet ? 12 : 8),
           // Dirección con autocompletado
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,15 +318,9 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
                 controller: _direccionController,
                 focusNode: _addressFocus,
                 onChanged: _onAddressChanged,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor ingrese la dirección';
-                  }
-                  return null;
-                },
                 decoration: InputDecoration(
-                  labelText: 'Dirección completa *',
-                  hintText: 'Ej: Av. Libertador 1234',
+                  labelText: 'Dirección (opcional)',
+                  hintText: 'Ej: Av. Libertador 1234 - Solo para ubicar en el mapa',
                   prefixIcon: const Icon(Icons.location_on),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -355,52 +369,6 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
                         ),
                 ),
             ],
-          ),
-          SizedBox(height: isTablet ? 12 : 8),
-          _buildTextField(
-            controller: _comunaController,
-            label: 'Comuna',
-            hint: 'Ej: Santiago, Las Condes, Providencia',
-            icon: Icons.location_city,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese la comuna';
-              }
-              if (value.trim().length < 2) {
-                return 'Ingrese un nombre de comuna válido';
-              }
-              return null;
-             },
-           ),
-           SizedBox(height: isTablet ? 12 : 8),
-           Row(
-            children: [
-              Expanded(
-                child: _buildDropdown(
-                  label: 'Tipo',
-                  value: _tipo,
-                  items: _tipos,
-                  onChanged: (value) => setState(() => _tipo = value!),
-                ),
-              ),
-              SizedBox(width: isTablet ? 16 : 12),
-              Expanded(
-                child: _buildDropdown(
-                  label: 'Estado',
-                  value: _estado,
-                  items: _estados,
-                  onChanged: (value) => setState(() => _estado = value!),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isTablet ? 12 : 8),
-          _buildTextField(
-            controller: _notasController,
-            label: 'Notas',
-            hint: 'Información adicional sobre el grifo...',
-            icon: Icons.note,
-             maxLines: 3,
            ),
            SizedBox(height: isTablet ? 12 : 8),
            // Vista previa de ubicación con mapa
@@ -662,12 +630,15 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
     required String hint,
     required IconData icon,
     int maxLines = 1,
+    int? maxLength,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      maxLength: maxLength,
       validator: validator,
+      onChanged: maxLength != null ? (_) => setState(() {}) : null,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -677,6 +648,7 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
         ),
         filled: true,
         fillColor: GrifoColors.surfaceVariant,
+        counterText: maxLength != null ? '${controller.text.length}/$maxLength' : null,
       ),
     );
   }
@@ -852,21 +824,6 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
         final lng = (loc['lng'] as num).toDouble();
         final pos = LatLng(lat, lng);
         
-        // Extraer comuna de address_components si está disponible
-        if (result.containsKey('address_components')) {
-          final components = result['address_components'] as List<dynamic>;
-          for (var component in components) {
-            final comp = component as Map<String, dynamic>;
-            final types = comp['types'] as List<dynamic>;
-            if (types.contains('administrative_area_level_2') || 
-                types.contains('locality')) {
-              final comunaName = comp['long_name'] as String;
-              _comunaController.text = comunaName;
-              break;
-            }
-          }
-        }
-        
         _mapController?.animateCamera(CameraUpdate.newLatLngZoom(pos, 17));
         _updateFromMap(pos);
         _placesSessionToken = null; // cerrar sesión de búsqueda
@@ -944,11 +901,20 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
       });
 
       try {
-        // Obtener el código CUT de la comuna
-        final cutComResult = await _grifoService.obtenerCutComPorNombre(_comunaController.text.trim());
+        // Obtener el código CUT de la comuna desde la dirección
+        // Intentar extraer la comuna de la dirección si es posible
+        // Por ahora, usar un valor por defecto o buscar en la dirección
+        int cutCom = 13101; // Valor por defecto (Santiago)
         
-        if (!cutComResult.isSuccess) {
-          throw Exception('Error al obtener código de comuna: ${cutComResult.error}');
+        // Intentar obtener el código CUT desde la dirección si es posible
+        // Esto puede mejorarse con geocodificación inversa si es necesario
+        try {
+          final cutComResult = await _grifoService.obtenerCutComPorNombre(_direccionController.text.trim());
+          if (cutComResult.isSuccess && cutComResult.data != null) {
+            cutCom = cutComResult.data!;
+          }
+        } catch (_) {
+          // Si no se puede obtener, usar el valor por defecto
         }
 
         // Crear el grifo
@@ -956,7 +922,7 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
           idGrifo: DateTime.now().millisecondsSinceEpoch,
           lat: _lat,
           lon: _lng,
-          cutCom: cutComResult.data!, // Usar el código CUT obtenido
+          cutCom: cutCom,
         );
 
         // Guardar el grifo en Supabase
@@ -980,6 +946,7 @@ class _RegisterGrifoScreenState extends State<RegisterGrifoScreen> {
             idGrifo: grifoResult.data!.idGrifo,
             fechaRegistro: DateTime.now(),
             estado: _estado,
+            nota: _notasController.text.trim().isEmpty ? '' : _notasController.text.trim(),
             rutNum: bombero.rutNum, // Usar el RUT del bombero autenticado
           );
 

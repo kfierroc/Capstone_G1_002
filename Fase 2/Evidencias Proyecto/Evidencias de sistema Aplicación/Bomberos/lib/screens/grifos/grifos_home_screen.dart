@@ -229,6 +229,7 @@ class _GrifosHomeScreenState extends State<GrifosHomeScreen> {
         idGrifo: id,
         fechaRegistro: DateTime.now(),
         estado: nuevoEstado,
+        nota: '', // Sin notas al cambiar estado
         rutNum: bombero.rutNum, // Usar el RUT del bombero autenticado
       );
 

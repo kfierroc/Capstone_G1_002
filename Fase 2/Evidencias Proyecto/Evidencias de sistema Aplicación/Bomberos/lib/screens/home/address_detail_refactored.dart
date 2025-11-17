@@ -560,12 +560,6 @@ class _AddressDetailScreenState extends State<AddressDetailScreen> {
             icon: Icons.my_location_rounded,
             color: const Color(0xFF10B981),
           ),
-          _buildModernInfoRow(
-            label: 'Comuna',
-            value: data['comuna'] as String? ?? 'No especificada',
-            icon: Icons.location_city_rounded,
-            color: const Color(0xFF8B5CF6),
-          ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
