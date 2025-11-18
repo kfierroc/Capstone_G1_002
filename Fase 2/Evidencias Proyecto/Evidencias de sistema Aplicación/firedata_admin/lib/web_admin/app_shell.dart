@@ -26,12 +26,41 @@ class _AdminAppShellState extends State<AdminAppShell> {
         final isWide = constraints.maxWidth >= 900;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('FireData Panel Administrativo'),
+            elevation: 0,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Colors.white,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.local_fire_department, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'FireData Admin',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+              ],
+            ),
             actions: [
-              IconButton(
-                tooltip: 'Actualizar',
-                onPressed: () => setState(() {}),
-                icon: const Icon(Icons.refresh),
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  tooltip: 'Actualizar',
+                  onPressed: () => setState(() {}),
+                  icon: const Icon(Icons.refresh, color: Colors.white),
+                ),
               ),
             ],
           ),

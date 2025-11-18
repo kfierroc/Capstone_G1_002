@@ -272,78 +272,23 @@ class ComunaService extends BaseDatabaseService {
     }
   }
 
-  /// Obtener comuna por coordenadas usando PostGIS
-  /// Usa ST_Contains para determinar si el punto está dentro del polígono de la comuna
-  Future<DatabaseResult<Comuna?>> obtenerComunaPorCoordenadas({
-    required double lat,
-    required double lon,
-  }) async {
-    try {
-      logProgress('Obteniendo comuna por coordenadas', details: 'lat: $lat, lon: $lon');
-      
-      // Usar coordenadas tal cual de Google Maps (sin validación)
-      
-      // Usar RPC para llamar a una función SQL que use PostGIS
-      // La función SQL debe estar creada en Supabase
-      try {
-        final response = await client.rpc(
-          'obtener_comuna_por_coordenadas',
-          params: {
-            'p_lon': lon,  // Primero longitud (como en el código Python)
-            'p_lat': lat,  // Luego latitud
-          },
-        );
-        
-        if (response != null && response is Map) {
-          // Convertir Map<dynamic, dynamic> a Map<String, dynamic>
-          final responseMap = Map<String, dynamic>.from(response);
-          // Convertir cut_com de int a String si es necesario
-          if (responseMap.containsKey('cut_com') && responseMap['cut_com'] is int) {
-            responseMap['cut_com'] = responseMap['cut_com'].toString();
-          }
-          // Convertir otros campos numéricos a String si el modelo los requiere
-          if (responseMap.containsKey('out_reg') && responseMap['out_reg'] is int) {
-            responseMap['cut_reg'] = responseMap['out_reg'].toString();
-          }
-          if (responseMap.containsKey('out_prov') && responseMap['out_prov'] is int) {
-            responseMap['cut_prov'] = responseMap['out_prov'].toString();
-          }
-          
-          final comuna = Comuna.fromJson(responseMap);
-          logSuccess('Comuna encontrada por coordenadas', 
-            details: 'ID: ${comuna.cutCom}, Nombre: ${comuna.comuna}');
-          return success(comuna);
-        }
-        
-        logProgress('No se encontró comuna para las coordenadas dadas');
-        return success(null);
-        
-      } catch (rpcError) {
-        // Si la función RPC no existe, intentar con consulta directa usando PostGIS
-        logProgress('Función RPC no disponible, usando consulta directa con PostGIS');
-        
-        // Nota: PostgREST no soporta directamente funciones PostGIS en select
-        // Por lo tanto, necesitamos usar una función SQL en Supabase
-        // Por ahora, retornamos error indicando que se debe crear la función
-        logError('Obtener comuna por coordenadas (RPC)', rpcError);
-        return error(
-          'La función SQL obtener_comuna_por_coordenadas no está disponible. '
-          'Por favor, créala en Supabase usando PostGIS.'
-        );
-      }
-      
-    } catch (e) {
-      logError('Obtener comuna por coordenadas', e);
-      return handleError(e, customMessage: 'Error al obtener comuna por coordenadas');
-    }
-  }
-
   /// Obtener comuna más cercana por coordenadas (si hay datos de geometría)
   Future<DatabaseResult<Comuna?>> obtenerComunaMasCercana({
     required double lat,
     required double lon,
   }) async {
-    // Redirigir a obtenerComunaPorCoordenadas que usa PostGIS
-    return obtenerComunaPorCoordenadas(lat: lat, lon: lon);
+    try {
+      logProgress('Obteniendo comuna más cercana', details: 'lat: $lat, lon: $lon');
+      
+      // Esta consulta requiere que la tabla tenga datos de geometría
+      // Por ahora, devolvemos null hasta que se implemente la funcionalidad geográfica
+      logProgress('Funcionalidad geográfica no implementada aún');
+      
+      return success(null);
+      
+    } catch (e) {
+      logError('Obtener comuna más cercana', e);
+      return handleError(e, customMessage: 'Error al obtener comuna más cercana');
+    }
   }
 }

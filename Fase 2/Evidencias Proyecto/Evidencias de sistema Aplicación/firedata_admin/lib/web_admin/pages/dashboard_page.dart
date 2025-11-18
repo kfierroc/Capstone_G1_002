@@ -96,7 +96,7 @@ class DashboardPage extends StatelessWidget {
                   color: const Color(0xFF1E88E5),
                 ),
                 _DashboardCard(
-                  title: 'Grifos registrados',
+                  title: 'Grifos',
                   value: metrics.hydrants.toString(),
                   icon: Icons.water_drop,
                   color: const Color(0xFF00897B),
@@ -172,12 +172,16 @@ class _DashboardCard extends StatelessWidget {
                 child: Icon(icon, size: 32, color: color),
               ),
               const SizedBox(height: 16),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
+              Flexible(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(height: 8),
               Text(

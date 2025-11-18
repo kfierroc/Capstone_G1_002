@@ -1,7 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import '../config/supabase_config.dart';
-import 'service_result.dart';
 
 /// Servicio de búsqueda para bomberos que conecta con datos de residentes
 class SearchService {
@@ -125,7 +124,7 @@ class SearchService {
 
       debugPrint('✅ Búsqueda completada: ${results.length} resultados encontrados');
       
-      return ServiceResult.success(data: results);
+      return ServiceResult.success(results);
     } on PostgrestException catch (e) {
       debugPrint('❌ Error de Supabase en búsqueda: ${e.message}');
       return ServiceResult.error('Error al buscar direcciones: ${e.message}');
@@ -172,7 +171,7 @@ class SearchService {
 
       debugPrint('✅ Búsqueda por coordenadas completada: ${results.length} resultados');
       
-      return ServiceResult.success(data: results);
+      return ServiceResult.success(results);
     } on PostgrestException catch (e) {
       debugPrint('❌ Error de Supabase en búsqueda por coordenadas: ${e.message}');
       return ServiceResult.error('Error al buscar por coordenadas: ${e.message}');
@@ -296,7 +295,7 @@ class SearchService {
 
       debugPrint('✅ Detalles de residencia obtenidos exitosamente');
       
-      return ServiceResult.success(data: details);
+      return ServiceResult.success(details);
     } on PostgrestException catch (e) {
       debugPrint('❌ Error de Supabase al obtener detalles: ${e.message}');
       return ServiceResult.error('Error al obtener detalles: ${e.message}');
@@ -305,4 +304,16 @@ class SearchService {
       return ServiceResult.error('Error inesperado: ${e.toString()}');
     }
   }
+}
+
+/// Resultado de operación del servicio
+class ServiceResult<T> {
+  final bool isSuccess;
+  final T? data;
+  final String? error;
+
+  ServiceResult._(this.isSuccess, this.data, this.error);
+
+  factory ServiceResult.success(T data) => ServiceResult._(true, data, null);
+  factory ServiceResult.error(String error) => ServiceResult._(false, null, error);
 }

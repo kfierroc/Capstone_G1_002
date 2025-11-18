@@ -103,6 +103,8 @@ class FamilyController extends ChangeNotifier {
       // Agregar integrante
       final result = await _databaseService.agregarIntegrante(
         grupoId: grupo.idGrupoF.toString(),
+        rut: member.rut,
+        edad: member.age,
         anioNac: member.birthYear,
         padecimiento: member.conditions.isNotEmpty ? member.conditions.join(', ') : null,
       );
@@ -264,7 +266,10 @@ class FamilyController extends ChangeNotifier {
 
   /// Valida un integrante familiar
   bool validateFamilyMember(FamilyMember member) {
-    // RUT no se valida - solo para grupo familiar (titular), no para integrantes
+    if (member.rut.isEmpty) {
+      _setError('El RUT es obligatorio');
+      return false;
+    }
 
     if (member.age < 0 || member.age > 120) {
       _setError('La edad debe estar entre 0 y 120 años');

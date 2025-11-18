@@ -25,13 +25,12 @@ class GrupoFamiliarService extends BaseDatabaseService {
       // Generar ID único para el grupo familiar
       final grupoId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
-      // Normalizar teléfono al formato requerido por la BD
-      final telefonoNormalizado = normalizePhoneForDB(data.phoneNumber ?? data.mainPhone);
-      
       final grupoData = {
         'id_grupof': grupoId,
         'rut_titular': data.rut!,
-        'telefono_titular': telefonoNormalizado,
+        'nomb_titular': data.fullName ?? '',
+        'ape_p_titular': data.fullName?.split(' ').last ?? '',
+        'telefono_titular': data.phoneNumber ?? data.mainPhone ?? '',
         'email': data.email!,
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
@@ -162,12 +161,9 @@ class GrupoFamiliarService extends BaseDatabaseService {
       
       logProgress('Actualizando teléfono principal', details: 'ID: $grupoId, teléfono: $telefono');
       
-      // Normalizar teléfono al formato requerido por la BD
-      final telefonoNormalizado = normalizePhoneForDB(telefono);
-      
       await client
           .from('grupofamiliar')
-          .update({'telefono_titular': telefonoNormalizado})
+          .update({'telefono_titular': telefono})
           .eq('id_grupof', int.parse(grupoId));
       
       logSuccess('Teléfono principal actualizado', details: 'ID: $grupoId');

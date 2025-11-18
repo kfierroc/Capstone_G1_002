@@ -16,6 +16,6 @@ void main() {
 
     // Verificar que el título de la aplicación es correcto
     final MaterialApp app = tester.widget(find.byType(MaterialApp));
-    expect(app.title, 'Residentes');
+    expect(app.title, 'FireData - Residente');
   });
 }

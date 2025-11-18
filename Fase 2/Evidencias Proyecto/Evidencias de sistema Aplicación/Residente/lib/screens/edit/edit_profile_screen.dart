@@ -4,6 +4,7 @@ import '../../models/registration_data.dart';
 import '../../utils/validators.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/input_formatters.dart';
+import '../../widgets/medical_conditions_selector.dart';
 
 /// Pantalla optimizada para editar perfil del titular
 /// Refactorizada para ser < 300 líneas usando componentes reutilizables
@@ -25,7 +26,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _rutController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _birthYearController = TextEditingController();
 
+  List<String> _selectedConditions = [];
   bool _isLoading = false;
 
   @override
@@ -33,12 +36,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     _rutController.text = widget.registrationData.rut ?? '';
     _phoneController.text = widget.registrationData.phoneNumber ?? '';
+    _birthYearController.text =
+        widget.registrationData.birthYear?.toString() ?? '';
+    _selectedConditions = List.from(widget.registrationData.medicalConditions);
   }
 
   @override
   void dispose() {
     _rutController.dispose();
     _phoneController.dispose();
+    _birthYearController.dispose();
     super.dispose();
   }
 
@@ -46,9 +53,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
+      final birthYear = int.parse(_birthYearController.text);
+      final age = DateTime.now().year - birthYear;
+
       final updatedData = widget.registrationData.copyWith(
         rut: _rutController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
+        birthYear: birthYear,
+        age: age,
+        medicalConditions: _selectedConditions,
       );
 
       await Future.delayed(const Duration(milliseconds: 500));
@@ -87,6 +100,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildPersonalInfoSection(),
+                    const SizedBox(height: AppSpacing.xxl),
+                    MedicalConditionsSelector(
+                      initialConditions: _selectedConditions,
+                      onConditionsChanged: (conditions) {
+                        setState(() => _selectedConditions = conditions);
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -141,6 +161,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             filled: true,
             fillColor: const Color(0xFFFAFAFA),
             helperText: 'Se formatea automáticamente',
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+
+        // Año de nacimiento
+        TextFormField(
+          controller: _birthYearController,
+          validator: Validators.validateBirthYear,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(4),
+          ],
+          decoration: InputDecoration(
+            labelText: 'Año de nacimiento *',
+            hintText: '1985',
+            prefixIcon: const Icon(Icons.calendar_today_outlined),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
           ),
         ),
       ],

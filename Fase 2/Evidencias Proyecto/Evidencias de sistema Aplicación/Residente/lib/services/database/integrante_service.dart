@@ -8,6 +8,7 @@ class IntegranteService extends BaseDatabaseService {
   /// Crear integrante
   Future<DatabaseResult<Integrante>> crearIntegrante({
     required String grupoId,
+    required String rut,
     required DateTime fechaIniI,
     DateTime? fechaFinI,
     bool activoI = true,
@@ -17,21 +18,18 @@ class IntegranteService extends BaseDatabaseService {
         return error('ID de grupo familiar inválido');
       }
       
-      logProgress('Creando integrante', details: 'grupoId: $grupoId');
+      logProgress('Creando integrante', details: 'grupoId: $grupoId, rut: $rut');
       
       final integranteId = DateTime.now().millisecondsSinceEpoch;
       
-      final integranteData = <String, dynamic>{
+      final integranteData = {
         'id_integrante': integranteId,
         'id_grupof': int.parse(grupoId),
+        'rut': rut,
         'fecha_ini_i': fechaIniI.toIso8601String().split('T')[0],
+        'fecha_fin_i': fechaFinI?.toIso8601String().split('T')[0],
         'activo_i': activoI,
       };
-      
-      // Solo incluir fecha_fin_i si no es null
-      if (fechaFinI != null) {
-        integranteData['fecha_fin_i'] = fechaFinI.toIso8601String().split('T')[0];
-      }
       
       logProgress('Insertando integrante', details: 'Datos: $integranteData');
       
@@ -230,23 +228,13 @@ class IntegranteService extends BaseDatabaseService {
         return error('ID de integrante inválido');
       }
       
-      // Validar que anioNac sea válido
-      if (anioNac <= 0 || anioNac > DateTime.now().year) {
-        return error('Año de nacimiento inválido');
-      }
-      
       logProgress('Creando información de integrante', details: 'ID: $integranteId');
       
-      final infoData = <String, dynamic>{
+      final infoData = {
         'id_integrante': int.parse(integranteId),
-        'fecha_reg_ii': DateTime.now().toIso8601String().split('T')[0],
         'anio_nac': anioNac,
+        'padecimiento': padecimiento,
       };
-      
-      // Solo incluir padecimiento si no es null ni vacío
-      if (padecimiento != null && padecimiento.trim().isNotEmpty) {
-        infoData['padecimiento'] = padecimiento.trim();
-      }
       
       await client
           .from('info_integrante')
@@ -274,31 +262,9 @@ class IntegranteService extends BaseDatabaseService {
       
       logProgress('Actualizando información de integrante', details: 'ID: $integranteId');
       
-      // Filtrar y validar updates para no guardar valores vacíos o nulos
-      final validUpdates = <String, dynamic>{};
-      
-      if (updates.containsKey('anio_nac')) {
-        final anioNac = updates['anio_nac'];
-        if (anioNac != null && anioNac is int && anioNac > 0 && anioNac <= DateTime.now().year) {
-          validUpdates['anio_nac'] = anioNac;
-        }
-      }
-      
-      if (updates.containsKey('padecimiento')) {
-        final padecimiento = updates['padecimiento'];
-        // Solo incluir si no es null ni vacío
-        if (padecimiento != null && padecimiento.toString().trim().isNotEmpty) {
-          validUpdates['padecimiento'] = padecimiento.toString().trim();
-        }
-      }
-      
-      if (validUpdates.isEmpty) {
-        return error('No hay datos válidos para actualizar');
-      }
-      
       await client
           .from('info_integrante')
-          .update(validUpdates)
+          .update(updates)
           .eq('id_integrante', int.parse(integranteId));
       
       logSuccess('Información de integrante actualizada', details: 'ID: $integranteId');
@@ -319,6 +285,7 @@ class IntegranteService extends BaseDatabaseService {
       return Integrante(
         idIntegrante: json['id_integrante'] as int,
         idGrupof: json['id_grupof'] as int,
+        rut: json['rut'] as String? ?? '',
         fechaIniI: DateTime.parse(json['fecha_ini_i'] as String),
         fechaFinI: json['fecha_fin_i'] != null 
             ? DateTime.parse(json['fecha_fin_i'] as String)

@@ -6,16 +6,16 @@ class InfoGrifo {
   final int idGrifo; // FK -> grifo
   final DateTime fechaRegistro;
   final String estado;
-  final String nota; // Notas del grifo (máximo 100 caracteres)
   final int rutNum; // FK -> bombero
+  final String? notas; // Campo de notas agregado
 
   InfoGrifo({
     required this.idRegGrifo,
     required this.idGrifo,
     required this.fechaRegistro,
     required this.estado,
-    required this.nota,
     required this.rutNum,
+    this.notas,
   });
 
   /// Crea una copia del modelo con campos actualizados
@@ -24,16 +24,16 @@ class InfoGrifo {
     int? idGrifo,
     DateTime? fechaRegistro,
     String? estado,
-    String? nota,
     int? rutNum,
+    String? notas,
   }) {
     return InfoGrifo(
       idRegGrifo: idRegGrifo ?? this.idRegGrifo,
       idGrifo: idGrifo ?? this.idGrifo,
       fechaRegistro: fechaRegistro ?? this.fechaRegistro,
       estado: estado ?? this.estado,
-      nota: nota ?? this.nota,
       rutNum: rutNum ?? this.rutNum,
+      notas: notas ?? this.notas,
     );
   }
 
@@ -44,8 +44,8 @@ class InfoGrifo {
       'id_grifo': idGrifo,
       'fecha_registro': fechaRegistro.toIso8601String(),
       'estado': estado,
-      'nota': nota,
       'rut_num': rutNum,
+      'notas': notas,
     };
   }
 
@@ -56,8 +56,8 @@ class InfoGrifo {
       idGrifo: json['id_grifo'] as int,
       fechaRegistro: DateTime.parse(json['fecha_registro'] as String),
       estado: json['estado'] as String,
-      nota: json['nota'] as String? ?? '',
       rutNum: json['rut_num'] as int,
+      notas: json['notas'] as String?,
     );
   }
 
@@ -67,8 +67,8 @@ class InfoGrifo {
       'id_grifo': idGrifo,
       'fecha_registro': fechaRegistro.toIso8601String(),
       'estado': estado,
-      'nota': nota,
       'rut_num': rutNum,
+      'notas': notas,
     };
   }
 
@@ -78,8 +78,8 @@ class InfoGrifo {
       'id_grifo': idGrifo,
       'fecha_registro': fechaRegistro.toIso8601String(),
       'estado': estado,
-      'nota': nota,
       'rut_num': rutNum,
+      'notas': notas,
     };
   }
 
@@ -92,7 +92,7 @@ class InfoGrifo {
 
   @override
   String toString() {
-    return 'InfoGrifo(idRegGrifo: $idRegGrifo, idGrifo: $idGrifo, estado: $estado, nota: $nota, rutNum: $rutNum)';
+    return 'InfoGrifo(idRegGrifo: $idRegGrifo, idGrifo: $idGrifo, estado: $estado, rutNum: $rutNum)';
   }
 
   @override

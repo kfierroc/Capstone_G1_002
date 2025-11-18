@@ -93,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF42A5F5), Color(0xFF1976D2)],
+            colors: [Color(0xFF66BB6A), Color(0xFF2E7D32)],
           ),
         ),
         child: SafeArea(
@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Icon(
                           Icons.lock_outline,
                           size: isTablet ? 70 : 60,
-                          color: Colors.blue,
+                          color: Color(0xFF2E7D32),
                         ),
                       ),
                       SizedBox(height: isTablet ? 50 : 40),
@@ -306,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _login,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
+                                  backgroundColor: const Color(0xFF2E7D32),
                                   foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(

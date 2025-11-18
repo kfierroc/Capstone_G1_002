@@ -68,12 +68,26 @@ class _FirefightersPageState extends State<FirefightersPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextFormField(
-                    controller: rutController,
-                    decoration: const InputDecoration(labelText: 'RUT'),
-                    validator: (value) =>
-                        value == null || value.isEmpty ? 'Campo obligatorio' : null,
-                  ),
+                  // RUT: Solo lectura cuando se está editando (es la primary key)
+                  if (isEditing)
+                    TextFormField(
+                      controller: rutController,
+                      decoration: const InputDecoration(
+                        labelText: 'RUT (No editable)',
+                        filled: true,
+                        fillColor: Colors.grey,
+                        prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                      ),
+                      enabled: false,
+                      style: const TextStyle(color: Colors.black54),
+                    )
+                  else
+                    TextFormField(
+                      controller: rutController,
+                      decoration: const InputDecoration(labelText: 'RUT'),
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'Campo obligatorio' : null,
+                    ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: firstNameController,
@@ -125,20 +139,36 @@ class _FirefightersPageState extends State<FirefightersPage> {
     );
 
     if (confirmed == true) {
-      final parsed = Bombero.fromRutCompleto(
-        rutController.text.trim(),
-        companyController.text.trim(),
-      );
+      Bombero newBombero;
+      
+      if (isEditing) {
+        // Al editar, usar el RUT original del bombero (no permitir cambiar el ID)
+        newBombero = Bombero(
+          rutNum: bombero!.rutNum,
+          rutDv: bombero.rutDv,
+          compania: companyController.text.trim(),
+          nombBombero: firstNameController.text.trim(),
+          apePBombero: lastNameController.text.trim(),
+          emailB: emailController.text.trim(),
+          cutCom: bombero.cutCom,
+        );
+      } else {
+        // Al crear, parsear el RUT del formulario
+        final parsed = Bombero.fromRutCompleto(
+          rutController.text.trim(),
+          companyController.text.trim(),
+        );
 
-      final newBombero = Bombero(
-        rutNum: parsed.rutNum,
-        rutDv: parsed.rutDv,
-        compania: companyController.text.trim(),
-        nombBombero: firstNameController.text.trim(),
-        apePBombero: lastNameController.text.trim(),
-        emailB: emailController.text.trim(),
-        cutCom: bombero?.cutCom ?? parsed.cutCom,
-      );
+        newBombero = Bombero(
+          rutNum: parsed.rutNum,
+          rutDv: parsed.rutDv,
+          compania: companyController.text.trim(),
+          nombBombero: firstNameController.text.trim(),
+          apePBombero: lastNameController.text.trim(),
+          emailB: emailController.text.trim(),
+          cutCom: parsed.cutCom,
+        );
+      }
 
       try {
         if (isEditing) {

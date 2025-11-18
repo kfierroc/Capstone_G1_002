@@ -3,6 +3,8 @@ import '../../services/supabase_auth_service.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/text_styles.dart';
 
+/// COMENTADO: Pantalla de verificación de correo deshabilitada
+/// La verificación de correo está comentada, los usuarios pueden continuar sin verificar
 /// Pantalla para verificar el correo electrónico antes de continuar con el registro
 class RegisterStep2VerificationScreen extends StatefulWidget {
   final String email;
@@ -15,13 +17,16 @@ class RegisterStep2VerificationScreen extends StatefulWidget {
   });
 
   @override
-  State<RegisterStep2VerificationScreen> createState() => _RegisterStep2VerificationScreenState();
+  State<RegisterStep2VerificationScreen> createState() =>
+      _RegisterStep2VerificationScreenState();
 }
 
-class _RegisterStep2VerificationScreenState extends State<RegisterStep2VerificationScreen> {
+class _RegisterStep2VerificationScreenState
+    extends State<RegisterStep2VerificationScreen> {
   final SupabaseAuthService _authService = SupabaseAuthService();
-  
+
   bool _isLoading = false;
+  bool _isResending = false;
 
   @override
   void initState() {
@@ -41,22 +46,88 @@ class _RegisterStep2VerificationScreenState extends State<RegisterStep2Verificat
         widget.password,
       );
 
-      if (result.isSuccess) {
-        if (mounted) {
+      if (mounted) {
+        if (result.isSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Correo de verificación enviado'),
+              content: Text('Correo de verificación enviado. Revisa tu bandeja de entrada.'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.error ?? 'Error al enviar correo de verificación'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
             ),
           );
         }
       }
     } catch (e) {
-      // Manejar error silenciosamente
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Reenviar correo de verificación
+  Future<void> _resendVerificationEmail() async {
+    setState(() {
+      _isResending = true;
+    });
+
+    try {
+      final result = await _authService.resendConfirmationEmail(widget.email);
+
+      if (mounted) {
+        if (result.isSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Correo de verificación reenviado. Revisa tu bandeja de entrada.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.error ?? 'Error al reenviar correo de verificación'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResending = false;
+        });
+      }
     }
   }
 
@@ -132,10 +203,7 @@ class _RegisterStep2VerificationScreenState extends State<RegisterStep2Verificat
                         const Text(
                           'Hemos enviado un enlace de verificación a:',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.black54,
-                          ),
+                          style: TextStyle(fontSize: 16, color: Colors.black54),
                         ),
                         const SizedBox(height: 12),
                         Container(
@@ -157,16 +225,42 @@ class _RegisterStep2VerificationScreenState extends State<RegisterStep2Verificat
                         const Text(
                           'Haz clic en el enlace que te enviamos para verificar tu correo y continuar con el registro.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
+                          style: TextStyle(fontSize: 15, color: Colors.black87),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _isResending ? null : _resendVerificationEmail,
+                            icon: _isResending
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.refresh),
+                            label: Text(
+                              _isResending ? 'Reenviando...' : 'Reenviar correo de verificación',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.green.shade700,
+                              side: BorderSide(color: Colors.green.shade700),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () => Navigator.pushReplacementNamed(
+                            onPressed: _isLoading ? null : () => Navigator.pushReplacementNamed(
                               context,
                               '/register-step3',
                               arguments: {
@@ -183,7 +277,7 @@ class _RegisterStep2VerificationScreenState extends State<RegisterStep2Verificat
                               ),
                             ),
                             child: const Text(
-                              'Continuar al registro',
+                              'Continuar con el registro',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

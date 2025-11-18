@@ -137,17 +137,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         ),
         centerTitle: true,
       ),
-      body: Container(
-        constraints: BoxConstraints(
-          maxWidth: ResponsiveHelper.getMaxContentWidth(context),
-        ),
-        width: double.infinity,
-        alignment: Alignment.topCenter,
+      body: ResponsiveContainer(
         child: SingleChildScrollView(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildSearchSection(),
               _buildResultsCount(),
               _buildResultsList(),
             ],
@@ -157,9 +151,165 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     );
   }
 
+  Widget _buildSearchSection() {
+    return Container(
+      margin: ResponsiveHelper.getResponsiveMargin(context),
+      padding: const EdgeInsets.all(AppTheme.spacingLg),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceLight,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: AppTheme.shadowLight,
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSearchHeader(),
+          const SizedBox(height: AppTheme.spacingMd),
+          _buildSearchField(),
+          const SizedBox(height: AppTheme.spacingMd),
+          _buildSearchButtons(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppTheme.spacingMd),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          ),
+          child: Icon(
+            Icons.search,
+            color: AppTheme.primaryBlue,
+            size: 28,
+          ),
+        ),
+        const SizedBox(width: AppTheme.spacingMd),
+        Text(
+          'Búsqueda de Domicilio',
+          style: AppTextStyles.titleLarge,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchField() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Ej: Ricardo Rios, Colipi 231',
+          hintStyle: TextStyle(
+            color: Colors.grey[500],
+            fontWeight: FontWeight.w400,
+          ),
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.search_rounded,
+              color: Color(0xFF3B82F6),
+              size: 20,
+            ),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+        onSubmitted: (_) => _performSearch(),
+      ),
+    );
+  }
+
+  Widget _buildSearchButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: _performSearch,
+              icon: const Icon(Icons.search, size: 20),
+              label: const Text(
+                'Buscar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: SizedBox(
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: _clearSearch,
+              icon: const Icon(Icons.clear, size: 20),
+              label: const Text(
+                'Limpiar',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF3B82F6),
+                side: const BorderSide(color: Color(0xFF3B82F6)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildResultsCount() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(

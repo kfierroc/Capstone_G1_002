@@ -118,8 +118,9 @@ class _HydrantsPageState extends State<HydrantsPage> {
     );
 
     if (confirmed == true) {
+      // Al editar, mantener el ID original (no permitir cambiar el ID)
       final updated = Grifo(
-        idGrifo: grifo?.idGrifo ?? 0,
+        idGrifo: grifo != null ? grifo.idGrifo : 0,
         lat: double.parse(latController.text.trim()),
         lon: double.parse(lonController.text.trim()),
         cutCom: int.parse(cutComController.text.trim()),

@@ -28,26 +28,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        // Inyectar MAPS_API_KEY desde .env / variables de entorno / gradle properties
-        val envFile = rootProject.file(".env")
-        val envMap = mutableMapOf<String, String>()
-        if (envFile.exists()) {
-            envFile.readLines().forEach { line ->
-                val trimmed = line.trim()
-                if (trimmed.isNotEmpty() && !trimmed.startsWith("#") && trimmed.contains("=")) {
-                    val idx = trimmed.indexOf('=')
-                    val key = trimmed.substring(0, idx).trim()
-                    val value = trimmed.substring(idx + 1).trim().trim('"')
-                    envMap[key] = value
-                }
-            }
-        }
-        val mapsKey = (envMap["MAPS_API_KEY"]
-            ?: System.getenv("MAPS_API_KEY")
-            ?: (project.findProperty("MAPS_API_KEY") as String?)
-            ?: "")
-        manifestPlaceholders["MAPS_API_KEY"] = mapsKey
     }
 
     buildTypes {

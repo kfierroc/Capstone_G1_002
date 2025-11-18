@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:gotrue/gotrue.dart' show AuthRetryableFetchException;
 import '../config/supabase_config.dart';
 import '../models/models.dart';
 
@@ -19,54 +18,6 @@ class DatabaseService {
 
   /// Obtener el cliente de Supabase
   SupabaseClient get _client => SupabaseConfig.client;
-
-  /// Normaliza el teléfono al formato requerido por la BD: +56[2-9][0-9]{8,9}
-  /// El formato debe cumplir: ^\+56[2-9][0-9]{8,9}$
-  String _normalizePhoneForDB(String? phone) {
-    if (phone == null || phone.isEmpty) {
-      return ''; // Retornar vacío si no hay teléfono
-    }
-    
-    // Remover todos los caracteres no numéricos
-    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    
-    if (cleanPhone.isEmpty) {
-      return '';
-    }
-    
-    // Si ya empieza con 56, removerlo para procesar
-    if (cleanPhone.startsWith('56')) {
-      cleanPhone = cleanPhone.substring(2);
-    }
-    
-    // Si tiene 9 dígitos y empieza con 9 (celular)
-    if (cleanPhone.length == 9 && cleanPhone.startsWith('9')) {
-      return '+56$cleanPhone'; // +56988776655
-    }
-    
-    // Si tiene 8 dígitos (fijo, generalmente empieza con 2)
-    if (cleanPhone.length == 8) {
-      return '+56$cleanPhone'; // +56221234567
-    }
-    
-    // Si tiene 9 dígitos pero no empieza con 9
-    if (cleanPhone.length == 9) {
-      return '+56$cleanPhone';
-    }
-    
-    // Si tiene 10 dígitos (fijo con código de área de 2 dígitos)
-    if (cleanPhone.length == 10) {
-      return '+56$cleanPhone';
-    }
-    
-    // Si tiene 11 dígitos (ya incluye el 56)
-    if (cleanPhone.length == 11 && cleanPhone.startsWith('56')) {
-      return '+${cleanPhone.substring(2)}'; // Ya tiene 56, solo agregar +
-    }
-    
-    // Por defecto, agregar +56 al inicio
-    return '+56$cleanPhone';
-  }
 
   /// Parsear condiciones médicas desde string a lista
   List<String> _parseMedicalConditions(String? padecimiento) {
@@ -116,13 +67,12 @@ class DatabaseService {
       // Generar ID manualmente para id_grupof (compatible con INTEGER)
       final idGrupoF = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Usar segundos en lugar de milisegundos
       
-      // Normalizar teléfono al formato requerido por la BD
-      final telefonoNormalizado = _normalizePhoneForDB(data.phoneNumber);
-      
       final grupoData = {
         'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
         'rut_titular': data.rut,
-        'telefono_titular': telefonoNormalizado,
+        'nomb_titular': data.fullName ?? '', // NUEVO CAMPO según esquema actualizado
+        'ape_p_titular': '', // NUEVO CAMPO - se puede extraer del fullName si es necesario
+        'telefono_titular': data.phoneNumber ?? '', // Updated to use phoneNumber from step 2
         'email': data.email, // Agregar email que es requerido
         'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
       };
@@ -185,14 +135,11 @@ class DatabaseService {
   }
 
   /// Obtener grupo familiar por email (adaptado al esquema actual)
-  /// Búsqueda case-insensitive para evitar problemas con capitalización
   Future<DatabaseResult<GrupoFamiliar>> obtenerGrupoFamiliar({
     required String email,
   }) async {
     try {
-      // Normalizar email a minúsculas para búsqueda case-insensitive
-      final emailNormalizado = email.toLowerCase().trim();
-      debugPrint('🔍 Buscando grupo familiar para email: $email (normalizado: $emailNormalizado)');
+      debugPrint('🔍 Buscando grupo familiar para email: $email');
       
       // Primero, intentar obtener todos los grupos familiares para debugging
       debugPrint('🔍 Verificando todos los grupos familiares en la base de datos...');
@@ -207,28 +154,25 @@ class DatabaseService {
         debugPrint('   Grupo $i: id="${group['id_grupof']}", email="${group['email']}", rut="${group['rut_titular']}", fecha="${group['fecha_creacion']}"');
       }
       
-      // Verificar específicamente si hay múltiples registros para el email buscado (case-insensitive)
-      // Usar ilike para búsqueda case-insensitive (buscar el email exacto)
+      // Verificar específicamente si hay múltiples registros para el email buscado
       final duplicateCheck = await _client
           .from('grupofamiliar')
           .select('id_grupof, email, rut_titular, fecha_creacion')
-          .ilike('email', emailNormalizado);
+          .eq('email', email);
       
-      debugPrint('🔍 Verificación de duplicados para $email (case-insensitive):');
+      debugPrint('🔍 Verificación de duplicados para $email:');
       debugPrint('   - Registros encontrados: ${duplicateCheck.length}');
       for (int i = 0; i < duplicateCheck.length; i++) {
         final duplicate = duplicateCheck[i];
-        debugPrint('   - Duplicado $i: id="${duplicate['id_grupof']}", email="${duplicate['email']}", rut="${duplicate['rut_titular']}", fecha="${duplicate['fecha_creacion']}"');
+        debugPrint('   - Duplicado $i: id="${duplicate['id_grupof']}", rut="${duplicate['rut_titular']}", fecha="${duplicate['fecha_creacion']}"');
       }
       
-      // Si hay múltiples registros, eliminar los registros migrados (con "Sin RUT" o "00000000")
+      // Si hay múltiples registros, eliminar los registros migrados (con "Sin RUT")
       if (duplicateCheck.length > 1) {
         debugPrint('🔍 Limpiando registros duplicados...');
         for (final duplicate in duplicateCheck) {
-          final rut = duplicate['rut_titular'] as String? ?? '';
-          // Eliminar registros con datos por defecto de migración
-          if (rut == 'Sin RUT' || rut == '00000000') {
-            debugPrint('🗑️ Eliminando registro migrado: ${duplicate['id_grupof']} (RUT: $rut)');
+          if (duplicate['rut_titular'] == 'Sin RUT') {
+            debugPrint('🗑️ Eliminando registro migrado: ${duplicate['id_grupof']}');
             try {
               await _client
                   .from('grupofamiliar')
@@ -242,33 +186,27 @@ class DatabaseService {
         }
       }
       
-      // Ahora buscar el grupo específico (case-insensitive, priorizar el más antiguo)
-      // Usar ilike para búsqueda case-insensitive exacta
-      debugPrint('🔍 Buscando grupo familiar específico para: $email (case-insensitive)');
-      final matchingGroups = await _client
+      // Ahora buscar el grupo específico (priorizar el más antiguo)
+      debugPrint('🔍 Buscando grupo familiar específico para: $email');
+      final response = await _client
           .from('grupofamiliar')
           .select()
-          .ilike('email', emailNormalizado) // Búsqueda case-insensitive exacta
+          .eq('email', email)
           .order('fecha_creacion', ascending: true) // Priorizar el más antiguo
-          .limit(1);
-      
-      if (matchingGroups.isEmpty) {
+          .limit(1)
+          .maybeSingle();
+
+      debugPrint('📦 Respuesta de la consulta específica: $response');
+
+      if (response == null) {
         debugPrint('❌ No se encontró grupo familiar para el email: $email');
         return DatabaseResult.error('Grupo familiar no encontrado');
       }
-      
-      final response = matchingGroups.first;
-      debugPrint('📦 Respuesta de la consulta específica: $response');
 
       debugPrint('✅ Grupo familiar encontrado: $response');
       final grupo = GrupoFamiliar.fromJson(response);
       
       return DatabaseResult.success(data: grupo);
-    } on AuthRetryableFetchException catch (e) {
-      debugPrint('❌ Error de autenticación en obtenerGrupoFamiliar:');
-      debugPrint('   - Message: ${e.message}');
-      debugPrint('   - StatusCode: ${e.statusCode}');
-      return DatabaseResult.error('Error de autenticación. Por favor, cierra sesión y vuelve a iniciar sesión.');
     } on PostgrestException catch (e) {
       debugPrint('❌ PostgrestException en obtenerGrupoFamiliar:');
       debugPrint('   - Code: ${e.code}');
@@ -278,13 +216,6 @@ class DatabaseService {
       return DatabaseResult.error(_getPostgrestErrorMessage(e));
     } catch (e) {
       debugPrint('❌ Error inesperado en obtenerGrupoFamiliar: $e');
-      debugPrint('   - Tipo: ${e.runtimeType}');
-      // Verificar si es un error de autenticación por el mensaje
-      if (e.toString().contains('AuthRetryableFetchException') || 
-          e.toString().contains('oauth_client_id') ||
-          e.toString().contains('missing destination')) {
-        return DatabaseResult.error('Error de autenticación. Por favor, cierra sesión y vuelve a iniciar sesión.');
-      }
       return DatabaseResult.error('Error al obtener grupo familiar: ${e.toString()}');
     }
   }
@@ -333,12 +264,9 @@ class DatabaseService {
     try {
       debugPrint('📝 Actualizando teléfono principal para grupo: $grupoId');
       
-      // Normalizar teléfono al formato requerido por la BD
-      final telefonoNormalizado = _normalizePhoneForDB(telefono);
-      
       final response = await _client
           .from('grupofamiliar')
-          .update({'telefono_titular': telefonoNormalizado})
+          .update({'telefono_titular': telefono})
           .eq('id_grupof', int.parse(grupoId))
           .select()
           .single();
@@ -379,104 +307,8 @@ class DatabaseService {
   // MÉTODOS AUXILIARES PARA COMUNAS
   // ============================================================================
 
-  /// Obtiene una comuna válida usando PostGIS basado en coordenadas
-  /// Usa ST_Contains para determinar si el punto está dentro del polígono de la comuna
-  Future<int> _obtenerComunaPorCoordenadas({
-    required double lat,
-    required double lon,
-  }) async {
-    try {
-      debugPrint('📍 Buscando comuna por coordenadas: lat=$lat, lon=$lon');
-      
-      // Usar coordenadas tal cual de Google Maps (sin validación)
-      
-      // Usar RPC para llamar a la función SQL que usa PostGIS
-      try {
-        final response = await _client.rpc(
-          'obtener_comuna_por_coordenadas',
-          params: {
-            'p_lon': lon,  // Primero longitud (como en el código Python)
-            'p_lat': lat,  // Luego latitud
-          },
-        );
-        
-        if (response != null && response is Map && response.containsKey('cut_com')) {
-          final cutCom = response['cut_com'] as int;
-          debugPrint('✅ Comuna encontrada por PostGIS: $cutCom (${response['comuna']})');
-          return cutCom;
-        }
-        
-        debugPrint('⚠️ No se encontró comuna para las coordenadas dadas');
-        return 0;
-        
-      } catch (rpcError) {
-        debugPrint('❌ Error al llamar función RPC: $rpcError');
-        debugPrint('⚠️ La función SQL obtener_comuna_por_coordenadas no está disponible');
-        debugPrint('   Por favor, créala en Supabase usando el archivo SQL proporcionado');
-        return 0;
-      }
-      
-    } catch (e) {
-      debugPrint('❌ Error al obtener comuna por coordenadas: $e');
-      return 0;
-    }
-  }
-
-  /// Busca comuna por nombre en la dirección
-  /// Extrae nombres de comunas comunes de la dirección y busca en la BD
-  Future<int> _buscarComunaPorDireccion(String direccion) async {
-    try {
-      // Lista de palabras comunes de comunas chilenas para buscar
-      final palabrasComunas = [
-        'Santiago', 'Valparaíso', 'Concepción', 'La Serena', 'Antofagasta',
-        'Temuco', 'Rancagua', 'Talca', 'Arica', 'Iquique', 'Puerto Montt',
-        'Coquimbo', 'Valdivia', 'Osorno', 'Chillán', 'Los Ángeles',
-        'San Pedro', 'Viña del Mar', 'Quilpué', 'Villa Alemana', 'Quillota',
-        'San Antonio', 'Cartagena', 'El Tabo', 'Algarrobo', 'Santo Domingo',
-        'Puchuncaví', 'Zapallar', 'Papudo', 'La Ligua', 'Petorca',
-        'Cabildo', 'Hijuelas', 'La Calera', 'Nogales', 'Limache',
-        'Olmué', 'Marga Marga', 'Quintero', 'Concón', 'Juan Fernández',
-        'Isla de Pascua', 'Calle Larga', 'Los Andes', 'San Esteban',
-        'Rinconada', 'Catemu', 'Llay Llay', 'Panquehue', 'San Felipe',
-        'Putaendo', 'Santa María', 'Nogales', 'La Cruz', 'Quillota',
-        'La Palma', 'Hijuelas', 'La Calera', 'Nogales', 'Limache',
-      ];
-      
-      // Buscar palabras de comunas en la dirección
-      final direccionLower = direccion.toLowerCase();
-      for (final palabra in palabrasComunas) {
-        if (direccionLower.contains(palabra.toLowerCase())) {
-          debugPrint('🔍 Buscando comuna: $palabra');
-          try {
-            final response = await _client
-                .from('comunas')
-                .select('cut_com')
-                .ilike('comuna', '%$palabra%')
-                .limit(1);
-            
-            if (response.isNotEmpty) {
-              final cutCom = response.first['cut_com'] as int;
-              debugPrint('✅ Comuna encontrada por nombre: $cutCom ($palabra)');
-              return cutCom;
-            }
-          } catch (e) {
-            debugPrint('⚠️ Error al buscar comuna $palabra: $e');
-            continue;
-          }
-        }
-      }
-      
-      debugPrint('⚠️ No se encontró comuna por nombre en la dirección');
-      return 0;
-    } catch (e) {
-      debugPrint('❌ Error al buscar comuna por dirección: $e');
-      return 0;
-    }
-  }
-
-  /// Obtiene una comuna válida para crear residencias (método legacy)
+  /// Obtiene una comuna válida para crear residencias
   /// Primero busca comunas existentes, si no hay ninguna crea una temporal válida
-  /// DEPRECATED: Usar _obtenerComunaPorCoordenadas en su lugar
   Future<int> _obtenerComunaValida() async {
     try {
       // 1. Buscar comunas existentes
@@ -561,62 +393,54 @@ class DatabaseService {
     try {
       debugPrint('📝 Creando residencia y registro_v para grupo: $grupoId');
       
-      // 1. Usar coordenadas tal cual las entrega Google Maps (sin redondeo ni validación)
-      if (data.latitude == null || data.longitude == null) {
-        return DatabaseResult.error('Las coordenadas son requeridas para crear la residencia');
-      }
+      // 1. Buscar una comuna existente primero
+      int cutCom = await _obtenerComunaValida(); // Cambiado de outCom a cutCom
       
-      final lat = data.latitude!;
-      final lon = data.longitude!;
-      
-      // 2. Obtener comuna usando PostGIS basado en coordenadas
-      int cutCom = await _obtenerComunaPorCoordenadas(lat: lat, lon: lon);
-      
-      // Si PostGIS no encuentra comuna, intentar alternativas
-      if (cutCom == 0) {
-        debugPrint('⚠️ No se encontró comuna por PostGIS, intentando alternativas...');
-        
-        // Alternativa 1: Buscar por nombre de comuna en la dirección
-        if (data.address != null && data.address!.isNotEmpty) {
-          debugPrint('🔍 Intentando buscar comuna por nombre en la dirección: ${data.address}');
-          final comunaPorNombre = await _buscarComunaPorDireccion(data.address!);
-          if (comunaPorNombre != 0) {
-            debugPrint('✅ Comuna encontrada por nombre en dirección: $comunaPorNombre');
-            cutCom = comunaPorNombre;
-          }
-        }
-        
-        // Alternativa 2: Si aún no se encontró, usar método legacy
-        if (cutCom == 0) {
-          debugPrint('⚠️ No se encontró comuna por nombre, usando método legacy');
-          cutCom = await _obtenerComunaValida();
-        }
-      }
-      
-      if (cutCom == 0) {
+      if (cutCom == 0) { // Cambiado de outCom a cutCom
         return DatabaseResult.error('No se pudo obtener una comuna válida para crear la residencia');
       }
       
-      debugPrint('✅ Usando comuna: $cutCom');
-      
-      // 3. Crear la residencia
+      // 2. Crear la residencia
       final idResidencia = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      
+      // Asegurar que lat/lon tengan la precisión correcta para DECIMAL(9,6)
+      double lat = 0.0;
+      double lon = 0.0;
+      
+      if (data.latitude != null) {
+        lat = double.parse(data.latitude!.toStringAsFixed(6));
+        // Asegurar que esté dentro del rango válido para coordenadas
+        if (lat < -90.0 || lat > 90.0) {
+          lat = -33.448890; // Santiago por defecto
+        }
+      } else {
+        lat = -33.448890; // Santiago por defecto
+      }
+      
+      if (data.longitude != null) {
+        lon = double.parse(data.longitude!.toStringAsFixed(6));
+        // Asegurar que esté dentro del rango válido para coordenadas
+        if (lon < -180.0 || lon > 180.0) {
+          lon = -70.669270; // Santiago por defecto
+        }
+      } else {
+        lon = -70.669270; // Santiago por defecto
+      }
       
       final residenciaData = {
         'id_residencia': idResidencia,
         'direccion': (data.address != null && data.address!.isNotEmpty) 
             ? data.address!
             : null, // No usar dirección temporal
-        'lat': lat, // Coordenadas tal cual de Google Maps
-        'lon': lon, // Coordenadas tal cual de Google Maps
+        'lat': lat,
+        'lon': lon,
         'cut_com': cutCom, // Cambiado de out_com a cut_com
-        // numero_pisos no existe en la tabla residencia, se guarda en registro_v.pisos
+        'numero_pisos': data.numberOfFloors, // Agregar número de pisos
       };
       
       debugPrint('📝 Datos de residencia: $residenciaData');
-      // Mostrar coordenadas con 6 decimales para legibilidad, pero se guardan completas
-      debugPrint('📍 Coordenadas de Google Maps: lat=${lat.toStringAsFixed(6)}, lon=${lon.toStringAsFixed(6)}');
-      debugPrint('📍 Coordenadas completas guardadas: lat=$lat, lon=$lon');
+      debugPrint('📍 Coordenadas procesadas: lat=$lat, lon=$lon');
+      debugPrint('📍 Precisión: lat=${lat.toStringAsFixed(6)}, lon=${lon.toStringAsFixed(6)}');
       
       final residenciaResponse = await _client
           .from('residencia')
@@ -763,20 +587,14 @@ class DatabaseService {
         residenciaUpdates['direccion'] = updates['address'];
       }
       if (updates.containsKey('latitude')) {
-        // Usar coordenadas tal cual de Google Maps
-        final latValue = updates['latitude'] as double?;
-        if (latValue != null) {
-          residenciaUpdates['lat'] = latValue;
-        }
+        residenciaUpdates['lat'] = updates['latitude'];
       }
       if (updates.containsKey('longitude')) {
-        // Usar coordenadas tal cual de Google Maps
-        final lonValue = updates['longitude'] as double?;
-        if (lonValue != null) {
-          residenciaUpdates['lon'] = lonValue;
-        }
+        residenciaUpdates['lon'] = updates['longitude'];
       }
-      // numero_pisos no existe en la tabla residencia, se guarda en registro_v.pisos
+      if (updates.containsKey('numberOfFloors')) {
+        residenciaUpdates['numero_pisos'] = updates['numberOfFloors'];
+      }
       // Campo eliminado - no hacer nada
       if (updates.containsKey('specialInstructions')) {
         updates.remove('specialInstructions');
@@ -901,6 +719,7 @@ class DatabaseService {
           : null,
       idGrupof: json['id_grupof'] as int,
       // Datos de info_integrante
+      rut: json['rut'] as String? ?? '', // RUT del integrante
       edad: infoIntegrante != null ? _calcularEdad(infoIntegrante['anio_nac'] as int?) : 0,
       anioNac: infoIntegrante?['anio_nac'] as int? ?? 0,
       padecimiento: infoIntegrante?['padecimiento'] as String?,
@@ -922,15 +741,12 @@ class DatabaseService {
   /// Agregar integrante al grupo familiar
   Future<DatabaseResult<Integrante>> agregarIntegrante({
     required String grupoId,
+    required String rut,
+    required int edad,
     required int anioNac,
     String? padecimiento,
   }) async {
     try {
-      // Validar que anioNac sea válido
-      if (anioNac <= 0 || anioNac > DateTime.now().year) {
-        return DatabaseResult.error('Año de nacimiento inválido');
-      }
-      
       // Generar ID manualmente para integrante
       final idIntegrante = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
@@ -940,6 +756,11 @@ class DatabaseService {
         'id_grupof': int.parse(grupoId), // Convertir a int
         'activo_i': true, // Columna requerida
         'fecha_ini_i': DateTime.now().toIso8601String().split('T')[0], // Columna requerida
+        // Campos que NO existen en tabla integrante según esquema real:
+        // 'rut': rut, // Está en info_integrante
+        // 'edad': edad, // Está en info_integrante
+        // 'anio_nac': anioNac, // Está en info_integrante
+        // 'padecimiento': padecimiento, // Está en info_integrante
       };
 
       final response = await _client
@@ -949,23 +770,12 @@ class DatabaseService {
           .single();
 
       // Ahora insertar en info_integrante con los datos adicionales
-      final infoIntegranteData = <String, dynamic>{
+      final infoIntegranteData = {
         'id_integrante': idIntegrante, // FK a integrante
         'fecha_reg_ii': DateTime.now().toIso8601String().split('T')[0],
         'anio_nac': anioNac, // Este campo SÍ existe en info_integrante
+        'padecimiento': padecimiento, // Este campo SÍ existe en info_integrante
       };
-      
-      // Solo incluir padecimiento si no es null ni vacío
-      if (padecimiento != null && padecimiento.trim().isNotEmpty) {
-        infoIntegranteData['padecimiento'] = padecimiento.trim();
-      }
-      
-      debugPrint('📝 Insertando en info_integrante:');
-      debugPrint('   - id_integrante: $idIntegrante');
-      debugPrint('   - anio_nac: $anioNac');
-      if (padecimiento != null && padecimiento.trim().isNotEmpty) {
-        debugPrint('   - padecimiento: ${padecimiento.trim()}');
-      }
 
       await _client
           .from('info_integrante')
@@ -1007,17 +817,10 @@ class DatabaseService {
       
       // Campos que van a la tabla info_integrante
       if (updates.containsKey('anio_nac')) {
-        final anioNac = updates['anio_nac'];
-        if (anioNac != null && anioNac is int && anioNac > 0 && anioNac <= DateTime.now().year) {
-          infoIntegranteUpdates['anio_nac'] = anioNac;
-        }
+        infoIntegranteUpdates['anio_nac'] = updates['anio_nac'];
       }
       if (updates.containsKey('padecimiento')) {
-        final padecimiento = updates['padecimiento'];
-        // Solo incluir si no es null ni vacío
-        if (padecimiento != null && padecimiento.toString().trim().isNotEmpty) {
-          infoIntegranteUpdates['padecimiento'] = padecimiento.toString().trim();
-        }
+        infoIntegranteUpdates['padecimiento'] = updates['padecimiento'];
       }
       
       // Actualizar tabla integrante si hay cambios
@@ -1231,60 +1034,45 @@ class DatabaseService {
     try {
       debugPrint('🔍 Cargando información completa del usuario: $email');
       
-      // Normalizar email para búsqueda case-insensitive
-      final emailNormalizado = email.toLowerCase().trim();
-      
       // 1. Obtener grupo familiar
-      final grupoResult = await obtenerGrupoFamiliar(email: emailNormalizado);
+      final grupoResult = await obtenerGrupoFamiliar(email: email);
       if (!grupoResult.isSuccess) {
         debugPrint('⚠️ Grupo familiar no encontrado para $email');
-        debugPrint('🔍 Verificando si el usuario realmente no existe (búsqueda case-insensitive)...');
+        debugPrint('🔍 Verificando si el usuario realmente no existe...');
         
-        // Verificar si realmente no existe consultando directamente (case-insensitive)
+        // Verificar si realmente no existe consultando directamente
         try {
-          final matchingGroups = await _client
+          final directResponse = await _client
               .from('grupofamiliar')
               .select('email, rut_titular')
-              .ilike('email', emailNormalizado);
+              .eq('email', email)
+              .maybeSingle();
           
-          if (matchingGroups.isNotEmpty) {
-            final directResponse = matchingGroups.first;
+          if (directResponse != null) {
             debugPrint('⚠️ El usuario SÍ existe en la BD pero hay un problema con obtenerGrupoFamiliar');
             debugPrint('   - Email encontrado: ${directResponse['email']}');
             debugPrint('   - RUT: ${directResponse['rut_titular']}');
-            // Intentar obtener el grupo nuevamente después de un breve delay
-            await Future.delayed(const Duration(milliseconds: 100));
-            final retryResult = await obtenerGrupoFamiliar(email: emailNormalizado);
-            if (retryResult.isSuccess) {
-              debugPrint('✅ Grupo familiar encontrado en reintento');
-            } else {
-              return DatabaseResult.error('Error al cargar datos del usuario. Contacta al soporte técnico.');
-            }
-          } else {
-            debugPrint('🔍 Usuario realmente no existe en la BD');
-            debugPrint('⚠️ NO se creará un registro de migración automáticamente');
-            debugPrint('   - El usuario debe completar el registro correctamente');
-            return DatabaseResult.error('No se encontró información del usuario. Por favor, completa el registro correctamente.');
+            return DatabaseResult.error('Error al cargar datos del usuario. Contacta al soporte técnico.');
           }
-        } on AuthRetryableFetchException catch (e) {
-          debugPrint('❌ Error de autenticación al verificar existencia: ${e.message}');
-          return DatabaseResult.error('Error de autenticación. Por favor, cierra sesión y vuelve a iniciar sesión.');
         } catch (e) {
           debugPrint('❌ Error al verificar existencia directa: $e');
-          // Verificar si es un error de autenticación por el mensaje
-          if (e.toString().contains('AuthRetryableFetchException') || 
-              e.toString().contains('oauth_client_id') ||
-              e.toString().contains('missing destination')) {
-            return DatabaseResult.error('Error de autenticación. Por favor, cierra sesión y vuelve a iniciar sesión.');
-          }
-          return DatabaseResult.error('Error al verificar existencia del usuario: ${e.toString()}');
         }
+        
+        debugPrint('🔍 Usuario realmente no existe, intentando migrar...');
+        
+        // Intentar migrar usuario existente solo si realmente no existe
+        final migracionResult = await _migrarUsuarioExistente(email: email);
+        if (!migracionResult.isSuccess) {
+          return DatabaseResult.error('No se encontró información del usuario. Asegúrate de completar el registro correctamente. Error de migración: ${migracionResult.error}');
+        }
+        
+        debugPrint('✅ Usuario migrado exitosamente: ${migracionResult.data!.idGrupoF}');
       } else {
         debugPrint('✅ Grupo familiar encontrado: ${grupoResult.data!.idGrupoF}');
       }
       
-      // Obtener el grupo familiar final (usar email normalizado)
-      final grupoFinalResult = await obtenerGrupoFamiliar(email: emailNormalizado);
+      // Obtener el grupo familiar final
+      final grupoFinalResult = await obtenerGrupoFamiliar(email: email);
       if (!grupoFinalResult.isSuccess) {
         return DatabaseResult.error('Error al obtener grupo familiar');
       }
@@ -1351,61 +1139,53 @@ class DatabaseService {
       final integranteTitular = integrantes.isNotEmpty ? integrantes.first : null;
       
       // Obtener datos del registro_v para material, tipo, estado, pisos
-      // IMPORTANTE: Estos datos son independientes de los integrantes, siempre buscarlos
       String? materialVivienda;
       String? tipoVivienda;
       String? estadoVivienda;
       int? pisosVivienda;
       String? instruccionesEspeciales;
       
-      // Buscar registro_v vigente para obtener material, tipo, estado, pisos
-      // No depende de si hay integrantes o no
-      try {
-        debugPrint('🔍 Buscando registro_v vigente para grupo: ${grupo.idGrupoF}');
-        final registroVResponse = await _client
-            .from('registro_v')
-            .select('material, tipo, estado, pisos')
-            .eq('id_grupof', grupo.idGrupoF)
-            .eq('vigente', true)
-            .order('fecha_ini_r', ascending: false)
-            .limit(1)
-            .maybeSingle();
-        
-        if (registroVResponse != null) {
-          materialVivienda = registroVResponse['material'] as String?;
-          tipoVivienda = registroVResponse['tipo'] as String?;
-          estadoVivienda = registroVResponse['estado'] as String?;
-          pisosVivienda = registroVResponse['pisos'] as int?;
-          debugPrint('✅ Datos de registro_v cargados:');
-          debugPrint('   - Material: $materialVivienda');
-          debugPrint('   - Tipo: $tipoVivienda');
-          debugPrint('   - Estado: $estadoVivienda');
-          debugPrint('   - Pisos: $pisosVivienda');
-        } else {
-          debugPrint('⚠️ No se encontró registro_v vigente para el grupo ${grupo.idGrupoF}');
+      if (integrantes.isNotEmpty) {
+        // Buscar registro_v vigente para obtener material, tipo, estado, pisos
+        try {
+          final registroVResponse = await _client
+              .from('registro_v')
+              .select('material, tipo, estado, pisos')
+              .eq('id_grupof', grupo.idGrupoF)
+              .eq('vigente', true)
+              .order('fecha_ini_r', ascending: false)
+              .limit(1)
+              .maybeSingle();
+          
+          if (registroVResponse != null) {
+            materialVivienda = registroVResponse['material'] as String?;
+            tipoVivienda = registroVResponse['tipo'] as String?;
+            estadoVivienda = registroVResponse['estado'] as String?;
+            pisosVivienda = registroVResponse['pisos'] as int?;
+            debugPrint('📋 Datos básicos de registro_v cargados: material=$materialVivienda, tipo=$tipoVivienda, estado=$estadoVivienda, pisos=$pisosVivienda');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error al cargar registro_v: $e');
         }
-      } catch (e) {
-        debugPrint('❌ Error al cargar registro_v: $e');
-        debugPrint('   - Tipo de error: ${e.runtimeType}');
       }
       
       // Campo instrucciones_especiales eliminado del sistema
 
       // Extraer datos del grupo familiar usando toJson para evitar problemas de reconocimiento
       final grupoJson = grupo.toJson();
+      final nombreTitular = grupoJson['nomb_titular'] as String? ?? '';
+      final apellidoTitular = grupoJson['ape_p_titular'] as String? ?? '';
       final telefonoTitular = grupoJson['telefono_titular'] as String? ?? '';
       
-      debugPrint('📝 Construyendo RegistrationData con los datos obtenidos:');
-      debugPrint('   - tipoVivienda: $tipoVivienda');
-      debugPrint('   - materialVivienda: $materialVivienda');
-      debugPrint('   - estadoVivienda: $estadoVivienda');
-      debugPrint('   - pisosVivienda: $pisosVivienda');
-      debugPrint('   - residencia?.numeroPisos: ${residencia?.numeroPisos}');
+      // Construir nombre completo solo si hay datos
+      final nombreCompleto = nombreTitular.isNotEmpty || apellidoTitular.isNotEmpty 
+          ? '${nombreTitular.trim()} ${apellidoTitular.trim()}'.trim()
+          : 'Usuario';
       
       final registrationData = RegistrationData(
         email: grupo.email,
         rut: grupo.rutTitular,
-        fullName: 'Usuario', // Nombre por defecto ya que no se almacena nombre/apellido
+        fullName: nombreCompleto, // Usar nombre completo construido
         phoneNumber: telefonoTitular.isNotEmpty ? telefonoTitular : 'No especificado', // Usar teléfono del grupo familiar
         mainPhone: telefonoTitular.isNotEmpty ? telefonoTitular : 'No especificado', // También asignar mainPhone
         address: residencia?.direccion,
@@ -1429,10 +1209,6 @@ class DatabaseService {
       debugPrint('   - Fecha creación: ${grupo.fechaCreacion}');
       debugPrint('   - Dirección: ${residencia?.direccion}');
       debugPrint('   - Coordenadas: ${residencia?.lat}, ${residencia?.lon}');
-      debugPrint('   - RegistrationData.housingType: ${registrationData.housingType}');
-      debugPrint('   - RegistrationData.numberOfFloors: ${registrationData.numberOfFloors}');
-      debugPrint('   - RegistrationData.constructionMaterial: ${registrationData.constructionMaterial}');
-      debugPrint('   - RegistrationData.housingCondition: ${registrationData.housingCondition}');
       debugPrint('   - Integrante titular edad: ${integranteTitular?.edad}');
       debugPrint('   - Integrante titular año nacimiento: ${integranteTitular?.anioNac}');
       debugPrint('   - Padecimiento: ${integranteTitular?.padecimiento}');
@@ -1445,9 +1221,8 @@ class DatabaseService {
       debugPrint('   - RegistrationData.mainPhone: ${registrationData.mainPhone}');
       
       // Verificar si los datos parecen ser de migración
-      if (grupo.rutTitular == 'Sin RUT' || grupo.rutTitular == '00000000') {
+      if (grupo.rutTitular == 'Sin RUT') {
         debugPrint('⚠️ ADVERTENCIA: Se está cargando un usuario migrado con datos por defecto');
-        debugPrint('   - RUT: ${grupo.rutTitular}');
         debugPrint('   - Esto sugiere que el usuario real no se está encontrando correctamente');
         debugPrint('   - Verificar si hay múltiples registros para el mismo email');
       }
@@ -1469,9 +1244,62 @@ class DatabaseService {
     }
   }
 
-  // Método _migrarUsuarioExistente eliminado
-  // Ya no se crean registros de migración automáticamente con datos por defecto
-  // Los usuarios deben completar el registro correctamente
+  /// Migrar usuario existente que no tiene grupo familiar en la base de datos
+  Future<DatabaseResult<GrupoFamiliar>> _migrarUsuarioExistente({
+    required String email,
+  }) async {
+    try {
+      debugPrint('🔍 Migrando usuario existente: $email');
+      
+      // Obtener el user_id del usuario autenticado
+      // final authService = AuthService();
+      // final userId = authService.userId;
+      
+      // if (userId == null) {
+      //   return DatabaseResult.error('No se pudo obtener el ID del usuario autenticado');
+      // }
+      
+      // Generar ID manualmente para id_grupof (compatible con INTEGER)
+      final idGrupoF = DateTime.now().millisecondsSinceEpoch ~/ 1000; // Usar segundos en lugar de milisegundos
+      
+      // Extraer el nombre del email para usarlo como nombre temporal
+      final emailPart = email.split('@')[0];
+      final nameParts = emailPart.split(RegExp(r'[._]'));
+      final tempNombre = nameParts.isNotEmpty ? nameParts.first[0].toUpperCase() + nameParts.first.substring(1) : 'Usuario';
+      final tempApellido = nameParts.length > 1 ? nameParts.last[0].toUpperCase() + nameParts.last.substring(1) : 'Temporal';
+      
+      final grupoData = {
+        'id_grupof': idGrupoF, // ID manual para compatibilidad con esquema actual
+        'rut_titular': '00000000', // RUT temporal - debe ser actualizado
+        'nomb_titular': tempNombre,
+        'ape_p_titular': tempApellido,
+        'telefono_titular': '', // Teléfono vacío temporalmente
+        'email': email,
+        'fecha_creacion': DateTime.now().toIso8601String().split('T')[0],
+      };
+      
+      debugPrint('📝 Datos a insertar en grupofamiliar para migración:');
+      debugPrint('   ${grupoData.toString()}');
+      
+      final response = await _client
+          .from('grupofamiliar')
+          .insert(grupoData)
+          .select()
+          .single();
+
+      final grupo = GrupoFamiliar.fromJson(response);
+      
+      debugPrint('✅ Usuario migrado exitosamente: ${grupo.idGrupoF}');
+      
+      return DatabaseResult.success(
+        data: grupo,
+        message: 'Usuario migrado exitosamente',
+      );
+    } catch (e) {
+      debugPrint('❌ Error al migrar usuario: $e');
+      return DatabaseResult.error('Error al migrar usuario: ${e.toString()}');
+    }
+  }
 
   // ============================================================================
   // UTILIDADES
@@ -1499,6 +1327,8 @@ class DatabaseService {
 class GrupoFamiliar {
   final int idGrupoF;           // INTEGER como en el esquema real
   final String rutTitular;
+  final String nombTitular;     // NUEVO CAMPO según esquema actualizado
+  final String apePTitular;     // NUEVO CAMPO según esquema actualizado
   final String telefonoTitular; // NUEVO CAMPO según esquema actualizado
   final String email;           // Email como en el esquema real
   final DateTime fechaCreacion;
@@ -1508,6 +1338,8 @@ class GrupoFamiliar {
   GrupoFamiliar({
     required this.idGrupoF,
     required this.rutTitular,
+    required this.nombTitular,
+    required this.apePTitular,
     required this.telefonoTitular,
     required this.email,
     required this.fechaCreacion,
@@ -1519,6 +1351,8 @@ class GrupoFamiliar {
     return GrupoFamiliar(
       idGrupoF: json['id_grupof'] as int, // Usar int directamente
       rutTitular: json['rut_titular'] as String,
+      nombTitular: json['nomb_titular'] as String? ?? '',
+      apePTitular: json['ape_p_titular'] as String? ?? '',
       telefonoTitular: json['telefono_titular'] as String? ?? '',
       email: json['email'] as String,
       fechaCreacion: DateTime.parse(json['fecha_creacion'] as String),
@@ -1535,6 +1369,8 @@ class GrupoFamiliar {
     return {
       'id_grupof': idGrupoF,
       'rut_titular': rutTitular,
+      'nomb_titular': nombTitular,
+      'ape_p_titular': apePTitular,
       'telefono_titular': telefonoTitular,
       'email': email,
       'fecha_creacion': fechaCreacion.toIso8601String().split('T')[0],

@@ -39,6 +39,8 @@ CREATE TABLE residencia (
 CREATE TABLE grupofamiliar(
   id_grupof INTEGER PRIMARY KEY NOT NULL,
   rut_titular VARCHAR(12) NOT NULL,
+  nomb_titular VARCHAR(50) NOT NULL,
+  ape_p_titular VARCHAR(50) NOT NULL,
   telefono_titular VARCHAR(13) NOT NULL,
   CHECK (telefono_titular ~ '^\+56[2-9][0-9]{8,9}$'),
   email TEXT UNIQUE NOT NULL,
@@ -121,6 +123,7 @@ CREATE TABLE bombero (
   nomb_bombero VARCHAR(50) NOT NULL,
   ape_p_bombero VARCHAR(50) NOT NULL,
   email_b TEXT UNIQUE NOT NULL,
+  is_admin BOOLEAN,
   cut_com INTEGER NOT NULL REFERENCES comunas(cut_com),
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -136,6 +139,7 @@ CREATE TABLE info_grifo (
   fecha_registro DATE NOT NULL,
   estado TEXT NOT NULL,
   rut_num INTEGER NOT NULL REFERENCES bombero(rut_num),
+  notas TEXT,
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

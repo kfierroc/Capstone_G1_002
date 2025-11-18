@@ -92,7 +92,7 @@ class UserDataService extends BaseDatabaseService {
       final registrationData = RegistrationData(
         // Datos personales del titular
         rut: grupo.rutTitular,
-        fullName: 'Usuario', // Nombre por defecto ya que no se almacena nombre/apellido
+        fullName: '${grupo.nombTitular} ${grupo.apePTitular}',
         email: grupo.email,
         phoneNumber: grupo.telefonoTitular,
         mainPhone: grupo.telefonoTitular,

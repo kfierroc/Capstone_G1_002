@@ -17,9 +17,6 @@ Future<void> main() async {
 class FireDataAdminApp extends StatelessWidget {
   const FireDataAdminApp({super.key});
 
-  static const bool _forcePreview =
-      bool.fromEnvironment('PREVIEW_ADMIN_PANEL', defaultValue: false);
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -32,12 +29,12 @@ class FireDataAdminApp extends StatelessWidget {
       ),
       home: Builder(
         builder: (context) {
-          // En modo debug o preview, permitir acceso directo
-          if (kDebugMode || _forcePreview) {
+          // En modo debug, permitir acceso directo para desarrollo
+          if (kDebugMode) {
             return const AdminAppShell();
           }
           
-          // En modo producción, verificar acceso
+          // En modo producción, verificar acceso admin
           return FutureBuilder<bool>(
             future: AdminAuthService.instance.verifyAdminAccess(),
             builder: (context, snapshot) {

@@ -93,6 +93,44 @@ class SettingsTab extends StatelessWidget {
                 ? FormatUtils.formatPhone(registrationData.mainPhone!)
                 : 'No especificado',
           ),
+          const SizedBox(height: AppSpacing.lg),
+          DetailRow(
+            label: 'Edad:',
+            value: registrationData.age != null &&
+                    registrationData.birthYear != null
+                ? '${registrationData.age} años (${registrationData.birthYear})'
+                : 'No especificado',
+          ),
+          if (registrationData.medicalConditions.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            const Divider(height: AppSpacing.xxl),
+            Text(
+              'Condiciones médicas:',
+              style: AppTextStyles.labelText,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: registrationData.medicalConditions
+                  .map((condition) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Text(
+                          condition,
+                          style: AppTextStyles.chipText.copyWith(color: Colors.red.shade900),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ],
         ],
       ),
     );

@@ -65,63 +65,23 @@ class _RegistrationFlowScreenState extends State<RegistrationFlowScreen> {
     });
 
     try {
-      // 1. Verificar si el usuario está autenticado, si no, iniciar sesión
-      if (!_authService.isAuthenticated) {
-        debugPrint('🔐 Usuario no autenticado, iniciando sesión...');
-        final signInResult = await _authService.signInWithPassword(
-          email: widget.email,
-          password: widget.password,
-        );
-        
-        if (!signInResult.isSuccess) {
-          debugPrint('❌ Error al iniciar sesión: ${signInResult.error}');
-          setState(() {
-            _errorMessage = 'Error al iniciar sesión: ${signInResult.error}';
-            _isLoading = false;
-          });
-          return;
-        }
-        debugPrint('✅ Sesión iniciada exitosamente');
-      }
-
-      // 2. Crear el grupo familiar y residencia
-      final userId = _authService.currentUser?.id ?? '';
-      if (userId.isEmpty) {
-        setState(() {
-          _errorMessage = 'No se pudo obtener el ID del usuario';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      debugPrint('📝 Creando grupo familiar para usuario: $userId');
+      // Crear el grupo familiar y residencia
       final result = await _databaseService.crearGrupoFamiliar(
-        userId: userId,
+        userId: _authService.currentUser?.id ?? '',
         data: _registrationData,
       );
 
       if (result.isSuccess) {
-        debugPrint('✅ Grupo familiar creado exitosamente');
-        // Verificar que la sesión sigue activa antes de navegar
-        if (_authService.isAuthenticated) {
-          debugPrint('✅ Usuario autenticado, navegando a home');
-          if (mounted) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ResidentHomeScreen(
-                  registrationData: _registrationData,
-                ),
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResidentHomeScreen(
+                registrationData: _registrationData,
               ),
-              (route) => false,
-            );
-          }
-        } else {
-          debugPrint('⚠️ Sesión perdida después de crear grupo familiar');
-          setState(() {
-            _errorMessage = 'La sesión se perdió. Por favor, inicia sesión manualmente.';
-            _isLoading = false;
-          });
+            ),
+            (route) => false,
+          );
         }
       } else {
         setState(() {
@@ -129,7 +89,6 @@ class _RegistrationFlowScreenState extends State<RegistrationFlowScreen> {
         });
       }
     } catch (e) {
-      debugPrint('❌ Error en _completeRegistration: $e');
       setState(() {
         _errorMessage = 'Error inesperado: $e';
       });

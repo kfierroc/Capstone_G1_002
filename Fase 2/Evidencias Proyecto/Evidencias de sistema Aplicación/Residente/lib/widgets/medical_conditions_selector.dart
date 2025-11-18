@@ -74,6 +74,35 @@ class _MedicalConditionsSelectorState
         Text('Condiciones médicas', style: AppTextStyles.heading4),
         const SizedBox(height: AppSpacing.sm),
         
+        // Nota importante
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3E0),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: const Color(0xFFFFB74D)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppColors.warning,
+                size: AppIconSizes.sm,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Ingrese solo condiciones relevantes para el rescate; no registre enfermedades o datos sensibles que no sean útiles para la emergencia.',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: const Color(0xFF5D4037),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        
         // Tabs de categorías
         Container(
           decoration: BoxDecoration(
@@ -151,35 +180,6 @@ class _MedicalConditionsSelectorState
               ),
             ),
           ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        
-        // Nota importante
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF3E0),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: const Color(0xFFFFB74D)),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.info_outline,
-                color: AppColors.warning,
-                size: AppIconSizes.sm,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  'Ingrese solo condiciones relevantes para el rescate; no registre enfermedades o datos sensibles que no sean útiles para la emergencia.',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: const Color(0xFF5D4037),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ],
     );

@@ -1,5 +1,7 @@
 import 'package:firedata_admin/models/residencia.dart';
+import 'package:firedata_admin/models/registro_v.dart';
 import 'package:firedata_admin/web_admin/services/houses_admin_service.dart';
+import 'package:firedata_admin/web_admin/services/registro_v_admin_service.dart';
 import 'package:flutter/material.dart';
 
 class HousesPage extends StatefulWidget {
@@ -49,96 +51,343 @@ class _HousesPageState extends State<HousesPage> {
     final latController = TextEditingController(text: house?.lat.toString() ?? '');
     final lonController = TextEditingController(text: house?.lon.toString() ?? '');
     final cutComController = TextEditingController(text: house?.cutCom.toString() ?? '');
+    
+    // Campos de registro_v (Vivienda)
+    String? selectedTipo = house?.tipo;
+    String? selectedPisos = house?.pisos?.toString() ?? '1';
+    String? selectedMaterial = house?.material;
+    String? selectedEstado = house?.estado ?? 'Activo';
+    
+    // RUT del residente (solo lectura)
+    final rutResidenteController = TextEditingController(text: house?.rutResidente ?? '');
 
     final isEditing = house != null;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isEditing ? 'Editar vivienda' : 'Agregar vivienda'),
-        content: SizedBox(
-          width: 400,
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: addressController,
-                    decoration: const InputDecoration(labelText: 'Dirección'),
-                    validator: (value) =>
-                        value == null || value.isEmpty ? 'Campo obligatorio' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: latController,
-                    decoration: const InputDecoration(labelText: 'Latitud'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    validator: (value) =>
-                        value == null || double.tryParse(value) == null
-                            ? 'Ingresa una latitud válida'
-                            : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: lonController,
-                    decoration: const InputDecoration(labelText: 'Longitud'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    validator: (value) =>
-                        value == null || double.tryParse(value) == null
-                            ? 'Ingresa una longitud válida'
-                            : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: cutComController,
-                    decoration: const InputDecoration(labelText: 'CUT Comuna'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) =>
-                        value == null || int.tryParse(value) == null
-                            ? 'Ingresa un CUT numérico válido'
-                            : null,
-                  ),
-                ],
+      builder: (context) {
+        return DefaultTabController(
+          length: 2,
+          child: StatefulBuilder(
+            builder: (context, setDialogState) => AlertDialog(
+              title: Text(isEditing ? 'Editar vivienda' : 'Agregar vivienda'),
+              content: SizedBox(
+                width: 600,
+                height: 600,
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TabBar(
+                        labelColor: Theme.of(context).colorScheme.primary,
+                        unselectedLabelColor: Colors.grey,
+                        tabs: const [
+                          Tab(icon: Icon(Icons.location_on), text: 'Domicilio'),
+                          Tab(icon: Icon(Icons.home), text: 'Vivienda'),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                        children: [
+                          // Tab Domicilio
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextFormField(
+                                  controller: addressController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Dirección *',
+                                    prefixIcon: Icon(Icons.location_on),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  validator: (value) =>
+                                      value == null || value.isEmpty ? 'Campo obligatorio' : null,
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: latController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Latitud *',
+                                    prefixIcon: Icon(Icons.navigation),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  validator: (value) =>
+                                      value == null || double.tryParse(value) == null
+                                          ? 'Ingresa una latitud válida'
+                                          : null,
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: lonController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Longitud *',
+                                    prefixIcon: Icon(Icons.navigation),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  validator: (value) =>
+                                      value == null || double.tryParse(value) == null
+                                          ? 'Ingresa una longitud válida'
+                                          : null,
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: cutComController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'CUT Comuna *',
+                                    prefixIcon: Icon(Icons.map),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) =>
+                                      value == null || int.tryParse(value) == null
+                                          ? 'Ingresa un CUT numérico válido'
+                                          : null,
+                                ),
+                                // Mostrar RUT del residente relacionado (solo lectura)
+                                if (isEditing && house?.rutResidente != null && house!.rutResidente!.isNotEmpty) ...[
+                                  const SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: rutResidenteController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'RUT del residente relacionado (Solo lectura)',
+                                      prefixIcon: Icon(Icons.person),
+                                      filled: true,
+                                      fillColor: Colors.grey,
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    enabled: false,
+                                    style: const TextStyle(color: Colors.black54),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          // Tab Vivienda
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Detalles de la Vivienda',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                // Tipo de vivienda
+                                DropdownButtonFormField<String>(
+                                  value: selectedTipo,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Tipo de vivienda *',
+                                    prefixIcon: Icon(Icons.home_outlined),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: const ['Casa', 'Departamento', 'Empresa', 'Local comercial', 'Oficina', 'Bodega', 'Otro']
+                                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setDialogState(() {
+                                      selectedTipo = value;
+                                    });
+                                  },
+                                  validator: (value) =>
+                                      value == null || value.isEmpty ? 'Campo obligatorio' : null,
+                                ),
+                                const SizedBox(height: 16),
+                                // Número de pisos
+                                DropdownButtonFormField<String>(
+                                  value: selectedPisos,
+                                  decoration: InputDecoration(
+                                    labelText: selectedTipo == 'Casa' || selectedTipo == 'Departamento' 
+                                        ? 'Piso en el que resides *' 
+                                        : 'Número de pisos *',
+                                    prefixIcon: const Icon(Icons.layers_outlined),
+                                    border: const OutlineInputBorder(),
+                                  ),
+                                  items: List.generate(62, (index) => index + 1)
+                                      .map((floors) => DropdownMenuItem(
+                                            value: floors.toString(),
+                                            child: Text('$floors ${floors == 1 ? 'piso' : 'pisos'}'),
+                                          ))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setDialogState(() {
+                                      selectedPisos = value;
+                                    });
+                                  },
+                                  validator: (value) =>
+                                      value == null || value.isEmpty ? 'Campo obligatorio' : null,
+                                ),
+                                const SizedBox(height: 16),
+                                // Material de construcción
+                                DropdownButtonFormField<String>(
+                                  value: selectedMaterial,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Material principal *',
+                                    prefixIcon: Icon(Icons.construction_outlined),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: const [
+                                    'Hormigón/Concreto',
+                                    'Ladrillo',
+                                    'Madera',
+                                    'Adobe',
+                                    'Metal',
+                                    'Material ligero',
+                                    'Mixto',
+                                    'Otro'
+                                  ]
+                                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setDialogState(() {
+                                      selectedMaterial = value;
+                                    });
+                                  },
+                                  validator: (value) =>
+                                      value == null || value.isEmpty ? 'Campo obligatorio' : null,
+                                ),
+                                const SizedBox(height: 16),
+                                // Estado de la vivienda
+                                DropdownButtonFormField<String>(
+                                  value: selectedEstado,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Estado general *',
+                                    prefixIcon: Icon(Icons.home_repair_service_outlined),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: const [
+                                    'Excelente',
+                                    'Bueno',
+                                    'Regular',
+                                    'Malo',
+                                    'Muy malo',
+                                    'Activo',
+                                  ]
+                                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setDialogState(() {
+                                      selectedEstado = value;
+                                    });
+                                  },
+                                  validator: (value) =>
+                                      value == null || value.isEmpty ? 'Campo obligatorio' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (formKey.currentState!.validate()) {
+                    Navigator.of(context).pop(true);
+                  }
+                },
+                child: Text(isEditing ? 'Guardar cambios' : 'Crear'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.of(context).pop(true);
-              }
-            },
-            child: Text(isEditing ? 'Guardar cambios' : 'Crear'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     if (confirmed == true) {
-      final newHouse = Residencia(
-        idResidencia: house?.idResidencia ?? 0,
-        direccion: addressController.text.trim(),
-        lat: double.parse(latController.text.trim()),
-        lon: double.parse(lonController.text.trim()),
-        cutCom: int.parse(cutComController.text.trim()),
-        telefonoPrincipal: house?.telefonoPrincipal,
-        numeroPisos: house?.numeroPisos,
-        instruccionesEspeciales: house?.instruccionesEspeciales,
-      );
-
       try {
+        // Al editar, mantener el ID original (no permitir cambiar el ID)
+        final newHouse = Residencia(
+          idResidencia: isEditing ? house!.idResidencia : 0,
+          direccion: addressController.text.trim(),
+          lat: double.parse(latController.text.trim()),
+          lon: double.parse(lonController.text.trim()),
+          cutCom: int.parse(cutComController.text.trim()),
+          telefonoPrincipal: null, // Campo no existe en la tabla residencia
+          numeroPisos: null, // No existe en la tabla residencia, se guarda en registro_v
+          instruccionesEspeciales: house?.instruccionesEspeciales, // Se obtiene de registro_v, no de residencia
+        );
+
         if (isEditing) {
           await HousesAdminService.instance.updateHouse(newHouse);
+          // Actualizar o crear registro_v
+          if (house?.idRegistro != null) {
+            // Actualizar registro_v existente
+            final registroV = RegistroV(
+              idRegistro: house!.idRegistro!,
+              vigente: house.vigente ?? true,
+              estado: selectedEstado ?? 'Activo',
+              material: selectedMaterial ?? '',
+              tipo: selectedTipo ?? '',
+              pisos: int.tryParse(selectedPisos ?? '1') ?? 1,
+              fechaIniR: house.fechaIniR ?? DateTime.now(),
+              fechaFinR: house.fechaFinR,
+              idResidencia: house.idResidencia,
+              idGrupof: house.idGrupof ?? 0,
+              instruccionesEspeciales: house.instruccionesEspeciales,
+            );
+            await RegistroVAdminService.instance.updateRegistroV(registroV);
+          } else {
+            // Crear nuevo registro_v si no existe
+            final registroV = RegistroV(
+              idRegistro: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+              vigente: true,
+              estado: selectedEstado ?? 'Activo',
+              material: selectedMaterial ?? '',
+              tipo: selectedTipo ?? '',
+              pisos: int.tryParse(selectedPisos ?? '1') ?? 1,
+              fechaIniR: DateTime.now(),
+              fechaFinR: null,
+              idResidencia: house!.idResidencia,
+              idGrupof: house.idGrupof ?? 0,
+              instruccionesEspeciales: house.instruccionesEspeciales,
+            );
+            await RegistroVAdminService.instance.insertRegistroV(registroV);
+          }
         } else {
           await HousesAdminService.instance.insertHouse(newHouse);
+          // Crear registro_v después de insertar vivienda
+          // Necesitamos obtener el ID de la vivienda insertada
+          await _loadHouses();
+          final insertedHouse = _houses.firstWhere(
+            (h) => h.direccion == newHouse.direccion && 
+                   h.lat == newHouse.lat && 
+                   h.lon == newHouse.lon,
+            orElse: () => newHouse,
+          );
+          
+          // Crear registro_v sin grupo familiar (se puede relacionar después)
+          final registroV = RegistroV(
+            idRegistro: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            vigente: true,
+            estado: selectedEstado ?? 'Activo',
+            material: selectedMaterial ?? '',
+            tipo: selectedTipo ?? '',
+            pisos: int.tryParse(selectedPisos ?? '1') ?? 1,
+            fechaIniR: DateTime.now(),
+            fechaFinR: null,
+            idResidencia: insertedHouse.idResidencia,
+            idGrupof: 0, // Se puede actualizar después
+          );
+          await RegistroVAdminService.instance.insertRegistroV(registroV);
         }
         await _loadHouses();
       } catch (e) {
@@ -422,9 +671,12 @@ class _HousesPageState extends State<HousesPage> {
                           ),
                           child: LayoutBuilder(
                             builder: (context, constraints) {
+                              final scrollController = ScrollController();
                               return Scrollbar(
+                                controller: scrollController,
                                 thumbVisibility: true,
                                 child: SingleChildScrollView(
+                                  controller: scrollController,
                                   scrollDirection: Axis.horizontal,
                                   child: ConstrainedBox(
                                     constraints: BoxConstraints(
@@ -520,6 +772,81 @@ class _HousesPageState extends State<HousesPage> {
                                             ],
                                           ),
                                         ),
+                                        if (!isMobile)
+                                          DataColumn(
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.person,
+                                                  size: 18,
+                                                  color: Theme.of(context).colorScheme.primary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Text('RUT Residente'),
+                                              ],
+                                            ),
+                                          ),
+                                        if (!isMobile)
+                                          DataColumn(
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.home,
+                                                  size: 18,
+                                                  color: Theme.of(context).colorScheme.primary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Text('Pisos'),
+                                              ],
+                                            ),
+                                          ),
+                                        if (!isMobile)
+                                          DataColumn(
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.check_circle,
+                                                  size: 18,
+                                                  color: Theme.of(context).colorScheme.primary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Text('Estado'),
+                                              ],
+                                            ),
+                                          ),
+                                        if (!isMobile)
+                                          DataColumn(
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.build,
+                                                  size: 18,
+                                                  color: Theme.of(context).colorScheme.primary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Text('Material'),
+                                              ],
+                                            ),
+                                          ),
+                                        if (!isMobile)
+                                          DataColumn(
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.category,
+                                                  size: 18,
+                                                  color: Theme.of(context).colorScheme.primary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Text('Tipo'),
+                                              ],
+                                            ),
+                                          ),
                                         DataColumn(
                                           label: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -560,6 +887,45 @@ class _HousesPageState extends State<HousesPage> {
                                               house.cutCom.toString(),
                                               style: TextStyle(fontSize: isMobile ? 12 : null),
                                             )),
+                                            if (!isMobile)
+                                              DataCell(Text(
+                                                house.rutResidente ?? '-',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontStyle: house.rutResidente == null 
+                                                      ? FontStyle.italic 
+                                                      : FontStyle.normal,
+                                                  color: house.rutResidente == null 
+                                                      ? Colors.grey 
+                                                      : null,
+                                                ),
+                                              )),
+                                            if (!isMobile)
+                                              DataCell(Text(
+                                                house.pisos?.toString() ?? '-',
+                                                style: const TextStyle(fontSize: 12),
+                                              )),
+                                            if (!isMobile)
+                                              DataCell(Text(
+                                                house.estado ?? '-',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: house.estado == 'Activo' 
+                                                      ? Colors.green 
+                                                      : Colors.grey,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              )),
+                                            if (!isMobile)
+                                              DataCell(Text(
+                                                house.material ?? '-',
+                                                style: const TextStyle(fontSize: 12),
+                                              )),
+                                            if (!isMobile)
+                                              DataCell(Text(
+                                                house.tipo ?? '-',
+                                                style: const TextStyle(fontSize: 12),
+                                              )),
                                             DataCell(
                                               Wrap(
                                                 spacing: isMobile ? 4 : 8,

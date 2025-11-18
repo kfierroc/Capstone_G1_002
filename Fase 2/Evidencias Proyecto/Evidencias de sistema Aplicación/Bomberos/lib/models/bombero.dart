@@ -9,6 +9,7 @@ class Bombero {
   final String apePBombero; // NUEVO CAMPO según esquema actualizado
   final String emailB;
   final int cutCom; // Cambiado de outCom a cutCom para coincidir con la BD
+  final bool? isAdmin; // Campo para administrador de firedata_admin
 
   Bombero({
     required this.rutNum,
@@ -18,6 +19,7 @@ class Bombero {
     required this.apePBombero,
     required this.emailB,
     required this.cutCom, // Cambiado de outCom a cutCom
+    this.isAdmin,
   });
 
   /// Crea una copia del modelo con campos actualizados
@@ -29,6 +31,7 @@ class Bombero {
     String? apePBombero,
     String? emailB,
     int? cutCom, // Cambiado de outCom a cutCom
+    bool? isAdmin,
   }) {
     return Bombero(
       rutNum: rutNum ?? this.rutNum,
@@ -38,6 +41,7 @@ class Bombero {
       apePBombero: apePBombero ?? this.apePBombero,
       emailB: emailB ?? this.emailB,
       cutCom: cutCom ?? this.cutCom, // Cambiado de outCom a cutCom
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 
@@ -51,6 +55,7 @@ class Bombero {
       'ape_p_bombero': apePBombero,
       'email_b': emailB,
       'cut_com': cutCom, // Cambiado de out_com a cut_com
+      'is_admin': isAdmin,
     };
   }
 
@@ -64,6 +69,7 @@ class Bombero {
       apePBombero: json['ape_p_bombero'] as String? ?? '',
       emailB: json['email_b'] as String,
       cutCom: json['cut_com'] as int? ?? 0, // Cambiado de out_com a cut_com
+      isAdmin: json['is_admin'] as bool? ?? (json['is_admin'] == 1 || json['is_admin'] == true),
     );
   }
 
@@ -77,6 +83,7 @@ class Bombero {
       'ape_p_bombero': apePBombero,
       'email_b': emailB,
       'cut_com': cutCom, // Cambiado de out_com a cut_com
+      'is_admin': isAdmin,
     };
   }
 
@@ -89,14 +96,31 @@ class Bombero {
       'ape_p_bombero': apePBombero,
       'email_b': emailB,
       'cut_com': cutCom, // Cambiado de out_com a cut_com
+      'is_admin': isAdmin,
     };
   }
 
   /// Obtener RUT completo formateado
-  String get rutCompleto => '$rutNum-$rutDv';
+  String get rutCompleto {
+    // Formatear RUT con puntos: 12.345.678-9
+    final rutStr = rutNum.toString();
+    String formatted = '';
+    int counter = 0;
+    
+    for (int i = rutStr.length - 1; i >= 0; i--) {
+      if (counter == 3) {
+        formatted = '.$formatted';
+        counter = 0;
+      }
+      formatted = rutStr[i] + formatted;
+      counter++;
+    }
+    
+    return '$formatted-$rutDv';
+  }
 
   /// Crear Bombero desde RUT completo
-  factory Bombero.fromRutCompleto(String rutCompleto, String email, {int? cutCom}) {
+  factory Bombero.fromRutCompleto(String rutCompleto, String compania, {String? email, int? cutCom}) {
     final rutParts = rutCompleto.split('-');
     final rutNum = int.parse(rutParts[0].replaceAll('.', ''));
     final rutDv = rutParts.length > 1 ? rutParts[1] : '';
@@ -104,10 +128,10 @@ class Bombero {
     return Bombero(
       rutNum: rutNum,
       rutDv: rutDv,
-      compania: '', // Valor por defecto
+      compania: compania,
       nombBombero: '', // Valor por defecto
       apePBombero: '', // Valor por defecto
-      emailB: email,
+      emailB: email ?? '',
       cutCom: cutCom ?? 13101, // Santiago por defecto (CUT válido)
     );
   }

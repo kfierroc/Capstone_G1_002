@@ -6,10 +6,10 @@ Este documento explica cómo funciona la arquitectura compartida entre las aplic
 
 ### Características Implementadas
 
-#### 1. **Registro en 3 Pasos (Bomberos)**
+#### 1. **Registro en 2 Pasos (Bomberos)** - Verificación de correo deshabilitada
 - **Paso 1**: Email y contraseña (con confirmación)
-- **Paso 2**: Verificación de email con código OTP de 6 dígitos
-- **Paso 3**: Completar datos (nombre, apellido, RUT, compañía)
+- **Paso 2**: Completar datos (nombre, apellido, RUT, compañía)
+- **NOTA**: La verificación de correo electrónico está comentada, los usuarios pueden continuar sin verificar
 
 #### 2. **Registro en 3 Pasos (Residente)**
 - **Paso 1**: Email y contraseña (con confirmación)
@@ -380,7 +380,12 @@ profiles:
 **Implementación:**
 1. **App de Bomberos**: Verifica que el usuario exista en la tabla `bombero` antes de permitir login
 2. **App de Residente**: Verifica que el usuario NO exista en la tabla `bombero` antes de permitir login
-3. **Mensajes de error claros**: Indica al usuario en qué app debe iniciar sesión
+3. **App de firedata_admin**: Verifica que el usuario tenga `is_admin = true` o `1` en la tabla `bombero` para permitir acceso
+4. **Mensajes de error claros**: Indica al usuario en qué app debe iniciar sesión
+
+**Campo is_admin en tabla bombero:**
+- `true` o `1`: Usuario tiene acceso a firedata_admin
+- `false`, `0`, `empty`, o `null`: Usuario NO tiene acceso a firedata_admin
 
 **Código de validación en Bomberos:**
 ```dart

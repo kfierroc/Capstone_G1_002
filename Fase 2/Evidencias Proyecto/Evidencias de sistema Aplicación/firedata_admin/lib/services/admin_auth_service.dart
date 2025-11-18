@@ -16,10 +16,9 @@ class AdminAuthService {
 
   /// Verifica si el usuario autenticado posee un rol de administrador.
   ///
-  /// Este método primero intenta obtener los roles desde los metadatos del
-  /// usuario (`user_metadata.roles`). En caso de que no exista o no contenga
-  /// el rol requerido, consultará la tabla `profiles` buscando un registro
-  /// asociado al usuario actual.
+  /// Este método verifica primero si el usuario existe en la tabla bombero
+  /// y si tiene el campo is_admin en true o 1. También verifica metadatos
+  /// y la tabla profiles como métodos alternativos.
   Future<bool> verifyAdminAccess() async {
     try {
       final currentSession = _client.auth.currentSession;
@@ -30,13 +29,38 @@ class AdminAuthService {
 
       final user = currentSession.user;
 
-      // 1. Revisar metadatos
+      // 1. Verificar campo is_admin en tabla bombero (PRINCIPAL)
+      if (user.email != null) {
+        try {
+          final bomberoResponse = await _client
+              .from('bombero')
+              .select('is_admin')
+              .eq('email_b', user.email!)
+              .maybeSingle();
+
+          if (bomberoResponse != null) {
+            final isAdmin = bomberoResponse['is_admin'];
+            // Verificar si is_admin es true, 1, o 'true'
+            if (isAdmin == true || isAdmin == 1 || isAdmin == 'true' || isAdmin == '1') {
+              debugPrint('✅ Usuario tiene acceso admin verificado desde tabla bombero');
+              return true;
+            } else {
+              debugPrint('❌ Usuario NO tiene acceso admin (is_admin: $isAdmin)');
+              return false;
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error al verificar is_admin en bombero: $e');
+        }
+      }
+
+      // 2. Revisar metadatos (método alternativo)
       final metadataRoles = user.userMetadata?['roles'];
       if (metadataRoles is List && metadataRoles.contains('admin')) {
         return true;
       }
 
-      // 2. Consultar tabla profiles si existe
+      // 3. Consultar tabla profiles si existe (método alternativo)
       final response = await _client
           .from('profiles')
           .select('role')

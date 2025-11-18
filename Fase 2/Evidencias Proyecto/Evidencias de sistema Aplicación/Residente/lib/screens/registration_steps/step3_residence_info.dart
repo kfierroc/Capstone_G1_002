@@ -541,9 +541,8 @@ class _Step3ResidenceInfoState extends State<Step3ResidenceInfo> {
           onDragEnd: (p) => _updateFromMap(p),
         ),
       };
-      // Guardar coordenadas exactas de Google Maps (sin redondeo)
-      _latitudeController.text = pos.latitude.toString();
-      _longitudeController.text = pos.longitude.toString();
+      _latitudeController.text = pos.latitude.toStringAsFixed(6);
+      _longitudeController.text = pos.longitude.toStringAsFixed(6);
     });
   }
 

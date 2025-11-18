@@ -3,7 +3,6 @@ import '../../models/models.dart';
 import '../../services/unified_auth_service.dart';
 import '../../services/database_service.dart' as db;
 import '../../utils/app_styles.dart';
-import '../../utils/validators.dart';
 import 'tabs/family_tab.dart';
 import 'tabs/pets_tab.dart';
 import 'tabs/residence_tab.dart';
@@ -182,6 +181,8 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       final grupo = grupoResult.data!;
       final integranteResult = await databaseService.agregarIntegrante(
         grupoId: grupo.idGrupoF.toString(),
+        rut: member.rut, // Se pasa pero no se usa en la BD real
+        edad: member.age, // Se pasa pero no se usa en la BD real
         anioNac: member.birthYear, // Este SÍ se guarda en info_integrante
         padecimiento: member.conditions.isNotEmpty ? member.conditions.join(', ') : null, // Este SÍ se guarda en info_integrante
       );
@@ -466,16 +467,14 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
         debugPrint('📝 RUT cambió: ${_registrationData.rut} -> ${newData.rut}');
       }
       if (newData.phoneNumber != null && newData.phoneNumber != _registrationData.phoneNumber) {
-        final telefonoNormalizado = Validators.normalizePhoneForDB(newData.phoneNumber);
-        grupoUpdates['telefono_titular'] = telefonoNormalizado;
-        debugPrint('📝 Teléfono cambió: ${_registrationData.phoneNumber} -> $telefonoNormalizado');
+        grupoUpdates['telefono_titular'] = newData.phoneNumber;
+        debugPrint('📝 Teléfono cambió: ${_registrationData.phoneNumber} -> ${newData.phoneNumber}');
       }
       
       // También actualizar mainPhone si cambió (ambos representan el mismo teléfono)
       if (newData.mainPhone != null && newData.mainPhone != _registrationData.mainPhone) {
-        final telefonoNormalizado = Validators.normalizePhoneForDB(newData.mainPhone);
-        grupoUpdates['telefono_titular'] = telefonoNormalizado;
-        debugPrint('📝 Teléfono principal cambió: ${_registrationData.mainPhone} -> $telefonoNormalizado');
+        grupoUpdates['telefono_titular'] = newData.mainPhone;
+        debugPrint('📝 Teléfono principal cambió: ${_registrationData.mainPhone} -> ${newData.mainPhone}');
       }
       
       if (grupoUpdates.isNotEmpty) {
@@ -522,45 +521,32 @@ class _ResidentHomeScreenState extends State<ResidentHomeScreen> {
       if (residenciaResult.isSuccess && residenciaResult.data != null) {
         // Residencia existe, actualizar
         final residenciaUpdates = <String, dynamic>{};
-        final residenciaActual = residenciaResult.data!;
         
-        // Actualizar dirección si hay cambios o si la actual es "Dirección no especificada"
-        if (newData.address != null && newData.address!.isNotEmpty) {
-          if (newData.address != residenciaActual.direccion || 
-              residenciaActual.direccion == 'Dirección no especificada') {
-            residenciaUpdates['direccion'] = newData.address;
-            debugPrint('📝 Dirección actualizada: ${residenciaActual.direccion} -> ${newData.address}');
-          }
+        // Actualizar dirección si hay una nueva o si la actual es "Dirección no especificada"
+        if (newData.address != null && newData.address!.isNotEmpty && newData.address != residenciaResult.data!.direccion) {
+          residenciaUpdates['direccion'] = newData.address;
+          debugPrint('📝 Dirección cambió: ${residenciaResult.data!.direccion} -> ${newData.address}');
+        } else if (residenciaResult.data!.direccion == 'Dirección no especificada' && newData.address != null && newData.address!.isNotEmpty) {
+          residenciaUpdates['direccion'] = newData.address;
+          debugPrint('📝 Reemplazando "Dirección no especificada" con: ${newData.address}');
         }
         
-        // Actualizar coordenadas si hay cambios (comparar con valores anteriores)
+        // Solo actualizar coordenadas si son válidas y no causan overflow
         if (newData.latitude != null && newData.latitude! != 0.0) {
-          final latAnterior = residenciaActual.lat;
-          if ((newData.latitude! - latAnterior).abs() > 0.000001) {
-            residenciaUpdates['lat'] = newData.latitude!;
-            debugPrint('📝 Latitud actualizada: $latAnterior -> ${newData.latitude}');
-          }
+          residenciaUpdates['lat'] = double.parse(newData.latitude!.toStringAsFixed(6));
         }
         if (newData.longitude != null && newData.longitude! != 0.0) {
-          final lonAnterior = residenciaActual.lon;
-          if ((newData.longitude! - lonAnterior).abs() > 0.000001) {
-            residenciaUpdates['lon'] = newData.longitude!;
-            debugPrint('📝 Longitud actualizada: $lonAnterior -> ${newData.longitude}');
-          }
+          residenciaUpdates['lon'] = double.parse(newData.longitude!.toStringAsFixed(6));
         }
         
         // Los campos telefonoPrincipal se manejan en otras tablas
         // telefonoPrincipal -> grupofamiliar.telefono_titular
         
         if (residenciaUpdates.isNotEmpty) {
-          debugPrint('📝 Actualizando residencia con: $residenciaUpdates');
           await databaseService.actualizarResidencia(
             grupoId: grupo.idGrupoF.toString(),
             updates: residenciaUpdates,
           );
-          debugPrint('✅ Residencia actualizada exitosamente');
-        } else {
-          debugPrint('ℹ️ No hay cambios en la residencia para actualizar');
         }
         
         // Actualizar también el registro_v si hay cambios en material, tipo, estado, pisos

@@ -122,9 +122,14 @@ class ResidentsAdminService {
   }
 
   Future<void> updateResident(Resident resident) async {
+    // Solo actualizar campos editables (teléfono y email)
+    // No actualizar: id_grupof, rut_titular, nomb_titular, ape_p_titular, fecha_creacion
     await _client
         .from('grupofamiliar')
-        .update(resident.toJson())
+        .update({
+          'telefono_titular': resident.phone,
+          'email': resident.email,
+        })
         .eq('id_grupof', resident.idGroup);
   }
 

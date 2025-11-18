@@ -7,6 +7,20 @@ class Residencia {
   final String? telefonoPrincipal;
   final int? numeroPisos;
   final String? instruccionesEspeciales;
+  
+  // Información de registro_v (relación con grupo familiar)
+  final int? idRegistro;
+  final bool? vigente;
+  final String? estado;
+  final String? material;
+  final String? tipo;
+  final int? pisos;
+  final DateTime? fechaIniR;
+  final DateTime? fechaFinR;
+  final int? idGrupof;
+  
+  // Información del residente relacionado (solo lectura)
+  final String? rutResidente;
 
   const Residencia({
     required this.idResidencia,
@@ -17,9 +31,33 @@ class Residencia {
     this.telefonoPrincipal,
     this.numeroPisos,
     this.instruccionesEspeciales,
+    this.idRegistro,
+    this.vigente,
+    this.estado,
+    this.material,
+    this.tipo,
+    this.pisos,
+    this.fechaIniR,
+    this.fechaFinR,
+    this.idGrupof,
+    this.rutResidente,
   });
 
   factory Residencia.fromJson(Map<String, dynamic> json) {
+    // Manejar datos anidados de registro_v y grupofamiliar
+    final registroV = json['registro_v'] as Map<String, dynamic>?;
+    
+    // Manejar grupofamiliar que puede venir como lista o objeto
+    Map<String, dynamic>? grupoFamiliar;
+    if (registroV != null && registroV.containsKey('grupofamiliar')) {
+      final grupoFamiliarData = registroV['grupofamiliar'];
+      if (grupoFamiliarData is List && grupoFamiliarData.isNotEmpty) {
+        grupoFamiliar = grupoFamiliarData.first as Map<String, dynamic>?;
+      } else if (grupoFamiliarData is Map) {
+        grupoFamiliar = grupoFamiliarData as Map<String, dynamic>?;
+      }
+    }
+    
     return Residencia(
       idResidencia: json['id_residencia'] is int
           ? json['id_residencia'] as int
@@ -35,10 +73,36 @@ class Residencia {
           ? json['cut_com'] as int
           : int.tryParse(json['cut_com']?.toString() ?? '') ?? 0,
       telefonoPrincipal: json['telefono_principal']?.toString(),
-      numeroPisos: json['numero_pisos'] is int
-          ? json['numero_pisos'] as int
-          : int.tryParse(json['numero_pisos']?.toString() ?? ''),
-      instruccionesEspeciales: json['instrucciones_especiales']?.toString(),
+      numeroPisos: null, // Campo no existe en la tabla residencia, se obtiene de registro_v
+      instruccionesEspeciales: registroV?['instrucciones_especiales']?.toString(), // Se obtiene de registro_v, no de residencia
+      // Información de registro_v
+      idRegistro: registroV != null
+          ? (registroV['id_registro'] is int
+              ? registroV['id_registro'] as int
+              : int.tryParse(registroV['id_registro']?.toString() ?? ''))
+          : null,
+      vigente: registroV?['vigente'] as bool?,
+      estado: registroV?['estado']?.toString(),
+      material: registroV?['material']?.toString(),
+      tipo: registroV?['tipo']?.toString(),
+      pisos: registroV != null
+          ? (registroV['pisos'] is int
+              ? registroV['pisos'] as int
+              : int.tryParse(registroV['pisos']?.toString() ?? ''))
+          : null,
+      fechaIniR: registroV?['fecha_ini_r'] != null
+          ? DateTime.tryParse(registroV!['fecha_ini_r'].toString())
+          : null,
+      fechaFinR: registroV?['fecha_fin_r'] != null
+          ? DateTime.tryParse(registroV!['fecha_fin_r'].toString())
+          : null,
+      idGrupof: registroV != null
+          ? (registroV['id_grupof'] is int
+              ? registroV['id_grupof'] as int
+              : int.tryParse(registroV['id_grupof']?.toString() ?? ''))
+          : null,
+      // RUT del residente relacionado
+      rutResidente: grupoFamiliar?['rut_titular']?.toString(),
     );
   }
 
@@ -52,15 +116,9 @@ class Residencia {
     if (idResidencia != 0) {
       data['id_residencia'] = idResidencia;
     }
-    if (telefonoPrincipal != null) {
-      data['telefono_principal'] = telefonoPrincipal;
-    }
-    if (numeroPisos != null) {
-      data['numero_pisos'] = numeroPisos;
-    }
-    if (instruccionesEspeciales != null) {
-      data['instrucciones_especiales'] = instruccionesEspeciales;
-    }
+    // telefono_principal no existe en la tabla residencia según el error
+    // numero_pisos no existe en la tabla residencia, está en registro_v
+    // instrucciones_especiales no se guarda en residencia, está en registro_v
     return data;
   }
 }

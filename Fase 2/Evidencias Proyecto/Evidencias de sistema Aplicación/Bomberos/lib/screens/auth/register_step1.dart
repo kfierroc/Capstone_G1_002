@@ -65,11 +65,25 @@ class _RegisterStepInputScreenState extends State<RegisterStepInputScreen> {
     });
 
     try {
-      // Navegar a la pantalla de verificación de correo
+      // COMENTADO: Verificación de correo deshabilitada
+      // Navegación directa a completar datos sin verificar correo
+      // // Navegar a la pantalla de verificación de correo
+      // if (mounted) {
+      //   await Navigator.pushReplacementNamed(
+      //     context,
+      //     '/email-verification-bomberos',
+      //     arguments: {
+      //       'email': _emailController.text.trim(),
+      //       'password': _passwordController.text,
+      //     },
+      //   );
+      // }
+      
+      // Navegar directamente a completar datos (saltando verificación de correo)
       if (mounted) {
         await Navigator.pushReplacementNamed(
           context,
-          '/email-verification-bomberos',
+          '/register-step3',
           arguments: {
             'email': _emailController.text.trim(),
             'password': _passwordController.text,

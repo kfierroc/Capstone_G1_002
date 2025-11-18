@@ -23,9 +23,10 @@ El Sistema de Bomberos es una aplicación móvil desarrollada en Flutter que pro
 ### Características Principales
 - **Aplicación Unificada**: Integra funcionalidades de bomberos y grifos en una sola aplicación
 - **Búsqueda de Domicilios**: Sistema de búsqueda en tiempo real de información crítica de domicilios
-- **Gestión de Grifos**: Módulo completo para registro y gestión de grifos de agua
-- **Registro en 3 Pasos**: Email/contraseña → Verificación OTP → Datos del bombero
-- **Autenticación Segura**: Sistema de login/registro con Supabase y verificación de email
+- **Gestión de Grifos**: Módulo completo para registro y gestión de grifos de agua con notas
+- **Registro en 2 Pasos**: Email/contraseña → Datos del bombero (verificación de correo deshabilitada)
+- **Autenticación Segura**: Sistema de login/registro con Supabase
+- **Campo is_admin**: Permite identificar bomberos con acceso administrativo para firedata_admin
 - **Reset de Contraseña**: Con código OTP en lugar de deep links
 - **Validación de Roles**: Previene acceso cruzado entre Bomberos y Residente
 - **Interfaz Responsive**: Adaptable a diferentes tamaños de pantalla
@@ -223,24 +224,15 @@ CREATE POLICY "Public read access for domicilio" ON domicilio
 - **Validaciones**: Email válido, contraseña requerida
 - **Integración**: Supabase Auth
 
-#### Registro en 3 Pasos
+#### Registro en 2 Pasos (Verificación de correo deshabilitada)
 
 **Paso 1**: `/register-step1`
 - **Funcionalidad**: Registro inicial con email y contraseña
 - **Campos**: Email, contraseña, confirmar contraseña
 - **Validaciones**: Email válido, contraseña mínimo 6 caracteres, contraseñas coinciden
-- **Navegación**: Después de continuar, va a verificación de email
+- **Navegación**: Después de continuar, va directamente a completar datos (saltando verificación)
 
-**Paso 2**: `/register-step2` 
-- **Funcionalidad**: Verificación de email con código OTP
-- **Envío automático**: Se envía código de 6 dígitos al email
-- **Opciones**: 
-  - Ingresar código de 6 dígitos
-  - Botón "Reenviar código" (con countdown de 60s)
-  - Botón "Saltar" para omitir verificación
-- **Navegación**: Después de verificar o saltar, va a completar datos
-
-**Paso 3**: `/register-step3`
+**Paso 2**: `/register-step3` (anteriormente Paso 3)
 - **Funcionalidad**: Completar datos del bombero
 - **Campos**: Nombre, apellido paterno, RUT, compañía de bomberos
 - **Validaciones**: 
@@ -248,6 +240,8 @@ CREATE POLICY "Public read access for domicilio" ON domicilio
   - RUT válido con dígito verificador
   - Compañía mínimo 3 caracteres
 - **Funcionalidad**: Crea registro en tabla `bombero` y completa el proceso
+
+**NOTA**: La verificación de correo electrónico está deshabilitada. Los usuarios pueden iniciar sesión sin verificar su correo.
 
 #### Logout
 - **Funcionalidad**: Cierre de sesión seguro
@@ -297,7 +291,7 @@ CREATE POLICY "Public read access for domicilio" ON domicilio
 #### Registro de Grifos
 - **Formulario completo**: Dirección, comuna, tipo, estado
 - **Coordenadas**: Latitud y longitud con validación
-- **Notas**: Información adicional
+- **Notas**: Campo de notas activo, se guarda en la base de datos (tabla info_grifo)
 - **Validaciones**: Campos requeridos
 - **Diseño responsive**: Optimizado para diferentes tamaños de pantalla
 
@@ -339,23 +333,39 @@ CREATE TABLE profiles (
 #### Tabla: `bombero`
 ```sql
 CREATE TABLE bombero (
-  rut_num INTEGER PRIMARY KEY,
-  rut_dv VARCHAR(1),
-  email_b VARCHAR(255) UNIQUE
+  rut_num INTEGER PRIMARY KEY NOT NULL,
+  rut_dv CHAR(1) NOT NULL,
+  compania VARCHAR(4) NOT NULL,
+  nomb_bombero VARCHAR(50) NOT NULL,
+  ape_p_bombero VARCHAR(50) NOT NULL,
+  email_b TEXT UNIQUE NOT NULL,
+  is_admin BOOLEAN,
+  cut_com INTEGER NOT NULL REFERENCES comunas(cut_com),
+  CONSTRAINT uq_rut UNIQUE (rut_num, rut_dv)
 );
 ```
 
-#### Tabla: `domicilio`
+**Campos importantes:**
+- `is_admin`: Campo booleano que indica si el bombero tiene acceso administrativo a firedata_admin
+  - `true` o `1`: Tiene acceso
+  - `false`, `0`, `empty`, o `null`: No tiene acceso
+
+#### Tabla: `info_grifo`
 ```sql
-CREATE TABLE domicilio (
-  id SERIAL PRIMARY KEY,
-  direccion TEXT NOT NULL,
-  comuna VARCHAR(100),
-  region VARCHAR(100),
-  coordenadas POINT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+CREATE TABLE info_grifo (
+  id_reg_grifo SERIAL PRIMARY KEY,
+  id_grifo INTEGER NOT NULL REFERENCES grifo(id_grifo),
+  fecha_registro DATE NOT NULL,
+  estado TEXT NOT NULL,
+  rut_num INTEGER NOT NULL REFERENCES bombero(rut_num),
+  notas TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
+
+**Campos importantes:**
+- `notas`: Campo de texto para información adicional sobre el grifo, ahora activo en la base de datos
 
 ### Relaciones
 - `profiles.id` → `auth.users.id` (1:1)

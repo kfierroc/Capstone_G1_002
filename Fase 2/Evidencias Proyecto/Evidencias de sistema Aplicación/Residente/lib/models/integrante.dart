@@ -10,6 +10,7 @@ class Integrante {
   final DateTime fechaIniI;
   final DateTime? fechaFinI;
   final int idGrupof; // FK -> grupofamiliar
+  final String rut; // RUT del integrante
   final int edad; // Edad del integrante
   final int anioNac; // Año de nacimiento
   final String? padecimiento; // Condiciones médicas
@@ -22,6 +23,7 @@ class Integrante {
     required this.fechaIniI,
     this.fechaFinI,
     required this.idGrupof,
+    required this.rut,
     required this.edad,
     required this.anioNac,
     this.padecimiento,
@@ -36,6 +38,7 @@ class Integrante {
     DateTime? fechaIniI,
     DateTime? fechaFinI,
     int? idGrupof,
+    String? rut,
     int? edad,
     int? anioNac,
     String? padecimiento,
@@ -48,6 +51,7 @@ class Integrante {
       fechaIniI: fechaIniI ?? this.fechaIniI,
       fechaFinI: fechaFinI ?? this.fechaFinI,
       idGrupof: idGrupof ?? this.idGrupof,
+      rut: rut ?? this.rut,
       edad: edad ?? this.edad,
       anioNac: anioNac ?? this.anioNac,
       padecimiento: padecimiento ?? this.padecimiento,
@@ -58,26 +62,19 @@ class Integrante {
 
   /// Convierte el modelo a JSON para Supabase
   Map<String, dynamic> toJson() {
-    final data = <String, dynamic>{
+    return {
       'id_integrante': idIntegrante,
       'activo_i': activoI,
       'fecha_ini_i': fechaIniI.toIso8601String(),
+      'fecha_fin_i': fechaFinI?.toIso8601String(),
       'id_grupof': idGrupof,
+      'rut': rut,
       'edad': edad,
       'anio_nac': anioNac,
+      'padecimiento': padecimiento,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
-    
-    // Solo incluir campos opcionales si no son null
-    if (fechaFinI != null) {
-      data['fecha_fin_i'] = fechaFinI!.toIso8601String();
-    }
-    if (padecimiento != null && padecimiento!.isNotEmpty) {
-      data['padecimiento'] = padecimiento;
-    }
-    
-    return data;
   }
 
   /// Crea un Integrante desde JSON de Supabase
@@ -90,6 +87,7 @@ class Integrante {
           ? DateTime.parse(json['fecha_fin_i'] as String)
           : null,
       idGrupof: json['id_grupof'] as int,
+      rut: json['rut'] as String? ?? '',
       edad: json['edad'] as int? ?? 0,
       anioNac: json['anio_nac'] as int? ?? 0,
       padecimiento: json['padecimiento'] as String?,
@@ -103,37 +101,31 @@ class Integrante {
   }
 
   /// Crear datos para inserción en Supabase (sin id_integrante)
-  /// NOTA: Solo incluye campos de la tabla integrante, no de info_integrante
   Map<String, dynamic> toInsertData() {
-    final data = <String, dynamic>{
+    return {
       'activo_i': activoI,
       'fecha_ini_i': fechaIniI.toIso8601String(),
+      'fecha_fin_i': fechaFinI?.toIso8601String(),
       'id_grupof': idGrupof,
+      'rut': rut,
+      'edad': edad,
+      'anio_nac': anioNac,
+      'padecimiento': padecimiento,
     };
-    
-    // Solo incluir campos opcionales si no son null
-    if (fechaFinI != null) {
-      data['fecha_fin_i'] = fechaFinI!.toIso8601String();
-    }
-    
-    return data;
   }
 
   /// Crear datos para actualización en Supabase
-  /// NOTA: Solo incluye campos de la tabla integrante, no de info_integrante
   Map<String, dynamic> toUpdateData() {
-    final data = <String, dynamic>{
+    return {
       'activo_i': activoI,
       'fecha_ini_i': fechaIniI.toIso8601String(),
+      'fecha_fin_i': fechaFinI?.toIso8601String(),
       'id_grupof': idGrupof,
+      'rut': rut,
+      'edad': edad,
+      'anio_nac': anioNac,
+      'padecimiento': padecimiento,
     };
-    
-    // Solo incluir campos opcionales si no son null
-    if (fechaFinI != null) {
-      data['fecha_fin_i'] = fechaFinI!.toIso8601String();
-    }
-    
-    return data;
   }
 
   @override
@@ -155,6 +147,7 @@ class Integrante {
     try {
       return FamilyMember(
         id: idIntegrante.toString(),
+        rut: rut.isNotEmpty ? rut : 'Sin RUT', // Usar RUT real del integrante
         age: edad > 0 ? edad : DateTime.now().year - fechaIniI.year,
         birthYear: anioNac > 0 ? anioNac : fechaIniI.year,
         conditions: padecimiento?.isNotEmpty == true 

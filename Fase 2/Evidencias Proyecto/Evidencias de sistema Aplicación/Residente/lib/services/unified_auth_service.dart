@@ -15,54 +15,6 @@ class UnifiedAuthService {
   // Obtener cliente de Supabase
   SupabaseClient get _client => SupabaseConfig.client;
 
-  /// Normaliza el teléfono al formato requerido por la BD: +56[2-9][0-9]{8,9}
-  /// El formato debe cumplir: ^\+56[2-9][0-9]{8,9}$
-  String _normalizePhoneForDB(String? phone) {
-    if (phone == null || phone.isEmpty) {
-      return ''; // Retornar vacío si no hay teléfono
-    }
-    
-    // Remover todos los caracteres no numéricos
-    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    
-    if (cleanPhone.isEmpty) {
-      return '';
-    }
-    
-    // Si ya empieza con 56, removerlo para procesar
-    if (cleanPhone.startsWith('56')) {
-      cleanPhone = cleanPhone.substring(2);
-    }
-    
-    // Si tiene 9 dígitos y empieza con 9 (celular)
-    if (cleanPhone.length == 9 && cleanPhone.startsWith('9')) {
-      return '+56$cleanPhone'; // +56988776655
-    }
-    
-    // Si tiene 8 dígitos (fijo, generalmente empieza con 2)
-    if (cleanPhone.length == 8) {
-      return '+56$cleanPhone'; // +56221234567
-    }
-    
-    // Si tiene 9 dígitos pero no empieza con 9
-    if (cleanPhone.length == 9) {
-      return '+56$cleanPhone';
-    }
-    
-    // Si tiene 10 dígitos (fijo con código de área de 2 dígitos)
-    if (cleanPhone.length == 10) {
-      return '+56$cleanPhone';
-    }
-    
-    // Si tiene 11 dígitos (ya incluye el 56)
-    if (cleanPhone.length == 11 && cleanPhone.startsWith('56')) {
-      return '+${cleanPhone.substring(2)}'; // Ya tiene 56, solo agregar +
-    }
-    
-    // Por defecto, agregar +56 al inicio
-    return '+56$cleanPhone';
-  }
-
   // Obtener el usuario actual
   User? get currentUser => _client.auth.currentUser;
   
@@ -209,7 +161,7 @@ class UnifiedAuthService {
             debugPrint('✅ Sesión iniciada exitosamente para usuario existente');
             
             // Actualizar datos faltantes del grupo familiar
-            await _actualizarDatosGrupoFamiliar(email, telefonoTitular);
+            await _actualizarDatosGrupoFamiliar(email, nombreTitular, apellidoTitular, telefonoTitular);
             
             return signInResult;
           } else {
@@ -237,13 +189,12 @@ class UnifiedAuthService {
           // Generar un ID único para el grupo familiar usando método más seguro
           final idGrupof = _generarIdGrupofUnico();
           
-          // Normalizar teléfono al formato requerido por la BD
-          final telefonoNormalizado = _normalizePhoneForDB(telefonoTitular);
-          
           final grupoFamiliarData = {
             'id_grupof': idGrupof,
             'rut_titular': rutTitular.trim(),
-            'telefono_titular': telefonoNormalizado,
+            'nomb_titular': nombreTitular.trim(),
+            'ape_p_titular': apellidoTitular.trim(),
+            'telefono_titular': telefonoTitular.trim(),
             'email': email.trim(),
             'fecha_creacion': DateTime.now().toIso8601String(),
           };
@@ -674,6 +625,8 @@ class UnifiedAuthService {
   /// Actualizar datos faltantes del grupo familiar para usuarios existentes
   Future<void> _actualizarDatosGrupoFamiliar(
     String email,
+    String nombreTitular,
+    String apellidoTitular,
     String telefonoTitular,
   ) async {
     try {
@@ -689,10 +642,19 @@ class UnifiedAuthService {
       // Preparar datos de actualización (solo campos que no estén vacíos)
       final datosActualizacion = <String, dynamic>{};
       
+      if (nombreTitular.isNotEmpty && grupoActual.nombTitular.isEmpty) {
+        datosActualizacion['nomb_titular'] = nombreTitular.trim();
+        debugPrint('📝 Actualizando nombre: $nombreTitular');
+      }
+      
+      if (apellidoTitular.isNotEmpty && grupoActual.apePTitular.isEmpty) {
+        datosActualizacion['ape_p_titular'] = apellidoTitular.trim();
+        debugPrint('📝 Actualizando apellido: $apellidoTitular');
+      }
+      
       if (telefonoTitular.isNotEmpty && grupoActual.telefonoTitular.isEmpty) {
-        final telefonoNormalizado = _normalizePhoneForDB(telefonoTitular);
-        datosActualizacion['telefono_titular'] = telefonoNormalizado;
-        debugPrint('📝 Actualizando teléfono: $telefonoNormalizado');
+        datosActualizacion['telefono_titular'] = telefonoTitular.trim();
+        debugPrint('📝 Actualizando teléfono: $telefonoTitular');
       }
       
       // Solo actualizar si hay datos nuevos
