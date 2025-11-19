@@ -1,101 +1,85 @@
--- Instala la extensión pgcrypto
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- Extensión PostGIS para soporte geoespacial
-CREATE EXTENSION IF NOT EXISTS postgis;
-
--- Tabla de comunas
-CREATE TABLE comunas (
-    CUT_COM INTEGER PRIMARY KEY NOT NULL,
-    COMUNA TEXT NOT NULL,
-    CUT_REG INTEGER NOT NULL,
-    REGION TEXT NOT NULL,
-    CUT_PROV INTEGER NOT NULL,
-    PROVINCIA TEXT NOT NULL,
-    SUPERFICIE DECIMAL(10,2) NOT NULL,
-    geometry geometry(MULTIPOLYGON, 4326) NOT NULL
-);
-
--- Tabla residencia
 CREATE TABLE residencia (
-  id_residencia SERIAL PRIMARY KEY,
+  id_residencia INTEGER PRIMARY KEY NOT NULL,
   direccion TEXT UNIQUE NOT NULL,
-  lat DECIMAL(16,14) NOT NULL,
-  lon DECIMAL(16,14) NOT NULL,
-  CUT_COM INTEGER NOT NULL REFERENCES comunas(CUT_COM) ON DELETE CASCADE
+  lat DECIMAL(12,6) NOT NULL,
+  lon DECIMAL(12,6) NOT NULL,
+  CUT_COM INTEGER NOT NULL REFERENCES comunas(CUT_COM)
 );
 
--- Tabla grupo familiar
 CREATE TABLE grupofamiliar(
-  id_grupof SERIAL PRIMARY KEY,
-  rut_titular VARCHAR(12) NOT NULL,
+  id_grupof INTEGER PRIMARY KEY NOT NULL,
+  rut_titular varchar(12) NOT NULL,
+  telefono_titular VARCHAR(13) NOT NULL,
+  CHECK (telefono_titular ~ '^\+56[2-9][0-9]{8,9}$'),
   email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL CHECK (char_length(password) >= 60),
   fecha_creacion DATE NOT NULL
 );
 
--- Tabla registro vivienda
 CREATE TABLE registro_v (
-  id_registro SERIAL PRIMARY KEY,
+  id_registro INTEGER PRIMARY KEY NOT NULL,
   vigente BOOLEAN NOT NULL,
   estado TEXT NOT NULL,
   material TEXT NOT NULL,
   tipo TEXT NOT NULL,
+  pisos INTEGER NOT NULL,
   fecha_ini_r DATE NOT NULL,
   fecha_fin_r DATE,
-  id_residencia INTEGER NOT NULL REFERENCES residencia(id_residencia) ON DELETE CASCADE,
-  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE
+  id_residencia INTEGER NOT NULL REFERENCES residencia(id_residencia),
+  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof)
 );
 
--- Tabla integrante
 CREATE TABLE integrante(
-  id_integrante SERIAL PRIMARY KEY,
+  id_integrante INTEGER PRIMARY KEY NOT NULL,
   activo_i BOOLEAN NOT NULL,
   fecha_ini_i DATE NOT NULL,
   fecha_fin_i DATE,
-  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE
+  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof)
 );
 
--- Tabla info integrante
 CREATE TABLE info_integrante(
-  id_integrante INTEGER PRIMARY KEY REFERENCES integrante(id_integrante) ON DELETE CASCADE,
+  id_integrante INTEGER PRIMARY KEY NOT NULL REFERENCES integrante(id_integrante),
   fecha_reg_ii DATE NOT NULL,
   anio_nac INTEGER NOT NULL,
   padecimiento TEXT
 );
-
--- Tabla mascota
 CREATE TABLE mascota(
-  id_mascota SERIAL PRIMARY KEY,
+  id_mascota INTEGER PRIMARY KEY,
   nombre_m TEXT NOT NULL,
   especie TEXT NOT NULL,
   tamanio TEXT NOT NULL,
   fecha_reg_m DATE NOT NULL,
-  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof) ON DELETE CASCADE
+  id_grupof INTEGER NOT NULL REFERENCES grupofamiliar(id_grupof)
 );
 
--- Tabla grifo
+
+
+
 CREATE TABLE grifo (
   id_grifo SERIAL PRIMARY KEY,
-  lat DECIMAL(9,6) NOT NULL,
-  lon DECIMAL(9,6) NOT NULL,
-  CUT_COM INTEGER NOT NULL REFERENCES comunas(CUT_COM) ON DELETE CASCADE
+  lat DECIMAL(12,6) NOT NULL,
+  lon DECIMAL(12,6) NOT NULL,
+  CUT_COM INTEGER NOT NULL REFERENCES comunas(CUT_COM)
 );
 
--- Tabla bombero
 CREATE TABLE bombero (
   rut_num INTEGER PRIMARY KEY NOT NULL,
   rut_dv CHAR(1) NOT NULL,
+  compania VARCHAR(4) NOT NULL,
+  nomb_bombero varchar(50) NOT NULL,
+  ape_p_bombero varchar(50) NOT NULL,
   email_b TEXT UNIQUE NOT NULL,
-  password_b TEXT NOT NULL CHECK (char_length(password_b) >= 60),
+  is_admin BOOLEAN,
+
+  CUT_COM INTEGER NOT NULL REFERENCES comunas(CUT_COM),
+
   CONSTRAINT uq_rut UNIQUE (rut_num, rut_dv)
 );
 
--- Tabla info grifo
 CREATE TABLE info_grifo (
   id_reg_grifo SERIAL PRIMARY KEY,
-  id_grifo INTEGER NOT NULL REFERENCES grifo(id_grifo) ON DELETE CASCADE,
+  id_grifo INTEGER NOT NULL REFERENCES grifo(id_grifo),
   fecha_registro DATE NOT NULL,
   estado TEXT NOT NULL,
-  rut_num INTEGER NOT NULL REFERENCES bombero(rut_num) ON DELETE CASCADE
+  nota varchar(100),
+  rut_num INTEGER NOT NULL REFERENCES bombero(rut_num)
 );
